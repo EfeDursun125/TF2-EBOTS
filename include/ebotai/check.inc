@@ -27,11 +27,7 @@ bool TeleporterEnterIsMaxLevel[MAXPLAYERS + 1];
 bool TeleporterExitHealthIsFull[MAXPLAYERS + 1];
 bool TeleporterExitIsMaxLevel[MAXPLAYERS + 1];
 
-bool SapTeleporter[MAXPLAYERS + 1];
-
 bool SapBuildings[MAXPLAYERS + 1];
-
-int TargetTeleporter[MAXPLAYERS + 1];
 
 int TargetBuilding[MAXPLAYERS + 1];
 
@@ -213,6 +209,14 @@ stock void Check(int client)
 			if(!ClientIsMoving(client) && IsWeaponSlotActive(client, 5))
 			{
 				ForcePressButton[client] |= IN_ATTACK;
+			}
+			else if(!ClientIsMoving(client) && WantsBuildSentryGun[client])
+			{
+				FakeClientCommandThrottled(client, "build 2 0");
+			}
+			else if(!ClientIsMoving(client) && WantsBuildDispenser[client])
+			{
+				FakeClientCommandThrottled(client, "build 0 0");
 			}
 			
 			SentryGun[client] = TF2_GetObject(client, TFObject_Sentry, TFObjectMode_None);
@@ -406,19 +410,6 @@ stock void Check(int client)
 				ForcePressButton[client] |= IN_ATTACK;
 			}
 			
-			if(HasEnemiesNear[client])
-			{
-				if(TF2_IsPlayerInCondition(NearestEnemy[client], TFCond_TeleportedGlow))
-				{
-					SapTeleporter[client] = false;
-					
-					if (TargetTeleporter[client] == -1 || !IsValidEntity(TargetTeleporter[client]))
-					{
-						//TargetTeleporter[client] = GetNearestEntity(client, "obj_teleporter"); // its buggy
-					}
-				}
-			}
-			
 			if(HasEnemyBuildingsNear[client])
 			{
 				if(HasEnemyBuildingsNear[client] && NearestEnemyBuilding[client] != -1 && IsValidEntity(NearestEnemyBuilding[client]) && IsValidEdict(NearestEnemyBuilding[client]) && HasEntProp(NearestEnemyBuilding[client], Prop_Send, "m_bHasSapper") && GetEntProp(NearestEnemyBuilding[client], Prop_Send, "m_bHasSapper") == 0)
@@ -587,6 +578,22 @@ stock void Check(int client)
 			if(IsValidClient(NearestEnemy[client]) && TF2_GetPlayerClass(NearestEnemy[client]) == TFClass_Spy)
 			{
 				TargetSpyClient[client] = NearestEnemy[client];
+			}
+		}
+		
+		if(TF2_IsPlayerInCondition(client, TFCond_Disguised))
+		{
+			if(HasEnemiesNear[client] && !HasEnemyBuildingsNear[client])
+			{
+				EquipWeaponSlot(client, 2);
+			}
+		}
+		
+		if(IsWeaponSlotActive(client, 2))
+		{
+			if(IsValidEntity(GetPlayerWeaponSlot(client, TFWeaponSlot_Melee)) && HasEntProp(GetPlayerWeaponSlot(client, TFWeaponSlot_Melee), Prop_Send, "m_bReadyToBackstab") && GetEntProp(GetPlayerWeaponSlot(client, TFWeaponSlot_Melee), Prop_Send, "m_bReadyToBackstab"))
+			{
+				AttackTimer[client] = GetGameTime() + 0.2;
 			}
 		}
 		

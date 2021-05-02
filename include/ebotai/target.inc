@@ -1,6 +1,3 @@
-int g_bSpyAlert[MAXPLAYERS+1];
-int g_bISeeSpy[MAXPLAYERS+1];
-
 bool HasEnemiesNear[MAXPLAYERS + 1];
 bool HasFriendsNear[MAXPLAYERS + 1];
 bool HasEnemyBuildingsNear[MAXPLAYERS + 1];

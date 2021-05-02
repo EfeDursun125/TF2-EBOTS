@@ -157,11 +157,6 @@ stock void SpyAttack(int client)
 		EquipWeaponSlot(client, 0);
 	}
 	
-	if(IsWeaponSlotActive(client, 2) && IsValidEntity(GetPlayerWeaponSlot(client, TFWeaponSlot_Melee)) && GetEntProp(GetPlayerWeaponSlot(client, TFWeaponSlot_Melee), Prop_Send, "m_bReadyToBackstab"))
-	{
-		AttackTimer[client] = GetGameTime() + 1.1;
-	}
-	
 	if(!HasEnemyBuildingsNear[client] && IsReadyForAttack(client))
 	{
 		AttackTimer[client] = GetGameTime() + 1.1;

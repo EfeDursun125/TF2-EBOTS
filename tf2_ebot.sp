@@ -9,7 +9,6 @@
 bool AFKMode[MAXPLAYERS + 1];
 
 bool g_bAutoJump[MAXPLAYERS + 1];
-bool g_bPathFinding[MAXPLAYERS + 1];
 bool UseTeleporter[MAXPLAYERS+1];
 float RandomJumpTimer[MAXPLAYERS + 1];
 float g_flLookPos[MAXPLAYERS + 1][3];
@@ -77,7 +76,7 @@ bool IsAttackDefendMap;
 #include <ebotai/slenderbase>
 #include <ebotai/slenderai>
 
-#define PLUGIN_VERSION  "0.1"
+#define PLUGIN_VERSION  "0.11"
 
 public Plugin myinfo = 
 {
@@ -97,6 +96,7 @@ public OnPluginStart()
 	RegConsoleCmd("sm_afk", Command_Afk);
 	BotKick = CreateGlobalForward("Bot_OnBotKick", ET_Single, Param_CellByRef);
 	HookEvent("player_spawn", BotSpawn, EventHookMode_Post);
+	HookEvent("player_hurt", BotHurt, EventHookMode_Post);
 	EBotQuota = CreateConVar("ebot_quota", "0", "");
 	EBotAFKMode = CreateConVar("ebot_afk_mode", "1", "Controls the afk players.");
 	EBotPerformance = CreateConVar("ebot_performance_mode", "0", "Downgrades the ai for increase the fps!");
@@ -435,10 +435,6 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 				
 				if(IsSlowThink[client])
 				{
-					g_bPathFinding[client] = true;
-					g_bSpyAlert[client] = true;
-					g_bISeeSpy[client] = true;
-					
 					int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
 					SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
 					
@@ -814,7 +810,6 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 	{
 		HasEnemiesNear[client] = false;
 		g_iKothAction[client] = GetRandomInt(1,2);
-		PLRAction[client] = GetRandomInt(1,2);
 		HasMonstersNear[client] = false;
 		CanAttack[client] = true;
 		DefendFlag[client] = true;
@@ -843,6 +838,22 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		else if(GetClientTeam(client) == 3)
 		{
 			BluTeamSpawn = GetOrigin(client);
+		}
+	}
+}
+
+public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
+{
+	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	int target = GetClientOfUserId(GetEventInt(event, "attacker"));
+	
+	if(IsFakeClient(client) || AFKMode[client])
+	{
+		if(IsValidClient(client) && IsValidClient(target))
+		{
+			g_flLookPos[client] = GetEyePosition(target);
+			
+			g_flLookTimer[client] = GetGameTime() + GetRandomFloat(2.0, 5.0);
 		}
 	}
 }

@@ -673,49 +673,45 @@ stock void TF2_FindSentrySpot(int client)
 		}
 		else if(StrContains(currentMap, "plr_" , false) != -1)
 		{
-			int payload;
-			if((payload = FindEntityByClassname(payload, "mapobj_cart_dispenser")) != INVALID_ENT_REFERENCE)
+			int payload = GetNearestPayload(client, GetClientTeam(client));
+			if(payload != -1)
 			{
-				int iTeamNumObj = GetEntProp(payload, Prop_Send, "m_iTeamNum");
-				if(IsValidEntity(payload) && GetClientTeam(client) != iTeamNumObj)
-				{
-					float payloadposition[3];
-					GetEntPropVector(payload, Prop_Send, "m_vecOrigin", payloadposition);
+				float payloadposition[3];
+				payloadposition = GetOrigin(payload);
 				
-					if(g_bPickRandomSentrySpot[client])
+				if(g_bPickRandomSentrySpot[client])
+				{
+					g_flRandomSentrySpotPos[client][0] = payloadposition[0] + GetRandomFloat(-750.0, 750.0);
+					g_flRandomSentrySpotPos[client][1] = payloadposition[1] + GetRandomFloat(-750.0, 750.0);
+					g_flRandomSentrySpotPos[client][2] = payloadposition[2];
+					
+					bestspot[0] = g_flRandomSentrySpotPos[client][0];
+					bestspot[1] = g_flRandomSentrySpotPos[client][1];
+					bestspot[2] = clientEyes[2];
+					
+					NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 50000.0, false, false, GetClientTeam(client));
+					if(area != NavArea_Null)
 					{
-						g_flRandomSentrySpotPos[client][0] = payloadposition[0] + GetRandomFloat(-750.0, 750.0);
-						g_flRandomSentrySpotPos[client][1] = payloadposition[1] + GetRandomFloat(-750.0, 750.0);
-						g_flRandomSentrySpotPos[client][2] = payloadposition[2];
-						
-						bestspot[0] = g_flRandomSentrySpotPos[client][0];
-						bestspot[1] = g_flRandomSentrySpotPos[client][1];
-						bestspot[2] = clientEyes[2];
-						
-						NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 50000.0, false, false, GetClientTeam(client));
-						if(area != NavArea_Null)
+						if(!HasTFAttributes(area, BLOCKED) && !HasTFAttributes(area, BLUE_SPAWN_ROOM) && !HasTFAttributes(area, RED_SPAWN_ROOM) && !HasTFAttributes(area, BLUE_SENTRY) && !HasTFAttributes(area, RED_SENTRY))
 						{
-							if(!HasTFAttributes(area, BLOCKED) && !HasTFAttributes(area, BLUE_SPAWN_ROOM) && !HasTFAttributes(area, RED_SPAWN_ROOM) && !HasTFAttributes(area, BLUE_SENTRY) && !HasTFAttributes(area, RED_SENTRY))
-							{
-								area.GetRandomPoint(SentryBuildPosition[client]);
-								
-								if(!IsPointVisibleTank(g_flRandomSentrySpotPos[client], payloadposition))
-									return;
-								
-								if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
-									return;
-								
-								g_bPickRandomSentrySpot[client] = false;
-							}
-							else
-							{
-								g_bPickRandomSentrySpot[client] = true;
-							}
+							area.GetRandomPoint(SentryBuildPosition[client]);
+							
+							if(!IsPointVisibleTank(g_flRandomSentrySpotPos[client], payloadposition))
+								return;
+							
+							if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
+								return;
+							
+							g_bPickRandomSentrySpot[client] = false;
 						}
 						else
 						{
 							g_bPickRandomSentrySpot[client] = true;
 						}
+					}
+					else
+					{
+						g_bPickRandomSentrySpot[client] = true;
 					}
 				}
 			}

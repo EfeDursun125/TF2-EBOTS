@@ -803,6 +803,38 @@ stock int GetUsableSniperHintsCount(int client)
 	return SniperHintsCount;
 }
 
+stock GetNearestPayload(int client, int team)
+{
+	int NearestPayload = -1;
+	
+	float distance = -1.0; 
+	float nearestDistance = -1.0;
+	
+	int iPayload = -1;
+	
+	while ((iPayload = FindEntityByClassname(iPayload, "mapobj_cart_dispenser")) != -1)
+	{
+		if(!IsValidEntity(iPayload))
+			continue;
+		
+		if(!IsValidEdict(iPayload))
+			continue;
+		
+		if(GetTeamNumber(iPayload) != team)
+			continue;
+		
+		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iPayload));
+        
+		if (distance < nearestDistance || nearestDistance == -1.0)
+		{
+			NearestPayload = iPayload;
+			nearestDistance = distance;
+		}
+	}
+	
+	return NearestPayload;
+}
+
 stock GetNearestEnemyControlPoint(int client)
 {
 	int NearestControlPoint = -1;
@@ -887,14 +919,7 @@ stock GetNearestMyControlPoint(int client)
 		if(GetClientTeam(client) != GetTeamNumber(iControlPoint))
 			continue;
 		
-		if(GetNearestEnemyControlPoint(client) != -1)
-		{
-			distance = GetVectorDistance(GetOrigin(GetNearestEnemyControlPoint(client)), GetOrigin(iControlPoint));
-		}
-		else
-		{
-			distance = GetVectorDistance(GetOrigin(client), GetOrigin(iControlPoint));
-		}
+		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iControlPoint));
         
 		if (distance < nearestDistance || nearestDistance == -1.0)
 		{
@@ -1013,6 +1038,22 @@ stock bool IsCapturingControlPoint(int client)
 	char currentMap[PLATFORM_MAX_PATH];
 	GetCurrentMap(currentMap, sizeof(currentMap));
 	if(StrContains(currentMap, "cp_" , false) != -1)
+	{
+		int capturepoint = GetNearestEnemyControlPoint(client);
+		if(capturepoint != -1 && GetVectorDistance(GetOrigin(client), GetOrigin(capturepoint)) < 300.0)
+		{
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+stock bool IsCapturingPushingPayload(int client)
+{
+	char currentMap[PLATFORM_MAX_PATH];
+	GetCurrentMap(currentMap, sizeof(currentMap));
+	if(StrContains(currentMap, "pl_" , false) != -1)
 	{
 		int capturepoint = GetNearestEnemyControlPoint(client);
 		if(capturepoint != -1 && GetVectorDistance(GetOrigin(client), GetOrigin(capturepoint)) < 300.0)

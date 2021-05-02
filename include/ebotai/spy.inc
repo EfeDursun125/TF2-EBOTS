@@ -4,20 +4,6 @@ stock void SpyMoveLogic(int client)
 {
 	// TODO: Go To Enemy Spawn (%50 Chance) For Behind Attack & Sap Teleporters
 	
-	if(SapTeleporter[client]) // important!
-	{
-		if(TargetTeleporter[client] != -1 && IsValidEdict(TargetTeleporter[client]) && IsValidEntity(TargetTeleporter[client]))
-		{
-			TF2_FindPath(client, GetOrigin(TargetTeleporter[client]));
-		}
-		else // teleporter is destroyed or already sapped by someone?
-		{
-			SapTeleporter[client] = false;
-		}
-		
-		return;
-	}
-	
 	if(SapBuildings[client])
 	{
 		if(TargetBuilding[client] != -1 && IsValidEntity(TargetBuilding[client]) && IsValidEdict(TargetBuilding[client]))
