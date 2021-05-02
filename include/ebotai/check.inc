@@ -412,11 +412,17 @@ stock void Check(int client)
 			
 			if(HasEnemyBuildingsNear[client])
 			{
-				if(HasEnemyBuildingsNear[client] && NearestEnemyBuilding[client] != -1 && IsValidEntity(NearestEnemyBuilding[client]) && IsValidEdict(NearestEnemyBuilding[client]) && HasEntProp(NearestEnemyBuilding[client], Prop_Send, "m_bHasSapper") && GetEntProp(NearestEnemyBuilding[client], Prop_Send, "m_bHasSapper") == 0)
+				if(NearestEnemyBuilding[client] != -1 && IsValidEntity(NearestEnemyBuilding[client]) && IsValidEdict(NearestEnemyBuilding[client]) && HasEntProp(NearestEnemyBuilding[client], Prop_Send, "m_bHasSapper") && GetEntProp(NearestEnemyBuilding[client], Prop_Send, "m_bHasSapper") == 0)
 				{
 					TargetBuilding[client] = NearestEnemyBuilding[client];
 					
 					SapBuildings[client] = true;
+				}
+				
+				if(IsValidEntity(NearestEnemyBuilding[client]) && IsValidEdict(NearestEnemyBuilding[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemyBuilding[client])) < 200.0)
+				{
+					EquipWeaponSlot(client, 5);
+					FakeClientCommandThrottled(client, "build 3 0");
 				}
 			}
 		}
