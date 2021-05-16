@@ -16,7 +16,7 @@ stock int FindNearestPagePack(int client)
 			g_flFindNearestPageTimer[client] = GetGameTime() + 40.0;
 		}
 	}
-	else if(GetVectorDistance(GetOrigin(client), g_flNearestPageOrigin[client]) < 100.0)
+	else if(GetVectorDistance(GetOrigin(client), g_flNearestPageOrigin[client], true) < 100.0)
 	{
 		int page = FindRandomPage(client);
 		
@@ -84,7 +84,7 @@ public int FindNearestPage(int client)
 			
 			if(StrContains(ClassName, "prop_dynamic", false) != -1 && StrContains(strName, "sf2_page", false) != -1 && strcmp(strName, "sf2_page_model", false) != 0)
 			{
-				float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(x));
+				float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(x), true);
 				if((edict_distance < distance) || (distance == -1.0))
 				{
 					distance = edict_distance;
@@ -113,7 +113,7 @@ public int FindExit(int client)
 			
 			if(StrContains(ClassName, "trigger_multiple", false) != -1 && StrContains(strName, "sf2_escape_trigger", false) != -1)
 			{
-				float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(x));
+				float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(x), true);
 				if((edict_distance < distance) || (distance == -1.0))
 				{
 					distance = edict_distance;

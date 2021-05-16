@@ -158,6 +158,11 @@ stock void Check(int client)
 			g_bAmmoIsLow[client] = false;
 		}
 		
+		if(HasEnemiesNear[client] && CanAttack[client])
+		{
+			SelectBestCombatWeapon(client);
+		}
+		
 		if(GetConVarInt(EBotPerformance) != 1)
 		{
 			if(GetEntityFlags(client) & FL_ONGROUND)
@@ -199,13 +204,6 @@ stock void Check(int client)
 		
 		if(TF2_GetPlayerClass(client) == TFClass_Engineer)
 		{
-			if(EngineerChangeSentrySpotTimer[client] < GetGameTime())
-			{
-				g_bPickRandomSentrySpot[client] = true;
-				
-				EngineerChangeSentrySpotTimer[client] = GetGameTime() + GetRandomFloat(10.0, 20.0);
-			}
-			
 			if(!ClientIsMoving(client) && IsWeaponSlotActive(client, 5))
 			{
 				ForcePressButton[client] |= IN_ATTACK;
@@ -386,7 +384,7 @@ stock void Check(int client)
 		
 		if(TF2_GetPlayerClass(client) == TFClass_Sniper)
 		{
-			if(HasEnemiesNear[client] && GetVectorDistance(GetOrigin(client), SniperSpotOrigin[client]) > 500.0)
+			if(HasEnemiesNear[client] && GetVectorDistance(GetOrigin(client), SniperSpotOrigin[client], true) > 500.0)
 			{
 				StopTime[client] = GetGameTime() + 2.5;
 			}
@@ -419,9 +417,9 @@ stock void Check(int client)
 					SapBuildings[client] = true;
 				}
 				
-				if(IsValidEntity(NearestEnemyBuilding[client]) && IsValidEdict(NearestEnemyBuilding[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemyBuilding[client])) < 200.0)
+				if(IsValidEntity(NearestEnemyBuilding[client]) && IsValidEdict(NearestEnemyBuilding[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemyBuilding[client]), true) < 400.0)
 				{
-					EquipWeaponSlot(client, 5);
+					EquipWeaponSlot(client, 1);
 					FakeClientCommandThrottled(client, "build 3 0");
 				}
 			}
@@ -439,7 +437,7 @@ stock void Check(int client)
 					{
 						if (IsClientInGame(search) && IsPlayerAlive(search) && search != client && (GetClientTeam(client) != GetClientTeam(search)))
 						{
-							if(GetVectorDistance(GetOrigin(iFlare), GetOrigin(search)) < 75.0 && !TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
+							if(GetVectorDistance(GetOrigin(iFlare), GetOrigin(search), true) < 75.0 && !TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
 							{
 								if (GetOw(iFlare) == client)
 								{
@@ -454,9 +452,9 @@ stock void Check(int client)
 			int iProjectile = -1;
 			while((iProjectile = FindEntityByClassname(iProjectile, "tf_projectile_*")) != INVALID_ENT_REFERENCE)
 			{
-				if(IsValidEntity(iProjectile))
+				if(IsValidEntity(iProjectile) && GetClientTeam(client) != GetTeamNumber(iProjectile))
 				{
-					if(GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client)) < 350.0)
+					if(GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client), true) < 300.0)
 					{
 						ForcePressButton[client] |= IN_ATTACK2;
 						
@@ -504,7 +502,7 @@ stock void Check(int client)
 					{
 						if(IsClientInGame(search) && IsPlayerAlive(search) && search != client && (GetClientTeam(client) != GetClientTeam(search)))
 						{
-							if(GetVectorDistance(GetOrigin(iSticky), GetOrigin(search)) < 75.0 && !TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
+							if(GetVectorDistance(GetOrigin(iSticky), GetOrigin(search), true) < 75.0 && !TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
 							{
 								if (GetEntityThrower(iSticky) == client)
 								{
@@ -575,8 +573,10 @@ stock void Check(int client)
 			{
 				FakeClientCommandThrottled(client, "taunt");
 			}
-			
-			FindEnemiens(client); // recalculate alive enemies
+			else
+			{
+				FindEnemiens(client); // recalculate alive enemies
+			}
 		}
 		
 		if(HasEnemiesNear[client])

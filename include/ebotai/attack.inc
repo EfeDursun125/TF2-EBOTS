@@ -21,7 +21,6 @@ stock void Attack(int client)
 		if(HasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Spy)
 		{
 			SpyAttack(client);
-			SelectBestCombatWeapon(client);
 			
 			return;
 		}
@@ -29,7 +28,6 @@ stock void Attack(int client)
 		if(HasEnemiesNear[client] && TF2_GetPlayerClass(client) != TFClass_Spy && CanAttack[client])
 		{
 			AutoAttack(client);
-			SelectBestCombatWeapon(client);
 			
 			return;
 		}
@@ -148,7 +146,7 @@ stock void SpyAttack(int client)
 {
 	int i = NearestEnemy[client];
 	
-	if(GetVectorDistance(GetOrigin(client), GetOrigin(i)) < 300.0)
+	if(GetVectorDistance(GetOrigin(client), GetOrigin(i), true) < 400.0)
 	{
 		EquipWeaponSlot(client, 2);
 	}

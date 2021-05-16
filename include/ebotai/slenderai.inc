@@ -17,7 +17,7 @@ stock void SlenderMovement(int client)
 	
 	if(page != -1)
 	{
-		if(GetVectorDistance(GetEyePosition(client), GetOrigin(page)) < 300.0)
+		if(GetVectorDistance(GetEyePosition(client), GetOrigin(page), true) < 300.0)
 		{
 			TF2_FindPath(client, GetOrigin(page));
 		}
@@ -44,7 +44,7 @@ stock void SlenderLook(int client)
 {
 	int page = FindNearestPage(client);
 	
-	if(page != -1 && GetVectorDistance(GetOrigin(client), GetOrigin(page)) < 300.0)
+	if(page != -1 && GetVectorDistance(GetOrigin(client), GetOrigin(page), true) < 300.0)
 	{
 		TF2_LookAtPos(client, GetOrigin(page), EBotAimSpeed[client]);
 		EnableLook[client] = false;
@@ -59,7 +59,7 @@ stock void SlenderAttack(int client)
 {
 	int page = FindNearestPage(client);
 	
-	if(page != -1 && GetVectorDistance(GetOrigin(client), GetOrigin(page)) < 150.0)
+	if(page != -1 && GetVectorDistance(GetOrigin(client), GetOrigin(page), true) < 150.0)
 	{
 		AttackTimer[client] = GetGameTime() + 0.2;
 		
@@ -81,7 +81,7 @@ public int FindMonsters(int client)
 			{
 				MonstersNearCount = MonstersNearCount + 1
 				
-				float edict_distance = GetVectorDistance(GetEyePosition(client), GetOrigin(iMonster));
+				float edict_distance = GetVectorDistance(GetEyePosition(client), GetOrigin(iMonster), true);
 				if((edict_distance < distance) || (distance == -1.0))
 				{
 					distance = edict_distance;

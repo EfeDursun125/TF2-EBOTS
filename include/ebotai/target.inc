@@ -39,7 +39,7 @@ stock FindEnemiens(int client)
 			continue;
 		
 		EnemiesNearCount = EnemiesNearCount + 1;
-		float edict_distance = (GetClientHealth(i) * GetVectorDistance(GetEyePosition(client), GetEyePosition(i))); // prefer lower health targets
+		float edict_distance = (GetClientHealth(i) * GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true)); // prefer lower health targets
 		
 		if(edict_distance < distance || distance == -1.0)
 		{
@@ -74,7 +74,7 @@ stock FindFriends(int client)
 			continue;
 		
 		FriendsNearCount = FriendsNearCount + 1;
-		float edict_distance = GetVectorDistance(GetEyePosition(client), GetEyePosition(i));
+		float edict_distance = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
 		
 		if(edict_distance < distance || distance == -1.0)
 		{
@@ -109,7 +109,7 @@ stock FindFriendsWithLowHealth(int client)
 			continue;
 		
 		FriendsNearCount = FriendsNearCount + 1;
-		float edict_distance = (GetClientHealth(i) * GetVectorDistance(GetEyePosition(client), GetEyePosition(i))); // prefer lower health friends
+		float edict_distance = (GetClientHealth(i) * GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true)); // prefer lower health friends
 		
 		if(edict_distance < distance || distance == -1.0)
 		{
@@ -158,8 +158,11 @@ stock FindFriendsForHeal(int client)
 		if(TF2_IsPlayerInCondition(i, TFCond_Zoomed) && TF2_IsPlayerInCondition(i, TFCond_Overhealed))
 			continue;
 		
+		if(TF2_GetPlayerClass(i) == TFClass_Engineer && IsFakeClient(i) && IsWeaponSlotActive(i, 5))
+			continue;
+		
 		FriendsNearCount = FriendsNearCount + 1;
-		float edict_distance = (GetClientHealth(i) * GetVectorDistance(GetEyePosition(client), GetEyePosition(i))); // prefer lower health targets
+		float edict_distance = (GetClientHealth(i) * GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true)); // prefer lower health targets
 		
 		if(edict_distance < distance || distance == -1.0)
 		{
@@ -190,7 +193,7 @@ stock GetNearestEnemyBuilding(int client)
 			{
 				EnemysBuildingsNearCount = EnemysBuildingsNearCount + 1;
 				
-				distance = GetVectorDistance(GetEyePosition(client), GetOrigin(iBuilding));
+				distance = GetVectorDistance(GetEyePosition(client), GetOrigin(iBuilding), true);
         		
 				if (distance < nearestDistance || nearestDistance == -1.0)
 				{
@@ -223,7 +226,7 @@ stock GetNearestTeleporter(int client)
 			{
 				TeleportersNearCount = TeleportersNearCount + 1;
 				
-				distance = GetVectorDistance(GetEyePosition(client), GetOrigin(iBuilding));
+				distance = GetVectorDistance(GetEyePosition(client), GetOrigin(iBuilding), true);
         		
 				if (distance < nearestDistance || nearestDistance == -1.0)
 				{
@@ -256,7 +259,7 @@ stock GetNearestEyeBallBoss(int client)
 			{
 				EyeBallBossNearCount = EyeBallBossNearCount + 1;
 				
-				distance = GetVectorDistance(GetEyePosition(client), GetOrigin(iBoss));
+				distance = GetVectorDistance(GetEyePosition(client), GetOrigin(iBoss), true);
         		
 				if (distance < nearestDistance || nearestDistance == -1.0)
 				{

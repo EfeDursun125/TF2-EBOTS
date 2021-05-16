@@ -63,7 +63,7 @@ stock void Look(int client)
 		if(!IsValidClient(i) || !IsValidClient(x))
 			return;
 		
-		if(GetVectorDistance(GetEyePosition(client), (GetEyePosition(i))) < GetVectorDistance(GetEyePosition(client), (GetEyePosition(x))))
+		if(GetVectorDistance(GetEyePosition(client), GetEyePosition(i)) < GetVectorDistance(GetEyePosition(client), GetEyePosition(x)))
 		{
 			TF2_LookAtPos(client, GetEyePosition(i), EBotAimSpeed[client]);
 			
@@ -87,7 +87,7 @@ stock void Look(int client)
 		return;
 	}
 	
-	if(HasEyeBallBossNear[client])
+	/*if(HasEyeBallBossNear[client])
 	{
 		if(IsValidEntity(NearestEyeBallBoss[client]))
 		{
@@ -97,7 +97,7 @@ stock void Look(int client)
 		}
 		
 		return;
-	}
+	}*/
 	
 	if(TF2_GetPlayerClass(client) == TFClass_Spy && HasEnemyBuildingsNear[client] && !TF2_IsPlayerInCondition(client, TFCond_Cloaked)) // spy must prefer the sap building
 	{
@@ -108,6 +108,10 @@ stock void Look(int client)
 			if(IsWeaponSlotActive(client, 1))
 			{
 				AttackTimer[client] = GetGameTime() + 0.2;
+			}
+			else
+			{
+				EquipWeaponSlot(client, 1);
 			}
 			
 			return;
@@ -130,6 +134,7 @@ stock void Look(int client)
 		else
 		{
 			LookAtEnemiens(client);
+			SelectBestCombatWeapon(client);
 		}
 		
 		CanAttack[client] = true;
@@ -200,47 +205,9 @@ stock void Look(int client)
 		return;
 	}
 	
-	if(StopTime[client] > GetGameTime())
-	{
-		if(TF2_GetPlayerClass(client) == TFClass_Sniper)
-		{
-			TF2_LookAroundFar(client);
-		}
-		else
-		{
-			if(IsSlowThink[client] && ChanceOf(EBotSenseChance[client]))
-			{
-				if(IsPointVisible(GetEyePosition(client), g_flLookPos[client]))
-				{
-					NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flLookPos[client], true, 5000.0, false, false, GetClientTeam(client));
-					if(area != NavArea_Null)
-					{
-						area.GetRandomPoint(g_flLookPos[client]);
-						
-						g_flLookPos[client][2] + (g_flClientEyePos[client][2] - g_flClientOrigin[client][2]);
-					}
-				}
-				else
-				{
-					TF2_LookAround(client);
-				}
-			}
-			
-			TF2_LookAtPos(client, g_flLookPos[client], EBotAimSpeed[client]);
-		}
-		
-		return;
-	}
-	
-	if(TF2_IsPlayerInCondition(client, TFCond_Zoomed))
-	{
-		TF2_LookAroundFar(client);
-	}
-	else
-	{
-		TF2_LookAround(client);
-	}
+	TF2_LookAround(client);
 }
+
 
 stock int DemomanAim(int client)
 {

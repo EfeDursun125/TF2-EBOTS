@@ -80,23 +80,23 @@ stock void LookAtEnemiens(int client)
 				}
 				else if(GetVectorDistance(GetEyePosition(client), GetEyePosition(NearestEnemy[client])) < 750)
 				{
-					BestAimPosition[2] += 75.0;
+					BestAimPosition[2] += 50.0;
 				}
 				else if(GetVectorDistance(GetEyePosition(client), GetEyePosition(NearestEnemy[client])) < 1000)
 				{
-					BestAimPosition[2] += 150.0;
+					BestAimPosition[2] += 100.0;
 				}
 				else if(GetVectorDistance(GetEyePosition(client), GetEyePosition(NearestEnemy[client])) < 1250)
 				{
-					BestAimPosition[2] += 200.0;
+					BestAimPosition[2] += 150.0;
 				}
 				else if(GetVectorDistance(GetEyePosition(client), GetEyePosition(NearestEnemy[client])) < 1500)
 				{
-					BestAimPosition[2] += 250.0;
+					BestAimPosition[2] += 200.0;
 				}
 				else if(GetVectorDistance(GetEyePosition(client), GetEyePosition(NearestEnemy[client])) > 1500)
 				{
-					BestAimPosition[2] += 300.0;
+					BestAimPosition[2] += 250.0;
 				}
 				
 				if(IsPointVisible(GetEyePosition(client), BestAimPosition))
@@ -273,12 +273,12 @@ stock void TF2_LookAround(int client)
 			if(!ClientIsMoving(search) && !IsAttacking(search))
 				continue;
 			
-			if(GetVectorDistance(GetEyePosition(client), GetEyePosition(search)) > 768.0)
+			if(GetVectorDistance(GetEyePosition(client), GetEyePosition(search), true) > 768.0)
 				continue;
 			
 			float PlayerArea[3];
 			
-			NavArea area = TheNavMesh.GetNearestNavArea_Vec(GetEyePosition(search), true, 5000.0, false, false, TEAM_ANY);
+			NavArea area = TheNavMesh.GetNearestNavArea_Vec(GetEyePosition(search), true, 500.0, false, false, TEAM_ANY);
 			if(area != NavArea_Null)
 			{
 				area.GetCenter(PlayerArea);
@@ -327,7 +327,7 @@ stock void TF2_LookAround(int client)
 			BestLookPos[0] += GetRandomFloat(-1000.0, 1000.0);
 			BestLookPos[1] += GetRandomFloat(-1000.0, 1000.0);
 			
-			NavArea area = TheNavMesh.GetNearestNavArea_Vec(BestLookPos, true, 5000.0, false, false, TEAM_ANY);
+			NavArea area = TheNavMesh.GetNearestNavArea_Vec(BestLookPos, true, 500.0, false, false, TEAM_ANY);
 			if(area != NavArea_Null)
 			{
 				area.GetCenter(SelectRandomNav);
@@ -336,7 +336,7 @@ stock void TF2_LookAround(int client)
 			LookAreaTimer[client] = GetGameTime() + 0.1;
 		}
 		
-		if(IsPointVisible(GetEyePosition(client), SelectRandomNav) && GetVectorDistance(GetEyePosition(client), SelectRandomNav) > 300.0)
+		if(IsPointVisible(GetEyePosition(client), SelectRandomNav) && GetVectorDistance(GetEyePosition(client), SelectRandomNav, true) > 300.0)
 		{
 			if(g_flLookTimer[client] < GetGameTime())
 			{
@@ -349,7 +349,7 @@ stock void TF2_LookAround(int client)
 		}
 		else if(ClientIsMoving(client) && IsSlowThink[client])
 		{
-			NavArea area = TheNavMesh.GetNearestNavArea_Vec(PathAhead[client], true, 5000.0, false, false, TEAM_ANY);
+			NavArea area = TheNavMesh.GetNearestNavArea_Vec(PathAhead[client], true, 500.0, false, false, TEAM_ANY);
 			if(area != NavArea_Null)
 			{
 				area.GetCenter(g_flLookPos[client]);
@@ -359,96 +359,5 @@ stock void TF2_LookAround(int client)
 		}
 		
 		TF2_LookAtPos(client, g_flLookPos[client], EBotAimSpeed[client]);
-	}
-}
-
-stock void TF2_LookAroundFar(int client)
-{
-	char currentMap[PLATFORM_MAX_PATH];
-	GetCurrentMap(currentMap, sizeof(currentMap));
-	if(g_bLookAround[client])
-	{
-		if(StrContains(currentMap, "pl_" , false) != -1)
-		{
-			int payload;
-			if((payload = FindEntityByClassname(payload, "mapobj_cart_dispenser")) != INVALID_ENT_REFERENCE)
-			{
-				float capturepointpos[3];
-				GetEntPropVector(payload, Prop_Send, "m_vecOrigin", capturepointpos);
-				
-				float SelectRandomNav[3];
-				float SelectedLookPos[3];
-				
-				capturepointpos[0] += GetRandomFloat(-1000.0, 1000.0);
-				capturepointpos[1] += GetRandomFloat(-1000.0, 1000.0);
-				capturepointpos[2] += GetRandomFloat(-100.0, 100.0);
-			
-				NavArea area = TheNavMesh.GetNearestNavArea_Vec(capturepointpos, true, 10000.0, false, false, TEAM_ANY);
-				if(area != NavArea_Null)
-				{
-					area.GetRandomPoint(SelectRandomNav);
-				}
-				
-				if(IsPointVisible(g_flClientEyePos[client], SelectRandomNav))
-				{
-					SelectedLookPos[0] = SelectRandomNav[0];
-					SelectedLookPos[1] = SelectRandomNav[1];
-					SelectedLookPos[2] = SelectRandomNav[2] + (g_flClientEyePos[client][2] - g_flClientOrigin[client][2]);
-				}
-				
-				if(IsPointVisible(g_flClientEyePos[client], SelectedLookPos))
-				{
-					if(g_flLookTimer[client] < GetGameTime())
-					{
-						g_flLookPos[client][0] = SelectedLookPos[0];
-						g_flLookPos[client][1] = SelectedLookPos[1];
-						g_flLookPos[client][2] = SelectedLookPos[2];
-						
-						g_flLookTimer[client] = GetGameTime() + GetRandomFloat(2.0, 4.0);
-					}
-				}
-			}
-			
-			TF2_LookAtPos(client, g_flLookPos[client], EBotAimSpeed[client]);
-		}
-		else
-		{
-			float BestLookPos[3];
-			float SelectRandomNav[3];
-			float SelectedLookPos[3];
-			
-			GetClientEyePosition(client, BestLookPos);
-			
-			BestLookPos[0] += GetRandomFloat(-5000.0, 5000.0);
-			BestLookPos[1] += GetRandomFloat(-5000.0, 5000.0);
-			BestLookPos[2] += GetRandomFloat(-5000.0, 5000.0);
-			
-			NavArea area = TheNavMesh.GetNearestNavArea_Vec(BestLookPos, true, 10000.0, false, false, TEAM_ANY);
-			if(area != NavArea_Null)
-			{
-				area.GetRandomPoint(SelectRandomNav);
-			}
-			
-			if(IsPointVisible(g_flClientEyePos[client], SelectRandomNav) && GetVectorDistance(g_flClientEyePos[client], SelectRandomNav) > 1000.0)
-			{
-				SelectedLookPos[0] = SelectRandomNav[0];
-				SelectedLookPos[1] = SelectRandomNav[1];
-				SelectedLookPos[2] = SelectRandomNav[2] + (g_flClientEyePos[client][2] - g_flClientOrigin[client][2]);
-			}
-			
-			if(IsPointVisible(g_flClientEyePos[client], SelectedLookPos))
-			{
-				if(g_flLookTimer[client] < GetGameTime())
-				{
-					g_flLookPos[client][0] = SelectedLookPos[0];
-					g_flLookPos[client][1] = SelectedLookPos[1];
-					g_flLookPos[client][2] = SelectedLookPos[2];
-					
-					g_flLookTimer[client] = GetGameTime() + GetRandomFloat(2.0, 4.0);
-				}
-			}
-			
-			TF2_LookAtPos(client, g_flLookPos[client], EBotAimSpeed[client]);
-		}
 	}
 }

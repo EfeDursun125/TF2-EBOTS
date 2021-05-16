@@ -12,16 +12,9 @@ stock void EngineerMoveLogic(int client)
 {
 	if(WantsBuildSentryGun[client])
 	{
-		if(IsSlowThink[client] && !HasEnemiesNear[client])
-		{
-			TF2_FindSentrySpot(client);
-		}
-		else
-		{
-			TF2_FindPath(client, SentryBuildPosition[client]);
-		}
+		TF2_FindSentrySpot(client);
 		
-		if(GetVectorDistance(GetOrigin(client), SentryBuildPosition[client]) < 50.0)
+		if(GetVectorDistance(GetOrigin(client), SentryBuildPosition[client], true) < 50.0)
 		{
 			if(IsWeaponSlotActive(client, 5))
 			{
@@ -33,6 +26,15 @@ stock void EngineerMoveLogic(int client)
 			}
 		}
 		
+		if(PF_Exists(client) && PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
+		{
+			TF2_FindPath(client, SentryBuildPosition[client]);
+		}
+		else
+		{
+			ObjectiveMovement(client);
+		}
+		
 		return;
 	}
 	
@@ -40,13 +42,20 @@ stock void EngineerMoveLogic(int client)
 	{
 		if(GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
 		{
-			if(GetVectorDistance(GetOrigin(client), SentryBuildPosition[client]) < 75.0)
+			if(GetVectorDistance(GetOrigin(client), SentryBuildPosition[client], true) < 100.0)
 			{
-				ForcePressButton[client] |= IN_ATTACK2;
-				
-				EngineerMoveSentryTimer[client] = GetGameTime() + GetRandomFloat(90.0, 160.0);
-				
-				WantsMoveSentryGun[client] = false;
+				if(IsWeaponSlotActive(client, 5))
+				{
+					EngineerMoveSentryTimer[client] = GetGameTime() + GetRandomFloat(90.0, 160.0);
+					
+					WantsMoveSentryGun[client] = false;
+					
+					g_bPickRandomSentrySpot[client] = true;
+				}
+				else
+				{
+					ForcePressButton[client] |= IN_ATTACK2;
+				}
 			}
 			else
 			{
@@ -57,7 +66,7 @@ stock void EngineerMoveLogic(int client)
 		{
 			TF2_FindPath(client, GetOrigin(SentryGun[client]));
 			
-			if(GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client])) < 100.0)
+			if(GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) < 100.0)
 			{
 				ForcePressButton[client] |= IN_ATTACK2;
 			}
@@ -89,7 +98,7 @@ stock void EngineerMoveLogic(int client)
 			TF2_FindPath(client, GetOrigin(SentryGun[client]));
 		}
 		
-		if(GetVectorDistance(GetEyePosition(client), DispenserBuildPosition[client]) < GetRandomFloat(25.0, 125.0))
+		if(GetVectorDistance(GetEyePosition(client), DispenserBuildPosition[client], true) < GetRandomFloat(25.0, 125.0))
 		{
 			if(IsWeaponSlotActive(client, 5))
 			{
@@ -127,7 +136,7 @@ stock void EngineerMoveLogic(int client)
 				TF2_FindPath(client, GetOrigin(SentryGun[client]));
 			}
 			
-			if(GetVectorDistance(GetOrigin(client), DispenserBuildPosition[client]) < 75.0)
+			if(GetVectorDistance(GetOrigin(client), DispenserBuildPosition[client], true) < 75.0)
 			{
 				ForcePressButton[client] |= IN_ATTACK2;
 				
@@ -140,7 +149,7 @@ stock void EngineerMoveLogic(int client)
 		{
 			TF2_FindPath(client, GetOrigin(Dispenser[client]));
 			
-			if(GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client])) < 100.0)
+			if(GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) < 100.0)
 			{
 				ForcePressButton[client] |= IN_ATTACK2;
 			}
@@ -239,7 +248,7 @@ stock void EngineerAimLogic(int client)
 				
 				if(IsWeaponSlotActive(client, 2))
 				{
-					AttackTimer[client] = GetGameTime() + 0.2;
+					AttackTimer[client] = GetGameTime() + 1.2;
 					
 					if(!TF2_IsNextToWall(client))
 					{
@@ -281,7 +290,7 @@ stock void EngineerAimLogic(int client)
 				
 				if(IsWeaponSlotActive(client, 2))
 				{
-					AttackTimer[client] = GetGameTime() + 0.2;
+					AttackTimer[client] = GetGameTime() + 1.2;
 					
 					ForcePressButton[client] |= IN_DUCK;
 				}
@@ -307,7 +316,7 @@ stock void EngineerAimLogic(int client)
 				
 				if(IsWeaponSlotActive(client, 2))
 				{
-					AttackTimer[client] = GetGameTime() + 0.2;
+					AttackTimer[client] = GetGameTime() + 1.2;
 					
 					ForcePressButton[client] |= IN_DUCK;
 				}
@@ -324,6 +333,7 @@ stock void EngineerAimLogic(int client)
 	if(HasEnemiesNear[client])
 	{
 		LookAtEnemiens(client);
+		SelectBestCombatWeapon(client);
 	}
 	
 	TF2_LookAround(client);
@@ -340,39 +350,110 @@ stock void TF2_FindSentrySpot(int client)
 	{
 		if(StrContains(currentMap, "koth_" , false) != -1)
 		{
-			int capturepoint;
-			if((capturepoint = FindEntityByClassname(capturepoint, "team_control_point")) != INVALID_ENT_REFERENCE)
+			if(GetConVarInt(EBotNoArea) != 1)
 			{
-				float capturepointpos[3];
-				float capturepointpos2[3];
-				GetEntPropVector(capturepoint, Prop_Send, "m_vecOrigin", capturepointpos);
-				GetEntPropVector(capturepoint, Prop_Send, "m_vecOrigin", capturepointpos2);
+				int AreaCount = LoadFromAddress(navarea_count, NumberType_Int32);
 				
-				capturepointpos[2] += GetRandomFloat(200.0, 400.0);
+				if (AreaCount <= 0)
+					return;
 				
-				if(g_bPickRandomSentrySpot[client])
+				ArrayList RandomNavArea  = new ArrayList();
+				
+				if(g_bPickRandomSentrySpot[client] && WantsBuildSentryGun[client])
 				{
-					g_flRandomSentrySpotPos[client][0] = capturepointpos[0] + GetRandomFloat(-2000.0, 2000.0);
-					g_flRandomSentrySpotPos[client][1] = capturepointpos[1] + GetRandomFloat(-2000.0, 2000.0);
-					g_flRandomSentrySpotPos[client][2] = capturepointpos2[2] + 50.0;
-					
-					bestspot[0] = g_flRandomSentrySpotPos[client][0];
-					bestspot[1] = g_flRandomSentrySpotPos[client][1];
-					bestspot[2] = clientEyes[2];
-					
-					NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 50000.0, false, false, GetClientTeam(client));
-					if(area != NavArea_Null)
+					for(int i = 0; i < AreaCount; i++)
 					{
-						if(!HasTFAttributes(area, BLOCKED) && !HasTFAttributes(area, BLUE_SPAWN_ROOM) && !HasTFAttributes(area, RED_SPAWN_ROOM) && !HasTFAttributes(area, BLUE_SENTRY) && !HasTFAttributes(area, RED_SENTRY))
+						NavArea area = view_as<NavArea>(LoadFromAddress(TheNavAreas + view_as<Address>(4 * i), NumberType_Int32));
+						if(area == NavArea_Null)
+							continue;
+						
+						int capturepoint;
+						if((capturepoint = FindEntityByClassname(capturepoint, "team_control_point")) != INVALID_ENT_REFERENCE)
 						{
-							if(IsPointVisible(bestspot, capturepointpos) && GetVectorDistance(bestspot, capturepointpos) < 1300.0)
+							if(HasTFAttributes(area, BLUE_SPAWN_ROOM))
+								continue;
+							
+							if(HasTFAttributes(area, RED_SPAWN_ROOM))
+								continue;
+							
+							if(HasTFAttributes(area, BLOCKED))
+								continue;
+							
+							if(area.HasAttributes(NAV_MESH_NO_JUMP)) // we can't jump don't build here.
+								continue;
+							
+							float areaCenter[3]; area.GetCenter(areaCenter);
+							areaCenter[2] += 50.0;
+							
+							if(GetVectorDistance(GetOrigin(capturepoint), areaCenter, true) > 1000.0)
+								continue;
+							
+							RandomNavArea.Push(area);
+						}
+					}
+				}
+				
+				NavArea randomArea = NavArea_Null;
+			
+				if(RandomNavArea.Length > 0)
+				{
+					randomArea = RandomNavArea.Get(GetRandomInt(0, RandomNavArea.Length - 1));
+					randomArea.GetRandomPoint(SentryBuildPosition[client]);
+					if(PF_Exists(client) && PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
+					{
+						g_bPickRandomSentrySpot[client] = false;
+					}
+					else
+					{
+						g_bPickRandomSentrySpot[client] = true;
+					}
+				}
+				else
+				{
+					randomArea = NavArea_Null;
+					g_bPickRandomSentrySpot[client] = true;
+				}
+			}
+			else
+			{
+				int capturepoint;
+				if((capturepoint = FindEntityByClassname(capturepoint, "team_control_point")) != INVALID_ENT_REFERENCE)
+				{
+					float capturepointpos[3];
+					float capturepointpos2[3];
+					GetEntPropVector(capturepoint, Prop_Send, "m_vecOrigin", capturepointpos);
+					GetEntPropVector(capturepoint, Prop_Send, "m_vecOrigin", capturepointpos2);
+					
+					capturepointpos[2] += GetRandomFloat(200.0, 400.0);
+					
+					if(g_bPickRandomSentrySpot[client])
+					{
+						g_flRandomSentrySpotPos[client][0] = capturepointpos[0] + GetRandomFloat(-2000.0, 2000.0);
+						g_flRandomSentrySpotPos[client][1] = capturepointpos[1] + GetRandomFloat(-2000.0, 2000.0);
+						g_flRandomSentrySpotPos[client][2] = capturepointpos2[2] + 50.0;
+						
+						bestspot[0] = g_flRandomSentrySpotPos[client][0];
+						bestspot[1] = g_flRandomSentrySpotPos[client][1];
+						bestspot[2] = clientEyes[2];
+						
+						NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 500.0, false, false, GetClientTeam(client));
+						if(area != NavArea_Null)
+						{
+							if(!HasTFAttributes(area, BLOCKED) && !HasTFAttributes(area, BLUE_SPAWN_ROOM) && !HasTFAttributes(area, RED_SPAWN_ROOM) && !HasTFAttributes(area, BLUE_SENTRY) && !HasTFAttributes(area, RED_SENTRY))
 							{
-								area.GetRandomPoint(SentryBuildPosition[client]);
-								
-								//if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, SentryBuildPosition[client])) // laggy
-								//	return;
-								
-								g_bPickRandomSentrySpot[client] = false;
+								if(IsPointVisible(bestspot, capturepointpos) && GetVectorDistance(bestspot, capturepointpos, true) < 1300.0)
+								{
+									area.GetRandomPoint(SentryBuildPosition[client]);
+									
+									//if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, SentryBuildPosition[client])) // laggy
+									//	return;
+									
+									g_bPickRandomSentrySpot[client] = false;
+								}
+								else
+								{
+									g_bPickRandomSentrySpot[client] = true;
+								}
 							}
 							else
 							{
@@ -384,10 +465,6 @@ stock void TF2_FindSentrySpot(int client)
 							g_bPickRandomSentrySpot[client] = true;
 						}
 					}
-					else
-					{
-						g_bPickRandomSentrySpot[client] = true;
-					}
 				}
 			}
 		}
@@ -398,7 +475,7 @@ stock void TF2_FindSentrySpot(int client)
 				int capturepoint = GetNearestEnemyControlPoint(client);
 				if(capturepoint != -1)
 				{
-					NavArea area = TheNavMesh.GetNearestNavArea_Vec(GetOrigin(capturepoint), true, 3000.0, false, false, GetClientTeam(client));
+					NavArea area = TheNavMesh.GetNearestNavArea_Vec(GetOrigin(capturepoint), true, 500.0, false, false, GetClientTeam(client));
 					if(area != NavArea_Null)
 					{
 						area.GetRandomPoint(SentryBuildPosition[client]);
@@ -426,7 +503,7 @@ stock void TF2_FindSentrySpot(int client)
 					g_flRandomSentrySpotPos[client][1] = capturepointpos[1] + GetRandomFloat(-1500.0, 1500.0);
 					g_flRandomSentrySpotPos[client][2] = capturepointpos[2] + GetRandomFloat(-500.0, 500.0);
 					
-					NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 3000.0, false, false, GetClientTeam(client));
+					NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 500.0, false, false, GetClientTeam(client));
 					if(area != NavArea_Null)
 					{
 						area.GetRandomPoint(SentryBuildPosition[client]);
@@ -446,7 +523,7 @@ stock void TF2_FindSentrySpot(int client)
 						if(!IsPointVisible(SentryBuildPosition[client], capturepointpos))
 							return;
 						
-						if(GetVectorDistance(SentryBuildPosition[client], capturepointpos) > 1300.0)
+						if(GetVectorDistance(SentryBuildPosition[client], capturepointpos, true) > 1300.0)
 							return;
 						
 						if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, SentryBuildPosition[client])) // sometimes laggy
@@ -473,7 +550,7 @@ stock void TF2_FindSentrySpot(int client)
 					g_flRandomSentrySpotPos[client][1] = capturepointpos[1] + GetRandomFloat(-1500.0, 1500.0);
 					g_flRandomSentrySpotPos[client][2] = capturepointpos[2] + GetRandomFloat(-500.0, 500.0);
 					
-					NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 3000.0, false, false, GetClientTeam(client));
+					NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 500.0, false, false, GetClientTeam(client));
 					if(area != NavArea_Null)
 					{
 						area.GetRandomPoint(SentryBuildPosition[client]);
@@ -493,7 +570,7 @@ stock void TF2_FindSentrySpot(int client)
 						if(!IsPointVisible(SentryBuildPosition[client], capturepointpos))
 							return;
 						
-						if(GetVectorDistance(SentryBuildPosition[client], capturepointpos) > 1300.0)
+						if(GetVectorDistance(SentryBuildPosition[client], capturepointpos, true) > 1300.0)
 							return;
 						
 						if(!PF_IsPathToVectorPossible(client, SentryBuildPosition[client])) // sometimes laggy
@@ -524,7 +601,7 @@ stock void TF2_FindSentrySpot(int client)
 					g_flRandomSentrySpotPos[client][1] = payloadposition[1] + GetRandomFloat(-1500.0, 1500.0);
 					g_flRandomSentrySpotPos[client][2] = payloadposition[2] + GetRandomFloat(-500.0, 500.0);
 					
-					NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 5000.0, false, false, GetClientTeam(client));
+					NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 500.0, false, false, GetClientTeam(client));
 					if(area != NavArea_Null)
 					{
 						area.GetRandomPoint(SentryBuildPosition[client]);
@@ -550,7 +627,7 @@ stock void TF2_FindSentrySpot(int client)
 						if(IsPointVisible(SentryBuildPosition[client], payloadposition))
 							return;
 						
-						if(GetVectorDistance(SentryBuildPosition[client], payloadposition) > 1000.0)
+						if(GetVectorDistance(SentryBuildPosition[client], payloadposition, true) > 1100.0)
 							return;
 						
 						if(!PF_IsPathToVectorPossible(client, SentryBuildPosition[client])) // sometimes laggy
@@ -567,90 +644,122 @@ stock void TF2_FindSentrySpot(int client)
 		}
 		else if(StrContains(currentMap, "ctf_" , false) != -1)
 		{
-			int flag;
-			while((flag = FindEntityByClassname(flag, "item_teamflag")) != INVALID_ENT_REFERENCE)
+			if(GetConVarInt(EBotNoArea) != 1)
 			{
-				int iTeamNumObj = GetEntProp(flag, Prop_Send, "m_iTeamNum");
-				if(IsValidEntity(flag) && GetClientTeam(client) == iTeamNumObj)
+				int AreaCount = LoadFromAddress(navarea_count, NumberType_Int32);
+				
+				if (AreaCount <= 0)
+					return;
+				
+				ArrayList RandomNavArea  = new ArrayList();
+				
+				if(g_bPickRandomSentrySpot[client] && WantsBuildSentryGun[client])
 				{
-					float flagposition[3];
-					GetEntPropVector(flag, Prop_Send, "m_vecOrigin", flagposition);
-					
-					int FlagStatus = GetEntProp(flag, Prop_Send, "m_nFlagStatus");
-					
-					flagposition[2] += GetRandomFloat(200.0, 400.0);
-					
-					if(g_bPickRandomSentrySpot[client])
+					for(int i = 0; i < AreaCount; i++)
 					{
-						if(FlagStatus == 0 || FlagStatus == 2)
+						NavArea area = view_as<NavArea>(LoadFromAddress(TheNavAreas + view_as<Address>(4 * i), NumberType_Int32));
+						if(area == NavArea_Null)
+							continue;
+						
+						int flag;
+						if((flag = FindEntityByClassname(flag, "item_teamflag")) != INVALID_ENT_REFERENCE)
 						{
-							g_flRandomSentrySpotPos[client][0] = PlayerSpawn[client][0] + GetRandomFloat(-2000.0, 2000.0);
-							g_flRandomSentrySpotPos[client][1] = PlayerSpawn[client][1] + GetRandomFloat(-2000.0, 2000.0);
-							g_flRandomSentrySpotPos[client][2] = clientEyes[2];
-							
-							bestspot[0] = g_flRandomSentrySpotPos[client][0];
-							bestspot[1] = g_flRandomSentrySpotPos[client][1];
-							bestspot[2] = clientEyes[2];
-							
-							NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 10000.0, false, false, GetClientTeam(client));
-							if(area != NavArea_Null)
+							int iTeamNumObj = GetEntProp(flag, Prop_Send, "m_iTeamNum");
+							if(IsValidEntity(flag) && GetClientTeam(client) == iTeamNumObj)
 							{
-								if(!HasTFAttributes(area, BLOCKED) && !HasTFAttributes(area, BLUE_SPAWN_ROOM) && !HasTFAttributes(area, RED_SPAWN_ROOM) && !HasTFAttributes(area, BLUE_SENTRY) && !HasTFAttributes(area, RED_SENTRY))
-								{
-									if(GetVectorDistance(bestspot, PlayerSpawn[client]) > 1000.0)
-									{
-										area.GetRandomPoint(SentryBuildPosition[client]);
-										
-										if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
-											return;
-										
-										if(area.HasAttributes(NAV_MESH_NO_JUMP)) // if we can't jump don't build here!
-											return;
-										
-										g_bPickRandomSentrySpot[client] = false;
-									}
-									else
-									{
-										g_bPickRandomSentrySpot[client] = true;
-									}
-								}
-								else
-								{
-									g_bPickRandomSentrySpot[client] = true;
-								}
-							}
-							else
-							{
-								g_bPickRandomSentrySpot[client] = true;
+								if(HasTFAttributes(area, BLUE_SPAWN_ROOM))
+									continue;
+								
+								if(HasTFAttributes(area, RED_SPAWN_ROOM))
+									continue;
+								
+								if(HasTFAttributes(area, BLOCKED))
+									continue;
+								
+								if(area.HasAttributes(NAV_MESH_NO_JUMP)) // we can't jump don't build here.
+									continue;
+								
+								float areaCenter[3]; area.GetCenter(areaCenter);
+								areaCenter[2] += 50.0;
+								
+								if(GetVectorDistance(GetOrigin(flag), areaCenter, true) > 1000.0)
+									continue;
+								
+								RandomNavArea.Push(area);
 							}
 						}
+					}
+				}
+				
+				NavArea randomArea = NavArea_Null;
+			
+				if(RandomNavArea.Length > 0)
+				{
+					randomArea = RandomNavArea.Get(GetRandomInt(0, RandomNavArea.Length - 1));
+					randomArea.GetRandomPoint(SentryBuildPosition[client]);
+					if(PF_Exists(client) && PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
+					{
+						g_bPickRandomSentrySpot[client] = false;
+					}
+					else
+					{
+						g_bPickRandomSentrySpot[client] = true;
+					}
+				}
+				else
+				{
+					randomArea = NavArea_Null;
+					g_bPickRandomSentrySpot[client] = true;
+				}
+			}
+			else
+			{
+				int flag;
+				while((flag = FindEntityByClassname(flag, "item_teamflag")) != INVALID_ENT_REFERENCE)
+				{
+					int iTeamNumObj = GetEntProp(flag, Prop_Send, "m_iTeamNum");
+					if(IsValidEntity(flag) && GetClientTeam(client) == iTeamNumObj)
+					{
+						float flagposition[3];
+						GetEntPropVector(flag, Prop_Send, "m_vecOrigin", flagposition);
 						
-						if(FlagStatus == 1)
+						int FlagStatus = GetEntProp(flag, Prop_Send, "m_nFlagStatus");
+						
+						flagposition[2] += GetRandomFloat(200.0, 400.0);
+						
+						if(g_bPickRandomSentrySpot[client])
 						{
-							g_flRandomSentrySpotPos[client][0] = flagposition[0] + GetRandomFloat(-1500.0, 1500.0);
-							g_flRandomSentrySpotPos[client][1] = flagposition[1] + GetRandomFloat(-1500.0, 1500.0);
-							g_flRandomSentrySpotPos[client][2] = flagposition[2] + 50.0;
-							
-							bestspot[0] = g_flRandomSentrySpotPos[client][0];
-							bestspot[1] = g_flRandomSentrySpotPos[client][1];
-							bestspot[2] = clientEyes[2];
-							
-							NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 50000.0, false, false, GetClientTeam(client));
-							if(area != NavArea_Null)
+							if(FlagStatus == 0 || FlagStatus == 2)
 							{
-								if(!HasTFAttributes(area, BLOCKED) && !HasTFAttributes(area, BLUE_SPAWN_ROOM) && !HasTFAttributes(area, RED_SPAWN_ROOM))
+								g_flRandomSentrySpotPos[client][0] = PlayerSpawn[client][0] + GetRandomFloat(-2000.0, 2000.0);
+								g_flRandomSentrySpotPos[client][1] = PlayerSpawn[client][1] + GetRandomFloat(-2000.0, 2000.0);
+								g_flRandomSentrySpotPos[client][2] = clientEyes[2];
+								
+								bestspot[0] = g_flRandomSentrySpotPos[client][0];
+								bestspot[1] = g_flRandomSentrySpotPos[client][1];
+								bestspot[2] = clientEyes[2];
+								
+								NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 500.0, false, false, GetClientTeam(client));
+								if(area != NavArea_Null)
 								{
-									if(IsPointVisible(bestspot, flagposition) && GetVectorDistance(bestspot, flagposition) < 1300.0)
+									if(!HasTFAttributes(area, BLOCKED) && !HasTFAttributes(area, BLUE_SPAWN_ROOM) && !HasTFAttributes(area, RED_SPAWN_ROOM) && !HasTFAttributes(area, BLUE_SENTRY) && !HasTFAttributes(area, RED_SENTRY))
 									{
-										area.GetRandomPoint(SentryBuildPosition[client]);
-										
-										if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
-											return;
-										
-										if(area.HasAttributes(NAV_MESH_NO_JUMP)) // if we can't jump don't build here!
-											return;
-										
-										g_bPickRandomSentrySpot[client] = false;
+										if(GetVectorDistance(bestspot, PlayerSpawn[client], true) > 1100.0)
+										{
+											area.GetRandomPoint(SentryBuildPosition[client]);
+											
+											if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
+												return;
+											
+											if(area.HasAttributes(NAV_MESH_NO_JUMP)) // if we can't jump don't build here!
+												return;
+											
+											g_bPickRandomSentrySpot[client] = false;
+										}
+										else
+										{
+											g_bPickRandomSentrySpot[client] = true;
+										}
 									}
 									else
 									{
@@ -662,9 +771,48 @@ stock void TF2_FindSentrySpot(int client)
 									g_bPickRandomSentrySpot[client] = true;
 								}
 							}
-							else
+							
+							if(FlagStatus == 1)
 							{
-								g_bPickRandomSentrySpot[client] = true;
+								g_flRandomSentrySpotPos[client][0] = flagposition[0] + GetRandomFloat(-1500.0, 1500.0);
+								g_flRandomSentrySpotPos[client][1] = flagposition[1] + GetRandomFloat(-1500.0, 1500.0);
+								g_flRandomSentrySpotPos[client][2] = flagposition[2] + 50.0;
+								
+								bestspot[0] = g_flRandomSentrySpotPos[client][0];
+								bestspot[1] = g_flRandomSentrySpotPos[client][1];
+								bestspot[2] = clientEyes[2];
+								
+								NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 500.0, false, false, GetClientTeam(client));
+								if(area != NavArea_Null)
+								{
+									if(!HasTFAttributes(area, BLOCKED) && !HasTFAttributes(area, BLUE_SPAWN_ROOM) && !HasTFAttributes(area, RED_SPAWN_ROOM))
+									{
+										if(IsPointVisible(bestspot, flagposition) && GetVectorDistance(bestspot, flagposition, true) < 1300.0)
+										{
+											area.GetRandomPoint(SentryBuildPosition[client]);
+											
+											if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
+												return;
+											
+											if(area.HasAttributes(NAV_MESH_NO_JUMP)) // if we can't jump don't build here!
+												return;
+											
+											g_bPickRandomSentrySpot[client] = false;
+										}
+										else
+										{
+											g_bPickRandomSentrySpot[client] = true;
+										}
+									}
+									else
+									{
+										g_bPickRandomSentrySpot[client] = true;
+									}
+								}
+								else
+								{
+									g_bPickRandomSentrySpot[client] = true;
+								}
 							}
 						}
 					}
@@ -673,45 +821,112 @@ stock void TF2_FindSentrySpot(int client)
 		}
 		else if(StrContains(currentMap, "plr_" , false) != -1)
 		{
-			int payload = GetNearestPayload(client, GetClientTeam(client));
-			if(payload != -1)
+			if(GetConVarInt(EBotNoArea) != 1)
 			{
-				float payloadposition[3];
-				payloadposition = GetOrigin(payload);
+				int AreaCount = LoadFromAddress(navarea_count, NumberType_Int32);
 				
-				if(g_bPickRandomSentrySpot[client])
+				if (AreaCount <= 0)
+					return;
+				
+				ArrayList RandomNavArea  = new ArrayList();
+				
+				if(g_bPickRandomSentrySpot[client] && WantsBuildSentryGun[client])
 				{
-					g_flRandomSentrySpotPos[client][0] = payloadposition[0] + GetRandomFloat(-750.0, 750.0);
-					g_flRandomSentrySpotPos[client][1] = payloadposition[1] + GetRandomFloat(-750.0, 750.0);
-					g_flRandomSentrySpotPos[client][2] = payloadposition[2];
-					
-					bestspot[0] = g_flRandomSentrySpotPos[client][0];
-					bestspot[1] = g_flRandomSentrySpotPos[client][1];
-					bestspot[2] = clientEyes[2];
-					
-					NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 50000.0, false, false, GetClientTeam(client));
-					if(area != NavArea_Null)
+					for(int i = 0; i < AreaCount; i++)
 					{
-						if(!HasTFAttributes(area, BLOCKED) && !HasTFAttributes(area, BLUE_SPAWN_ROOM) && !HasTFAttributes(area, RED_SPAWN_ROOM) && !HasTFAttributes(area, BLUE_SENTRY) && !HasTFAttributes(area, RED_SENTRY))
+						NavArea area = view_as<NavArea>(LoadFromAddress(TheNavAreas + view_as<Address>(4 * i), NumberType_Int32));
+						if(area == NavArea_Null)
+							continue;
+						
+						int payload = GetNearestPayload(client, GetClientTeam(client));
+						if(payload != -1)
 						{
-							area.GetRandomPoint(SentryBuildPosition[client]);
+							if(HasTFAttributes(area, BLUE_SPAWN_ROOM))
+								continue;
 							
-							if(!IsPointVisibleTank(g_flRandomSentrySpotPos[client], payloadposition))
-								return;
+							if(HasTFAttributes(area, RED_SPAWN_ROOM))
+								continue;
 							
-							if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
-								return;
+							if(HasTFAttributes(area, BLOCKED))
+								continue;
 							
-							g_bPickRandomSentrySpot[client] = false;
+							if(area.HasAttributes(NAV_MESH_NO_JUMP)) // we can't jump don't build here.
+								continue;
+							
+							float areaCenter[3]; area.GetCenter(areaCenter);
+							areaCenter[2] += 50.0;
+							
+							if(GetVectorDistance(GetOrigin(payload), areaCenter, true) > 1000.0)
+								continue;
+							
+							RandomNavArea.Push(area);
+						}
+					}
+				}
+				
+				NavArea randomArea = NavArea_Null;
+			
+				if(RandomNavArea.Length > 0)
+				{
+					randomArea = RandomNavArea.Get(GetRandomInt(0, RandomNavArea.Length - 1));
+					randomArea.GetRandomPoint(SentryBuildPosition[client]);
+					if(PF_Exists(client) && PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
+					{
+						g_bPickRandomSentrySpot[client] = false;
+					}
+					else
+					{
+						g_bPickRandomSentrySpot[client] = true;
+					}
+				}
+				else
+				{
+					randomArea = NavArea_Null;
+					g_bPickRandomSentrySpot[client] = true;
+				}
+			}
+			else
+			{
+				int payload = GetNearestPayload(client, GetClientTeam(client));
+				if(payload != -1)
+				{
+					float payloadposition[3];
+					payloadposition = GetOrigin(payload);
+					
+					if(g_bPickRandomSentrySpot[client])
+					{
+						g_flRandomSentrySpotPos[client][0] = payloadposition[0] + GetRandomFloat(-1250.0, 1250.0);
+						g_flRandomSentrySpotPos[client][1] = payloadposition[1] + GetRandomFloat(-1250.0, 1250.0);
+						g_flRandomSentrySpotPos[client][2] = payloadposition[2];
+						
+						bestspot[0] = g_flRandomSentrySpotPos[client][0];
+						bestspot[1] = g_flRandomSentrySpotPos[client][1];
+						bestspot[2] = clientEyes[2];
+						
+						NavArea area = TheNavMesh.GetNearestNavArea_Vec(g_flRandomSentrySpotPos[client], true, 500.0, false, false, GetClientTeam(client));
+						if(area != NavArea_Null)
+						{
+							if(!HasTFAttributes(area, BLOCKED) && !HasTFAttributes(area, BLUE_SPAWN_ROOM) && !HasTFAttributes(area, RED_SPAWN_ROOM) && !HasTFAttributes(area, BLUE_SENTRY) && !HasTFAttributes(area, RED_SENTRY))
+							{
+								area.GetRandomPoint(SentryBuildPosition[client]);
+								
+								if(!IsPointVisibleTank(g_flRandomSentrySpotPos[client], payloadposition))
+									return;
+								
+								if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
+									return;
+								
+								g_bPickRandomSentrySpot[client] = false;
+							}
+							else
+							{
+								g_bPickRandomSentrySpot[client] = true;
+							}
 						}
 						else
 						{
 							g_bPickRandomSentrySpot[client] = true;
 						}
-					}
-					else
-					{
-						g_bPickRandomSentrySpot[client] = true;
 					}
 				}
 			}

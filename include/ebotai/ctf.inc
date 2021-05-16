@@ -33,33 +33,15 @@ stock int GameModeCTF(int client)
 									}
 									else // go to nearest enemy
 									{
-										int Enemy = Client_GetClosest(client);
+										int Enemy = GetNearestPossibleEnemy(client);
 										
 										if(Enemy != -1)
 										{
-											NavArea area = TheNavMesh.GetNearestNavArea_Vec(GetOrigin(Enemy), true, 5000.0, false, false, GetClientTeam(client));
-											if(area != NavArea_Null && !HasTFAttributes(area, BLUE_SPAWN_ROOM) && !HasTFAttributes(area, RED_SPAWN_ROOM))
-											{
-												float SelectedPosition[3];
-												
-												area.GetRandomPoint(SelectedPosition);
-												
-												if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, SelectedPosition))
-												{
-													return;
-												}
-												
-												TF2_FindPath(client, SelectedPosition);
-											}
-											else
-											{
-												if(PF_Exists(client) && !PF_IsPathToVectorPossible(client, GetOrigin(Enemy)))
-												{
-													return;
-												}
-												
-												TF2_FindPath(client, GetOrigin(Enemy));
-											}
+											TF2_FindPath(client, GetOrigin(Enemy));
+										}
+										else if(GetVectorDistance(GetOrigin(client), GetOrigin(flag), true) > 300.0)
+										{
+											TF2_FindPath(client, GetOrigin(flag));
 										}
 									}
 								}

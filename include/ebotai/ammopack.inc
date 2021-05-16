@@ -15,7 +15,7 @@ stock int FindNearestAmmoPack(int client)
 		
 		g_flFindNearestAmmoTimer[client] = GetGameTime() + 40.0;
 	}
-	else if(GetVectorDistance(GetOrigin(client), g_flNearestAmmoOrigin[client]) < 21.0)
+	else if(GetVectorDistance(GetOrigin(client), g_flNearestAmmoOrigin[client], true) < 21.0)
 	{
 		int ammopack = FindNearestAmmo(client);
 		
@@ -57,7 +57,7 @@ public int FindNearestAmmo(int client)
 				entityOrigin = GetOrigin(x);
 				GetClientEyePosition(client, clientOrigin);
 				
-				float edict_distance = GetVectorDistance(clientOrigin, entityOrigin);
+				float edict_distance = GetVectorDistance(clientOrigin, entityOrigin, true);
 				if((edict_distance < distance) || (distance == -1.0))
 				{
 					distance = edict_distance;

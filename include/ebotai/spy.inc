@@ -57,7 +57,7 @@ stock void SpyAimLogic(int client)
 		return;
 	}
 	
-	if(TF2_IsPlayerInCondition(client, TFCond_Disguised) && HasEnemiesNear[client] && GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemy[client])) > 300 && IsClientVisibleInScreen(NearestEnemy[client], client)) // don't look at enemy.
+	if(TF2_IsPlayerInCondition(client, TFCond_Disguised) && HasEnemiesNear[client] && GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemy[client]), true) > 300 && IsClientVisibleInScreen(NearestEnemy[client], client)) // don't look at enemy.
 	{
 		if(HasFriendsNear[client])
 		{

@@ -56,6 +56,10 @@ Handle g_hGetBonePosition;
 
 Handle g_hWorldSpaceCenter;
 
+Address navarea_count;
+
+Address TheNavAreas;
+
 void InitGamedata()
 {
 	Handle hConf = LoadGameConfigFile("tf2.pets");
@@ -87,6 +91,12 @@ void InitGamedata()
 	PrepSDKCall_SetFromConf(hConf, SDKConf_Virtual, "CBaseEntity::WorldSpaceCenter");
 	PrepSDKCall_SetReturnInfo(SDKType_Vector, SDKPass_ByRef);
 	if ((g_hWorldSpaceCenter = EndPrepSDKCall()) == null) SetFailState("Failed to create SDKCall for CBaseEntity::WorldSpaceCenter offset!");
+	
+	navarea_count = GameConfGetAddress(hConf, "navarea_count");
+	PrintToServer("Found \"navarea_count\" @ 0x%X", navarea_count);
+	
+	TheNavAreas = view_as<Address>(LoadFromAddress(navarea_count + view_as<Address>(0x4), NumberType_Int32));
+	PrintToServer("Found \"TheNavAreas\" @ 0x%X", TheNavAreas);
 	
 	delete hConf;
 }
@@ -280,7 +290,7 @@ public int GetNearestEntity(int client, char[] classname)
 			GetEntPropVector(entity, Prop_Data, "m_vecOrigin", entityOrigin);
 			GetClientAbsOrigin(client, clientOrigin);
 			
-			float edict_distance = GetVectorDistance(clientOrigin, entityOrigin);
+			float edict_distance = GetVectorDistance(clientOrigin, entityOrigin, true);
 			if((edict_distance < distance) || (distance == -1.0))
 			{
 				distance = edict_distance;
@@ -288,6 +298,7 @@ public int GetNearestEntity(int client, char[] classname)
 			}
 		}
 	}
+	
 	return nearestEntity;
 }
 
@@ -392,7 +403,7 @@ stock float[] GetAbsVelocity(int client)
 	return v;
 }
 
-stock bool TF2_IsResupply(int entity)
+stock bool IsResupply(int entity)
 {
 	char model[PLATFORM_MAX_PATH];
 	GetEntPropString(entity, Prop_Data, "m_ModelName", model, sizeof(model));
@@ -418,7 +429,7 @@ stock void TF2_MoveTo(int client, float flGoal[3], float fVel[3], float fAng[3])
 	
 	NormalizeVector(fVel, fVel);
 	
-	if(GetVectorDistance(flPos, flGoal) > 20.0)
+	if(GetVectorDistance(flPos, flGoal, true) > 20.0)
 	{
 		ScaleVector(fVel, 450.0);
 	}
@@ -528,7 +539,7 @@ stock Client_GetClosest(int client)
 			continue;
 		if(GetClientTeam(i) != GetClientTeam(client))
 		{
-			float edict_distance = GetVectorDistance(GetEyePosition(client), GetEyePosition(i));
+			float edict_distance = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
 			if((edict_distance < distance) || (distance == -1.0))
 			{
 				distance = edict_distance;
@@ -565,7 +576,7 @@ stock GetNearestPossibleEnemy(int client, float range = 999999.0)
 		if(TF2_GetPlayerClass(i) == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
 			continue;
 		
-		float edict_distance = GetVectorDistance(GetEyePosition(client), GetEyePosition(i));
+		float edict_distance = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
 		
 		if(edict_distance < distance || distance == -1.0)
 		{
@@ -823,7 +834,7 @@ stock GetNearestPayload(int client, int team)
 		if(GetTeamNumber(iPayload) != team)
 			continue;
 		
-		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iPayload));
+		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iPayload), true);
         
 		if (distance < nearestDistance || nearestDistance == -1.0)
 		{
@@ -919,7 +930,7 @@ stock GetNearestMyControlPoint(int client)
 		if(GetClientTeam(client) != GetTeamNumber(iControlPoint))
 			continue;
 		
-		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iControlPoint));
+		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iControlPoint), true);
         
 		if (distance < nearestDistance || nearestDistance == -1.0)
 		{
@@ -1001,7 +1012,7 @@ stock GetNearestDefendableControlPoint(int client)
 			if(GetClientTeam(client) != GetTeamNumber(iControlPoint))
 				continue;
 			
-			distance = GetVectorDistance(GetOrigin(GetNearestBluControlPoint()), GetOrigin(iControlPoint));
+			distance = GetVectorDistance(GetOrigin(GetNearestBluControlPoint()), GetOrigin(iControlPoint), true);
 			
 			if (distance < nearestDistance || nearestDistance == -1.0)
 			{
@@ -1040,7 +1051,7 @@ stock bool IsCapturingControlPoint(int client)
 	if(StrContains(currentMap, "cp_" , false) != -1)
 	{
 		int capturepoint = GetNearestEnemyControlPoint(client);
-		if(capturepoint != -1 && GetVectorDistance(GetOrigin(client), GetOrigin(capturepoint)) < 300.0)
+		if(capturepoint != -1 && GetVectorDistance(GetOrigin(client), GetOrigin(capturepoint), true) < 300.0)
 		{
 			return true;
 		}
@@ -1049,18 +1060,37 @@ stock bool IsCapturingControlPoint(int client)
 	return false;
 }
 
-stock bool IsCapturingPushingPayload(int client)
+stock bool IsPushingPayload(int client)
 {
 	char currentMap[PLATFORM_MAX_PATH];
 	GetCurrentMap(currentMap, sizeof(currentMap));
 	if(StrContains(currentMap, "pl_" , false) != -1)
 	{
-		int capturepoint = GetNearestEnemyControlPoint(client);
-		if(capturepoint != -1 && GetVectorDistance(GetOrigin(client), GetOrigin(capturepoint)) < 300.0)
+		int capturepoint = GetNearestPayload(client);
+		if(capturepoint != -1 && GetVectorDistance(GetOrigin(client), GetOrigin(capturepoint), true) < 300.0)
 		{
 			return true;
 		}
 	}
 	
 	return false;
+}
+
+stock bool IsInRange(float start[3], float end[3], float range)
+{
+	return GetVectorDistance(start, end, true) <= range;
+}
+
+stock bool IsReloading(int client)
+{
+	return GetEntProp(GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon"), Prop_Data, "m_bInReload") != 0;
+}
+
+stock bool IsLocked(int entity)
+{
+	return GetEntProp(entity, Prop_Data, "m_bLocked", 1) != 0;
+}
+stock bool IsDisabled(int entity)
+{
+	return GetEntProp(entity, Prop_Data, "m_bDisabled", 1) != 0;
 }
