@@ -6,9 +6,9 @@ Type "!afk" to chat for enable bot or use ebot_quota command for add ebots to yo
 Requires PathFollower & tf2.pets gamedata
 
 # WORKINRG GAMEMODES
-ctf
-koth
-cp (Non Attack/Defend Maps)
-pl
-plr
-dm
+1. CTF
+2. KOTH
+3. CP (Non Attack/Defend Maps)
+4. PL
+5. PLR
+6. DM
