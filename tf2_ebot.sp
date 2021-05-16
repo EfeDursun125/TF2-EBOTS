@@ -8,6 +8,8 @@
 
 bool AFKMode[MAXPLAYERS + 1];
 
+bool CanMove[MAXPLAYERS + 1];
+
 bool g_bAutoJump[MAXPLAYERS + 1];
 bool UseTeleporter[MAXPLAYERS+1];
 float RandomJumpTimer[MAXPLAYERS + 1];
@@ -47,6 +49,7 @@ Handle EBotSenseMax;
 Handle EBotSenseMin;
 Handle EBotTauntChance;
 Handle EBotAimLag;
+Handle EBotNoTFBots;
 
 bool IsAttackDefendMap;
 
@@ -76,7 +79,7 @@ bool IsAttackDefendMap;
 #include <ebotai/slenderbase>
 #include <ebotai/slenderai>
 
-#define PLUGIN_VERSION  "0.11"
+#define PLUGIN_VERSION  "0.12"
 
 public Plugin myinfo = 
 {
@@ -97,10 +100,10 @@ public OnPluginStart()
 	BotKick = CreateGlobalForward("Bot_OnBotKick", ET_Single, Param_CellByRef);
 	HookEvent("player_spawn", BotSpawn, EventHookMode_Post);
 	HookEvent("player_hurt", BotHurt, EventHookMode_Post);
-	EBotQuota = CreateConVar("ebot_quota", "0", "");
+	EBotQuota = CreateConVar("ebot_quota", "-1", "");
 	EBotAFKMode = CreateConVar("ebot_afk_mode", "1", "Controls the afk players.");
 	EBotPerformance = CreateConVar("ebot_performance_mode", "0", "Downgrades the ai for increase the fps!");
-	EBotNoArea = CreateConVar("ebot_noarea", "0", "Stops area checking for increase the fps!");
+	EBotNoArea = CreateConVar("ebot_noarea", "1", "Stops area checking for increase the fps!");
 	EBotDisableCheats = CreateConVar("ebot_disable_sv_cheats", "1", "E-BOTs can't join if sv_cheats 0, disable cheats after bot joined.");
 	EBotUseVoiceline = CreateConVar("ebot_use_voice_commands", "1", "");
 	EBotMinimumAimSpeed = CreateConVar("ebot_minimum_aim_speed", "0.1", "");
@@ -113,6 +116,7 @@ public OnPluginStart()
 	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Min 1, Max 100");
 	EBotTauntChance = CreateConVar("ebot_taunt_chance", "25", "Min 1, Max 100");
 	EBotAimLag = CreateConVar("ebot_aim_lag", "0.04", "");
+	EBotNoTFBots = CreateConVar("ebot_no_tfbots", "0", "");
 	HookEvent("teamplay_round_start", RoundStarted);
 }
 
@@ -157,7 +161,7 @@ public OnMapStart()
 	}
 	
 	ServerCommand("sv_tags ebot");
-	AddServerTag("ebot"); // This is not working, i know but, i'm trying this
+	AddServerTag("ebot");
 	
 	InitGamedata();
 }
@@ -370,6 +374,18 @@ int RandomBotName;
 
 public void OnGameFrame()
 {
+	if(GetConVarInt(EBotNoTFBots) == 1)
+	{
+		if(FindConVar("tf_bot_quota").IntValue > 0)
+		{
+			ServerCommand("ebot_quota %i", FindConVar("tf_bot_quota").IntValue);
+			ServerCommand("tf_bot_quota 0");
+		}
+	}
+	
+	if(GetConVarInt(EBotQuota) < 0)
+		return;
+	
 	if(BotCheckTimer < GetGameTime())
 	{
 		if(GetTotalPlayersCount() < GetConVarInt(EBotQuota))
@@ -590,7 +606,7 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 				{
 					if(GetClientTeam(client) == 2)
 					{
-						if(PF_Exists(client))
+						if(CanMove[client])
 						{
 							TF2_MoveTo(client, g_flGoal[client], vel, angles);
 						}
@@ -601,9 +617,9 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 					return Plugin_Continue;
 				}
 				
-				if(GetVectorDistance(GetOrigin(client), TargetGoal[client]) > 23.0)
+				if(GetVectorDistance(GetOrigin(client), TargetGoal[client], true) > 30.0)
 				{
-					if(PF_Exists(client))
+					if(CanMove[client])
 					{
 						TF2_MoveTo(client, g_flGoal[client], vel, angles);
 					}
@@ -874,7 +890,7 @@ stock void TF2_FindPath(int client, float flTargetVector[3])
 			
 			SetEntProp(client, Prop_Data, "m_bPredictWeapons", false);
 			
-			PF_Create(client, 24.0, 64.0, 1000.0, 0.6, MASK_PLAYERSOLID, 300.0, 1.0, 1.25, 1.25);
+			PF_Create(client, 24.0, 72.0, 1000.0, 0.6, MASK_PLAYERSOLID, 300.0, 1.0, 1.25, 1.25);
 			
 			PF_EnableCallback(client, PFCB_Approach, Approach);
 			
@@ -887,16 +903,24 @@ stock void TF2_FindPath(int client, float flTargetVector[3])
 			return;
 		}
 		
-		if(!PF_IsPathToVectorPossible(client, flTargetVector))
-			return;
-		
-		PF_SetGoalVector(client, flTargetVector);
-		
 		TargetGoal[client][0] = flTargetVector[0];
 		TargetGoal[client][1] = flTargetVector[1];
 		TargetGoal[client][2] = flTargetVector[2];
 		
-		if(GetVectorDistance(GetOrigin(client), flTargetVector) > 25.0)
+		if(!PF_IsPathToVectorPossible(client, flTargetVector))
+		{
+			CanMove[client] = false;
+			
+			return;
+		}
+		else
+		{
+			CanMove[client] = true;
+		}
+		
+		PF_SetGoalVector(client, flTargetVector);
+		
+		if(GetVectorDistance(GetOrigin(client), flTargetVector, true) > 30.0)
 		{
 			PF_StartPathing(client);
 		}
@@ -1301,4 +1325,9 @@ public Action ResetCheats(Handle timer)
 {
 	SetConVarInt(FindConVar("sv_cheats"), 0);
 	SetConVarFlags(FindConVar("sv_cheats"), FCVAR_NOTIFY|FCVAR_REPLICATED);
+}
+
+public Action ReloadPlugin(Handle timer)
+{
+	ServerCommand("sm plugins reload tf2_ebot");
 }
