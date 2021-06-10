@@ -71,7 +71,7 @@ stock int FindRandomSniperSpot(int client)
 		if (!IsValidEdict(iEntity))
 			continue;
 		
-		if (GetEntProp(iEntity, Prop_Data, "m_hint") != 0)
+		if (GetEntPropEnt(iEntity, Prop_Data, "m_hOwnerEntity") != 0)
 			continue;
 		
 		if(GetEntProp(iEntity, Prop_Data, "m_isDisabled") == 1)

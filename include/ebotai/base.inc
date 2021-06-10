@@ -4,37 +4,18 @@ stock void BaseAI(int client) // this is base of the ai
 	
 	Check(client);
 	
-	if(TF2_GetPlayerClass(client) == TFClass_Engineer)
-	{
-		if(HasEnemiesNear[client])
-		{
-			if(IsSlowThink[client])
-			{
-				Movement(client);
-			}
-		}
-		else
-		{
-			if(!IsSlowThink[client])
-			{
-				Movement(client);
-			}
-		}
-	}
-	else if(IsSlowThink[client])
-	{
-		Movement(client);
-	}
-	
 	if(IsSlowThink[client])
 	{
 		FindEnemiens(client);
 		
 		Attack(client);
 		
-		GetNearestEnemyBuilding(client);
+		if(!HasEnemiesNear[client]) // for optimize
+			GetNearestEnemyBuilding(client);
 		
-		//CheckStuck(client);
+		Movement(client);
+		
+		CheckStuck(client);
 		
 		//GetNearestEyeBallBoss(client);
 		

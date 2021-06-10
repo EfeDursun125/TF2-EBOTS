@@ -57,7 +57,7 @@ public int FindNearestAmmo(int client)
 				entityOrigin = GetOrigin(x);
 				GetClientEyePosition(client, clientOrigin);
 				
-				float edict_distance = GetVectorDistance(clientOrigin, entityOrigin, true);
+				float edict_distance = GetVectorDistance(clientOrigin, entityOrigin);
 				if((edict_distance < distance) || (distance == -1.0))
 				{
 					distance = edict_distance;

@@ -1,5 +1,5 @@
 bool g_bJump[MAXPLAYERS + 1];
-bool g_bCrouch[MAXPLAYERS + 1];
+float CrouchTime[MAXPLAYERS + 1];
 
 float g_flCTimer[MAXPLAYERS + 1];
 
@@ -44,6 +44,9 @@ stock void Check(int client)
 	if (g_flCTimer[client] < GetGameTime())
 	{
 		IsSlowThink[client] = true;
+		
+		char currentMap[PLATFORM_MAX_PATH];
+		GetCurrentMap(currentMap, sizeof(currentMap));
 		
 		if(g_flSpyForgotTime[client] < GetGameTime())
 		{
@@ -90,6 +93,9 @@ stock void Check(int client)
 					}
 				}
 			}
+			
+			if(GetVectorDistance(GetOrigin(client), HidingPosition[client]) < 100.0)
+				HidingSpotIsReady[client] = false;
 			
 			IsLastKnownEnemyPositionClear[client] = false;
 		}
@@ -177,26 +183,14 @@ stock void Check(int client)
 				}
 			}
 			
-			if(!g_bCrouch[client] && GetEntityFlags(client) & FL_ONGROUND)
+			if(GetEntityFlags(client) & FL_ONGROUND)
 			{
 				NavArea croucharea = TheNavMesh.GetNearestNavArea_Vec(GetOrigin(client), false, 250.0, false, false, GetClientTeam(client));
 				if(croucharea != NavArea_Null)
 				{
 					if(croucharea.HasAttributes(NAV_MESH_CROUCH))
 					{
-						g_bCrouch[client] = true;
-					}
-				}
-			}
-			
-			if(g_bCrouch[client])
-			{
-				NavArea croucharea = TheNavMesh.GetNearestNavArea_Vec(GetOrigin(client), false, 250.0, false, false, GetClientTeam(client));
-				if(croucharea != NavArea_Null)
-				{
-					if(!croucharea.HasAttributes(NAV_MESH_CROUCH))
-					{
-						g_bCrouch[client] = false;
+						CrouchTime[client] = GetGameTime() + 1.0;
 					}
 				}
 			}
@@ -204,7 +198,7 @@ stock void Check(int client)
 		
 		if(TF2_GetPlayerClass(client) == TFClass_Engineer)
 		{
-			if(!ClientIsMoving(client) && IsWeaponSlotActive(client, 5))
+			if(!ClientIsMoving(client) && IsWeaponSlotActive(client, 5)) // if we're stuck, put building here
 			{
 				ForcePressButton[client] |= IN_ATTACK;
 			}
@@ -336,10 +330,10 @@ stock void Check(int client)
 				{
 					TeleporterEnterHealthIsFull[client] = true;
 				}
-			}
-			else if(!WantsBuildSentryGun[client] && SentryHealthIsFull[client] && SentryIsMaxLevel[client] && !WantsBuildDispenser[client] && DispenserHealthIsFull[client] && DispenserIsMaxLevel[client])
+			} // if we don't have teleporter exit hints, we never build teleporter because it will be in broken positions... but we can add teleporter exit hints to maps.
+			else if(GetUsableTeleporterExitHintsCount(client) > 0 && !WantsBuildSentryGun[client] && SentryHealthIsFull[client] && SentryIsMaxLevel[client] && !WantsBuildDispenser[client] && DispenserHealthIsFull[client] && DispenserIsMaxLevel[client])
 			{
-				WantsBuildTeleporterEnter[client] = false; // don't forget this...
+				WantsBuildTeleporterEnter[client] = true;
 			}
 			else
 			{
@@ -371,8 +365,8 @@ stock void Check(int client)
 				{
 					TeleporterExitHealthIsFull[client] = true;
 				}
-			}
-			else if(!WantsBuildSentryGun[client] && SentryHealthIsFull[client] && SentryIsMaxLevel[client] && !WantsBuildDispenser[client] && DispenserHealthIsFull[client] && DispenserIsMaxLevel[client])
+			} // if we don't have teleporter exit hints, we never build teleporter because it will be in broken positions... but we can add teleporter exit hints to maps.
+			else if(GetUsableTeleporterExitHintsCount(client) > 0 && !WantsBuildSentryGun[client] && SentryHealthIsFull[client] && SentryIsMaxLevel[client] && !WantsBuildDispenser[client] && DispenserHealthIsFull[client] && DispenserIsMaxLevel[client] && !WantsBuildTeleporterEnter[client] && TeleporterEnterHealthIsFull[client])
 			{
 				WantsBuildTeleporterExit[client] = true;
 			}
@@ -384,7 +378,7 @@ stock void Check(int client)
 		
 		if(TF2_GetPlayerClass(client) == TFClass_Sniper)
 		{
-			if(HasEnemiesNear[client] && GetVectorDistance(GetOrigin(client), SniperSpotOrigin[client], true) > 500.0)
+			if(HasEnemiesNear[client] && GetVectorDistance(GetOrigin(client), SniperSpotOrigin[client]) > 500.0)
 			{
 				StopTime[client] = GetGameTime() + 2.5;
 			}
@@ -417,7 +411,7 @@ stock void Check(int client)
 					SapBuildings[client] = true;
 				}
 				
-				if(IsValidEntity(NearestEnemyBuilding[client]) && IsValidEdict(NearestEnemyBuilding[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemyBuilding[client]), true) < 400.0)
+				if(IsValidEntity(NearestEnemyBuilding[client]) && IsValidEdict(NearestEnemyBuilding[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemyBuilding[client])) < 400.0)
 				{
 					EquipWeaponSlot(client, 1);
 					FakeClientCommandThrottled(client, "build 3 0");
@@ -437,7 +431,7 @@ stock void Check(int client)
 					{
 						if (IsClientInGame(search) && IsPlayerAlive(search) && search != client && (GetClientTeam(client) != GetClientTeam(search)))
 						{
-							if(GetVectorDistance(GetOrigin(iFlare), GetOrigin(search), true) < 75.0 && !TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
+							if(GetVectorDistance(GetOrigin(iFlare), GetOrigin(search)) < 75.0 && !TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
 							{
 								if (GetOw(iFlare) == client)
 								{
@@ -454,7 +448,7 @@ stock void Check(int client)
 			{
 				if(IsValidEntity(iProjectile) && GetClientTeam(client) != GetTeamNumber(iProjectile))
 				{
-					if(GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client), true) < 300.0)
+					if(GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client)) < 300.0)
 					{
 						ForcePressButton[client] |= IN_ATTACK2;
 						
@@ -470,22 +464,25 @@ stock void Check(int client)
 		{
 			if(GetPlayerStickyCount(client) < 8)
 			{
-				DefendFlag[client] = true;
+				DefendMode[client] = true;
 			}
 			else
 			{
-				DefendFlag[client] = false;
+				DefendMode[client] = false;
 				
-				int flag;
-				while((flag = FindEntityByClassname(flag, "item_teamflag")) != INVALID_ENT_REFERENCE)
+				if(StrContains(currentMap, "ctf_" , false) != -1)
 				{
-					if(IsValidEntity(flag) && GetClientTeam(client) == GetEntProp(flag, Prop_Send, "m_iTeamNum"))
+					int flag;
+					while((flag = FindEntityByClassname(flag, "item_teamflag")) != INVALID_ENT_REFERENCE)
 					{
-						if(GetEntProp(flag, Prop_Send, "m_nFlagStatus") == 1)
+						if(IsValidEntity(flag) && GetClientTeam(client) == GetEntProp(flag, Prop_Send, "m_iTeamNum"))
 						{
-							if(GetPlayerStickyCount(client) >= 8)
+							if(GetEntProp(flag, Prop_Send, "m_nFlagStatus") == 1)
 							{
-								Attack2Timer[client] = GetGameTime() + 0.2;
+								if(GetPlayerStickyCount(client) >= 8)
+								{
+									Attack2Timer[client] = GetGameTime() + 0.2;
+								}
 							}
 						}
 					}
@@ -502,7 +499,7 @@ stock void Check(int client)
 					{
 						if(IsClientInGame(search) && IsPlayerAlive(search) && search != client && (GetClientTeam(client) != GetClientTeam(search)))
 						{
-							if(GetVectorDistance(GetOrigin(iSticky), GetOrigin(search), true) < 75.0 && !TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
+							if(GetVectorDistance(GetOrigin(iSticky), GetOrigin(search)) < 75.0 && !TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
 							{
 								if (GetEntityThrower(iSticky) == client)
 								{
@@ -520,7 +517,7 @@ stock void Check(int client)
 			UseTeleporter[client] = false;
 		}
 		
-		if(TF2_IsNextToWall(client) && (ClientIsMoving(client) || TF2_GetPlayerClass(client) == TFClass_Engineer))
+		if(CrouchTime[client] < GetGameTime() && TF2_IsNextToWall(client) && (ClientIsMoving(client) || TF2_GetPlayerClass(client) == TFClass_Engineer))
 		{
 			int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
 			SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));

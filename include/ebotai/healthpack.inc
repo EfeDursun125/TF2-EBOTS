@@ -15,7 +15,7 @@ stock int FindNearestHealthPack(int client)
 		
 		g_flFindNearestHealthTimer[client] = GetGameTime() + 20.0;
 	}
-	else if(GetVectorDistance(GetOrigin(client), g_flNearestHealthOrigin[client], true) <= 21.0)
+	else if(GetVectorDistance(GetOrigin(client), g_flNearestHealthOrigin[client], true) <= 20.0)
 	{
 		int healthpack = FindNearestHealth(client);
 		
@@ -57,7 +57,7 @@ public int FindNearestHealth(int client)
 				entityOrigin = GetOrigin(x);
 				GetClientEyePosition(client, clientOrigin);
 				
-				float edict_distance = GetVectorDistance(clientOrigin, entityOrigin, true);
+				float edict_distance = GetVectorDistance(clientOrigin, entityOrigin);
 				if((edict_distance < distance) || (distance == -1.0))
 				{
 					distance = edict_distance;

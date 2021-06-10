@@ -45,7 +45,7 @@ stock void Movement(int client)
 				
 				TF2_FindPath(client, HidingPosition[client]);
 				
-				StopTime[client] = GetGameTime() + GetRandomFloat(2.0, 5.0);
+				StopTime[client] = GetGameTime() + GetRandomFloat(1.0, 3.0);
 				
 				return;
 			}
@@ -55,20 +55,20 @@ stock void Movement(int client)
 				
 				TF2_FindPath(client, HidingPosition[client]);
 				
-				StopTime[client] = GetGameTime() + GetRandomFloat(2.0, 5.0);
+				StopTime[client] = GetGameTime() + GetRandomFloat(1.0, 3.0);
 				
 				return;
 			}
 		}
 		else if(TF2_IsPlayerInCondition(client, TFCond_Disguised) && !TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 		{
-			if(GetClientHealth(client) <= (GetClientHealth(client) / 2))
+			if(GetClientHealth(client) < (GetClientHealth(NearestEnemy[client]) / 2))
 			{
 				HideFromTheTarget(client, GetEyePosition(NearestEnemy[client]));
 				
 				TF2_FindPath(client, HidingPosition[client]);
 				
-				StopTime[client] = GetGameTime() + GetRandomFloat(2.0, 5.0);
+				StopTime[client] = GetGameTime() + GetRandomFloat(1.0, 3.0);
 				
 				return;
 			}
@@ -81,7 +81,8 @@ stock void Movement(int client)
 		|| TF2_IsPlayerInCondition(NearestEnemy[client], TFCond_CritOnWin) 
 		|| g_bAmmoIsLow[client] && TF2_GetPlayerClass(client) != TFClass_Engineer
 		|| g_bHealthIsLow[client] 
-		|| GetClientHealth(client) <= (GetClientHealth(NearestEnemy[client]) / 2) && !TF2_IsPlayerInCondition(client, TFCond_Disguised))) // hiding is important
+		|| (GetClientHealth(client) < (GetClientHealth(NearestEnemy[client]) / 2) && IsAttacking(NearestEnemy[client]) && IsClientVisibleInScreen(NearestEnemy[client], client) && GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemy[client])) < 768.0)
+		|| !TF2_IsPlayerInCondition(client, TFCond_Disguised))) // hiding is important
 		{
 			if(!IsValidClient(NearestEnemy[client]))
 				return;
@@ -90,7 +91,7 @@ stock void Movement(int client)
 			
 			TF2_FindPath(client, HidingPosition[client]);
 			
-			StopTime[client] = GetGameTime() + GetRandomFloat(5.0, 10.0);
+			StopTime[client] = GetGameTime() + GetRandomFloat(2.0, 4.0);
 			
 			return;
 		}
@@ -100,7 +101,7 @@ stock void Movement(int client)
 			
 			TF2_FindPath(client, HidingPosition[client]);
 			
-			StopTime[client] = GetGameTime() + GetRandomFloat(2.0, 5.0);
+			StopTime[client] = GetGameTime() + GetRandomFloat(1.0, 3.0);
 			
 			return;
 		}
@@ -137,7 +138,7 @@ stock void Movement(int client)
 		{
 			TF2_FindPath(client, GetOrigin(NearestFriend[client]));
 			
-			if(GetVectorDistance(GetOrigin(client), GetOrigin(NearestFriend[client]), true) < 150.0 && IsSlowThink[client])
+			if(GetVectorDistance(GetOrigin(client), GetOrigin(NearestFriend[client])) < 150.0 && IsSlowThink[client])
 			{
 				FakeClientCommandThrottled(client, "taunt");
 			}
@@ -148,7 +149,7 @@ stock void Movement(int client)
 	
 	if(!TF2_IsPlayerInCondition(client, TFCond_CritOnWin) && HasFriendsNear[client] && IsValidClient(NearestFriend[client]) && !CanAttack[client] && TF2_GetPlayerClass(client) == TFClass_Medic)
 	{
-		if((!HasEnemiesNear[client] && GetVectorDistance(GetOrigin(client), GetOrigin(NearestFriend[client]), true) > 200.0) || (HasEnemiesNear[client] && GetVectorDistance(GetOrigin(client), GetOrigin(NearestFriend[client]), true) > 400.0))
+		if((!HasEnemiesNear[client] && GetVectorDistance(GetOrigin(client), GetOrigin(NearestFriend[client])) > 200.0) || (HasEnemiesNear[client] && GetVectorDistance(GetOrigin(client), GetOrigin(NearestFriend[client])) > 400.0))
 		{
 			if(GetConVarInt(EBotPerformance) != 1)
 			{
@@ -302,41 +303,16 @@ stock void Movement(int client)
 		return;
 	}
 	
-	if(TF2_GetPlayerClass(client) == TFClass_Spy)
+	if(TF2_GetPlayerClass(client) == TFClass_Spy && !TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 	{
-		if(HasEnemiesNear[client] && IsValidClient(NearestEnemy[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemy[client]), true) < 300.0 && IsPointVisible(GetOrigin(client), GetOrigin(NearestEnemy[client])))
+		if(HasEnemiesNear[client] && IsValidClient(NearestEnemy[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemy[client])) < 300.0 && IsPointVisible(GetOrigin(client), GetOrigin(NearestEnemy[client])))
 		{
-			float flBotAng[3], flTargetAng[3];
-			GetClientEyeAngles(client, flBotAng);
-			GetClientEyeAngles(NearestEnemy[client], flTargetAng);
-			int iAngleDiff = AngleDifference(flBotAng[1], flTargetAng[1]);
-			
-			if(IsClientVisibleInScreen(client, NearestEnemy[client]))
-			{
-				g_flVelocity0[client] = -400.0; // back
-			}
-			else
-			{
-				g_flVelocity0[client] = 400.0; // forward
-			}
-			
-			if(iAngleDiff > 90)
-			{
-				g_flVelocity1[client] = 400.0; // right
-			}
-			else if(iAngleDiff < -90)
-			{
-				g_flVelocity1[client] = -400.0; // left
-			}
-			else
-			{
-				g_flVelocity0[client] = -400.0; // back
-			}
+			MoveTargetsBehind[client] = true;
 		}
 		else
 		{
 			SpyMoveLogic(client);
-			//ObjectiveMovement(client);
+			MoveTargetsBehind[client] = false;
 		}
 		
 		return;
@@ -344,7 +320,7 @@ stock void Movement(int client)
 	
 	if (ProtectTeammateTime[client] > GetGameTime())
 	{
-		if(HasFriendsNear[client] && IsValidClient(NearestFriend[client]) && GetVectorDistance(GetEyePosition(client), GetEyePosition(NearestFriend[client]), true) > 300.0)
+		if(HasFriendsNear[client] && IsValidClient(NearestFriend[client]) && GetVectorDistance(GetEyePosition(client), GetEyePosition(NearestFriend[client])) > 300.0)
 		{
 			TF2_FindPath(client, GetOrigin(NearestFriend[client]));
 		}
@@ -369,7 +345,7 @@ stock void Movement(int client)
 		return;
 	}
 	
-	if(TF2_GetPlayerClass(client) == TFClass_DemoMan && DefendFlag[client])
+	if(TF2_GetPlayerClass(client) == TFClass_DemoMan && DefendMode[client])
 	{
 		DemomanMove(client);
 		
@@ -464,18 +440,16 @@ stock void HideFromTheTarget(int client, float targetposition[3])
 {
 	if(HidingSpotIsReady[client])
 	{
-		if(GetVectorDistance(GetOrigin(client), HidingPosition[client], true) < 50.0)
-		{
+		if(GetVectorDistance(GetOrigin(client), HidingPosition[client]) < 100.0)
 			HidingSpotIsReady[client] = false;
-		}
 		
 		return;
 	}
 	
 	float RandomPosition[3];
 	
-	RandomPosition[0] = g_flClientEyePos[client][0] + GetRandomFloat(-1250.0, 1250.0);
-	RandomPosition[1] = g_flClientEyePos[client][1] + GetRandomFloat(-1250.0, 1250.0);
+	RandomPosition[0] = g_flClientEyePos[client][0] + GetRandomFloat(-512.0, 512.0);
+	RandomPosition[1] = g_flClientEyePos[client][1] + GetRandomFloat(-512.0, 512.0);
 	RandomPosition[2] = g_flClientEyePos[client][2];
 	
 	NavArea area = TheNavMesh.GetNearestNavArea_Vec(RandomPosition, true, 7500.0, false, false, GetClientTeam(client));
@@ -504,57 +478,5 @@ stock void HideFromTheTarget(int client, float targetposition[3])
 			return;
 		
 		HidingSpotIsReady[client] = true;
-	}
-}
-
-stock int DemomanMove(int client)
-{
-	char currentMap[PLATFORM_MAX_PATH];
-	GetCurrentMap(currentMap, sizeof(currentMap));
-	
-	if(StrContains(currentMap, "ctf_" , false) != -1)
-	{
-		DemomanDefendFlagLogic(client);
-		
-		return;
-	}
-	
-	ObjectiveMovement(client);
-}
-
-float SelectedMoveArea[MAXPLAYERS + 1][3];
-
-stock int DemomanDefendFlagLogic(int client)
-{
-	int flag;
-	while((flag = FindEntityByClassname(flag, "item_teamflag")) != INVALID_ENT_REFERENCE)
-	{
-		int FlagStatus = GetEntProp(flag, Prop_Send, "m_nFlagStatus");
-		int iTeamNumObj = GetEntProp(flag, Prop_Send, "m_iTeamNum");
-		if(IsValidEntity(flag) && GetClientTeam(client) == iTeamNumObj)
-		{
-			if(FlagStatus == 1)
-			{
-				if(GetPlayerStickyCount(client) >= 8)
-				{
-					ForcePressButton[client] |= IN_ATTACK2;
-				}
-				
-				TF2_FindPath(client, GetOrigin(flag));
-			}
-			else
-			{
-				if(IsSlowThink[client])
-				{
-					NavArea movearea = TheNavMesh.GetNearestNavArea_Vec(GetOrigin(flag), true, 25000.0, false, false, GetClientTeam(client));
-					if(movearea != NavArea_Null)
-					{
-						movearea.GetRandomPoint(SelectedMoveArea[client]);
-					}
-				}
-				
-				TF2_FindPath(client, SelectedMoveArea[client]);
-			}
-		}
 	}
 }

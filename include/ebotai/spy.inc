@@ -43,25 +43,31 @@ stock void SpyMoveLogic(int client)
 
 stock void SpyAimLogic(int client)
 {
-	if(TF2_IsPlayerInCondition(client, TFCond_Disguised) && HasEnemiesNear[client] && IsClientAimingToMe(client, NearestEnemy[client]) && !IsAttacking(NearestEnemy[client])) // enemy looking at me.
-	{
-		TF2_LookAround(client);
-		
-		return;
-	}
-	
-	if(TF2_IsPlayerInCondition(client, TFCond_Disguised) && HasEnemiesNear[client] && IsClientAimingToMe(client, NearestEnemy[client]) && IsAttacking(NearestEnemy[client])) // enemy looking at me.
+	if(TF2_IsPlayerInCondition(client, TFCond_Disguised) && HasEnemiesNear[client] && GetClientAimTarget(NearestEnemy[client]) == client && IsAttacking(NearestEnemy[client])) // enemy looking at me.
 	{
 		LookAtEnemiens(client);
 		
 		return;
 	}
 	
-	if(TF2_IsPlayerInCondition(client, TFCond_Disguised) && HasEnemiesNear[client] && GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemy[client]), true) > 300 && IsClientVisibleInScreen(NearestEnemy[client], client)) // don't look at enemy.
+	if(TF2_IsPlayerInCondition(client, TFCond_Disguised) && HasEnemiesNear[client] && GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemy[client])) > 300 && GetClientAimTarget(NearestEnemy[client]) == client) // don't look at enemy.
 	{
 		if(HasFriendsNear[client])
 		{
 			TF2_LookAtPos(client, GetEyePosition(NearestFriend[client]), EBotAimSpeed[client]);
+		}
+		else
+		{
+			TF2_LookAround(client);
+		}
+		
+		return;
+	}
+	else if(TF2_IsPlayerInCondition(client, TFCond_Disguised) && HasEnemiesNear[client] && !HasFriendsNear[client])
+	{
+		if(GetVectorDistance(GetOrigin(client), GetOrigin(NearestEnemy[client])) <= 300)
+		{
+			LookAtEnemiens(client);
 		}
 		else
 		{

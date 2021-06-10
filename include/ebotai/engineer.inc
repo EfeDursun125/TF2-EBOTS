@@ -6,24 +6,55 @@ float DispenserBuildPosition[MAXPLAYERS + 1][3];
 
 float TeleporterEnterBuildPosition[MAXPLAYERS + 1][3];
 
+int SentryHint[MAXPLAYERS + 1];
+
+int TeleporterExitHint[MAXPLAYERS + 1];
+
 bool HasABuildPosition[MAXPLAYERS + 1];
 
 stock void EngineerMoveLogic(int client)
 {
 	if(WantsBuildSentryGun[client])
 	{
-		TF2_FindSentrySpot(client);
-		
-		if(GetVectorDistance(GetOrigin(client), SentryBuildPosition[client], true) < 50.0)
+		if(GetVectorDistance(GetOrigin(client), SentryBuildPosition[client]) <= 50.0 || GetVectorDistance(GetOrigin(client), GetOrigin(SentryHint[client])) <= 25.0)
 		{
 			if(IsWeaponSlotActive(client, 5))
 			{
-				AttackTimer[client] = GetGameTime() + 0.2;
+				ForcePressButton[client] |= IN_ATTACK;
 			}
 			else
 			{
 				FakeClientCommandThrottled(client, "build 2 0");
 			}
+		}
+		
+		if(GetUsableSentryHintsCount(client) > 0)
+		{
+			if (EngineerChangeSentrySpotTimer[client] < GetGameTime())
+			{
+				SentryHint[client] = FindRandomSentrySpot(client);
+				
+				EngineerChangeSentrySpotTimer[client] = GetGameTime() + GetRandomFloat(10.0, 20.0);
+			}
+			
+			if(SentryHint[client] != -1 && IsValidEntity(SentryHint[client]) && IsValidEdict(SentryHint[client]))
+			{
+				TF2_FindPath(client, GetOrigin(SentryHint[client]));
+				
+				SetEntPropEnt(SentryHint[client], Prop_Send, "m_hOwnerEntity", client);
+				
+				return;
+			}
+			else if(IsSlowThink[client])
+			{
+				SentryHint[client] = FindRandomSentrySpot(client);
+				
+				EngineerChangeSentrySpotTimer[client] = GetGameTime() + GetRandomFloat(10.0, 20.0);
+			}
+		}
+		else
+		{
+			TF2_FindSentrySpot(client);
 		}
 		
 		if(PF_Exists(client) && PF_IsPathToVectorPossible(client, SentryBuildPosition[client]))
@@ -42,7 +73,7 @@ stock void EngineerMoveLogic(int client)
 	{
 		if(GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
 		{
-			if(GetVectorDistance(GetOrigin(client), SentryBuildPosition[client], true) < 100.0)
+			if(GetVectorDistance(GetOrigin(client), SentryBuildPosition[client]) < 100.0)
 			{
 				if(IsWeaponSlotActive(client, 5))
 				{
@@ -66,13 +97,40 @@ stock void EngineerMoveLogic(int client)
 		{
 			TF2_FindPath(client, GetOrigin(SentryGun[client]));
 			
-			if(GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) < 100.0)
+			if(GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client])) < 100.0)
 			{
 				ForcePressButton[client] |= IN_ATTACK2;
 			}
 		}
 		
-		TF2_FindSentrySpot(client);
+		if(GetUsableSentryHintsCount(client) > 0)
+		{
+			if (EngineerChangeSentrySpotTimer[client] < GetGameTime())
+			{
+				SentryHint[client] = FindRandomSentrySpot(client);
+				
+				EngineerChangeSentrySpotTimer[client] = GetGameTime() + GetRandomFloat(10.0, 20.0);
+			}
+			
+			if(SentryHint[client] != -1 && IsValidEntity(SentryHint[client]) && IsValidEdict(SentryHint[client]))
+			{
+				TF2_FindPath(client, GetOrigin(SentryHint[client]));
+				
+				SetEntPropEnt(SentryHint[client], Prop_Send, "m_hOwnerEntity", client);
+				
+				return;
+			}
+			else if(IsSlowThink[client])
+			{
+				SentryHint[client] = FindRandomSentrySpot(client);
+				
+				EngineerChangeSentrySpotTimer[client] = GetGameTime() + GetRandomFloat(10.0, 20.0);
+			}
+		}
+		else
+		{
+			TF2_FindSentrySpot(client);
+		}
 		
 		return;
 	}
@@ -98,16 +156,13 @@ stock void EngineerMoveLogic(int client)
 			TF2_FindPath(client, GetOrigin(SentryGun[client]));
 		}
 		
-		if(GetVectorDistance(GetEyePosition(client), DispenserBuildPosition[client], true) < GetRandomFloat(25.0, 125.0))
+		if(IsWeaponSlotActive(client, 5))
 		{
-			if(IsWeaponSlotActive(client, 5))
-			{
-				AttackTimer[client] = GetGameTime() + 0.2;
-			}
-			else
-			{
-				FakeClientCommandThrottled(client, "build 0 0");
-			}
+			ForcePressButton[client] |= IN_ATTACK;
+		}
+		else
+		{
+			FakeClientCommandThrottled(client, "build 0 0");
 		}
 		
 		return;
@@ -136,7 +191,7 @@ stock void EngineerMoveLogic(int client)
 				TF2_FindPath(client, GetOrigin(SentryGun[client]));
 			}
 			
-			if(GetVectorDistance(GetOrigin(client), DispenserBuildPosition[client], true) < 75.0)
+			if(GetVectorDistance(GetOrigin(client), DispenserBuildPosition[client]) < 75.0)
 			{
 				ForcePressButton[client] |= IN_ATTACK2;
 				
@@ -149,7 +204,7 @@ stock void EngineerMoveLogic(int client)
 		{
 			TF2_FindPath(client, GetOrigin(Dispenser[client]));
 			
-			if(GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) < 100.0)
+			if(GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client])) < 100.0)
 			{
 				ForcePressButton[client] |= IN_ATTACK2;
 			}
@@ -162,7 +217,7 @@ stock void EngineerMoveLogic(int client)
 	{
 		if(IsWeaponSlotActive(client, 5))
 		{
-			AttackTimer[client] = GetGameTime() + 0.2;
+			ForcePressButton[client] |= IN_ATTACK;
 		}
 		else
 		{
@@ -173,8 +228,8 @@ stock void EngineerMoveLogic(int client)
 		{
 			float RandomPosition[3];
 			
-			RandomPosition[0] = PlayerSpawn[client][0] + GetRandomFloat(1000.0, -1000.0);
-			RandomPosition[1] = PlayerSpawn[client][1] + GetRandomFloat(1000.0, -1000.0);
+			RandomPosition[0] = PlayerSpawn[client][0] + GetRandomFloat(300.0, -300.0);
+			RandomPosition[1] = PlayerSpawn[client][1] + GetRandomFloat(300.0, -300.0);
 			RandomPosition[2] = PlayerSpawn[client][2];
 			
 			NavArea buildposition = TheNavMesh.GetNearestNavArea_Vec(RandomPosition, true, 5000.0, false, false, GetClientTeam(client));
@@ -199,6 +254,24 @@ stock void EngineerMoveLogic(int client)
 		{
 			TF2_FindPath(client, TeleporterEnterBuildPosition[client]);
 		}
+		
+		return;
+	}
+	
+	if(WantsBuildTeleporterExit[client])
+	{
+		if(IsWeaponSlotActive(client, 5))
+			ForcePressButton[client] |= IN_ATTACK;
+		else
+			FakeClientCommandThrottled(client, "build 1 1");
+		
+		if(GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
+			TeleporterExitHint[client] = FindRandomTeleporterExitSpot(client);
+		
+		if(IsValidEntity(TeleporterExitHint[client]))
+			TF2_FindPath(client, GetOrigin(TeleporterExitHint[client]));
+		else
+			TeleporterExitHint[client] = FindRandomTeleporterExitSpot(client);
 		
 		return;
 	}
@@ -234,99 +307,165 @@ stock void EngineerMoveLogic(int client)
 	ObjectiveMovement(client);
 }
 
+stock int FindRandomSentrySpot(int client)
+{
+	int iEntity = -1;
+	
+	int iSelectedHint = -1;
+	
+	ArrayList SentryHints = new ArrayList();
+	
+	while((iEntity = FindEntityByClassname(iEntity, "bot_hint_sentrygun")) != -1)
+	{
+		if (!IsValidEntity(iEntity))
+			continue;
+		
+		if (!IsValidEdict(iEntity))
+			continue;
+		
+		//if (GetEntProp(iEntity, Prop_Data, "m_hOwnerEntity") != null)
+		//	continue;
+		
+		if(GetEntProp(iEntity, Prop_Data, "m_isDisabled") == 1)
+			continue;
+			
+		if(GetEnemyTeam(client) == GetTeamNumber(iEntity))
+			continue;
+		
+		SentryHints.Push(iEntity);
+	}
+	
+	if(SentryHints.Length > 0)
+	{
+		iSelectedHint = SentryHints.Get(GetRandomInt(0, SentryHints.Length - 1));
+	}
+	
+	delete SentryHints;
+	
+	return iSelectedHint;
+}
+
+stock int FindRandomTeleporterExitSpot(int client)
+{
+	int iEntity = -1;
+	
+	int iSelectedHint = -1;
+	
+	ArrayList TeleporterHints = new ArrayList();
+	
+	while((iEntity = FindEntityByClassname(iEntity, "bot_hint_teleporter_exit")) != -1)
+	{
+		if (!IsValidEntity(iEntity))
+			continue;
+		
+		if (!IsValidEdict(iEntity))
+			continue;
+		
+		if(GetEntProp(iEntity, Prop_Data, "m_isDisabled") == 1)
+			continue;
+			
+		if(GetEnemyTeam(client) == GetTeamNumber(iEntity))
+			continue;
+		
+		TeleporterHints.Push(iEntity);
+	}
+	
+	if(TeleporterHints.Length > 0)
+	{
+		iSelectedHint = TeleporterHints.Get(GetRandomInt(0, TeleporterHints.Length - 1));
+	}
+	
+	delete TeleporterHints;
+	
+	return iSelectedHint;
+}
+
 stock void EngineerAimLogic(int client)
 {
-	if(SentryGun[client] != -1 && IsValidEntity(SentryGun[client]) && IsValidEdict(SentryGun[client]) && !IsMetalLow(client) && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
+	if(WantsBuildDispenser[client] && IsWeaponSlotActive(client, 5))
 	{
-		int i = SentryGun[client];
+		TF2_LookAround(client);
 		
-		if(IsPointVisibleTank(GetEyePosition(client), WorldSpaceCenter(i)))
+		return;
+	}
+	
+	if(SentryGun[client] != -1 && IsValidEntity(SentryGun[client]) && IsValidEdict(SentryGun[client]) && !IsMetalLow(client) && GetVectorDistance(GetEyePosition(client), GetOrigin(SentryGun[client])) < 150.0 && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
+	{
+		if(IsPointVisibleTank(GetEyePosition(client), GetOrigin(SentryGun[client])))
 		{
-			if(GetVectorDistance(GetEyePosition(client), GetOrigin(i)) < 150.0)
+			TF2_LookAtPos(client, GetOrigin(SentryGun[client]), EBotAimSpeed[client]);
+			
+			if(IsWeaponSlotActive(client, 2))
 			{
-				TF2_LookAtPos(client, WorldSpaceCenter(i), EBotAimSpeed[client]);
+				AttackTimer[client] = GetGameTime() + 1.2;
 				
-				if(IsWeaponSlotActive(client, 2))
+				if(!TF2_IsNextToWall(client))
 				{
-					AttackTimer[client] = GetGameTime() + 1.2;
-					
-					if(!TF2_IsNextToWall(client))
-					{
-						ForcePressButton[client] |= IN_DUCK;
-					}
+					CrouchTime[client] = GetGameTime() + 1.2;
 				}
-				else
-				{
-					EquipWeaponSlot(client, 2);
-				}
-				
-				return;
 			}
+			else
+			{
+				EquipWeaponSlot(client, 2);
+			}
+			
+			return;
 		}
 	}
 	
-	if(WantsMoveSentryGun[client] && SentryGun[client] != -1 && IsValidEntity(SentryGun[client]))
+	if(WantsMoveSentryGun[client] && SentryGun[client] != -1 && IsValidEntity(SentryGun[client]) && IsValidEdict(SentryGun[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client])) < 175.0)
 	{
-		if(!GetEntProp(client, Prop_Send, "m_bCarryingObject"))
+		if(!GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsWeaponSlotActive(client, 5))
 		{
-			if(GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client])) < 175.0)
-			{
-				TF2_LookAtPos(client, WorldSpaceCenter(SentryGun[client]), EBotAimSpeed[client]);
-				
-				return;
-			}
+			TF2_LookAtPos(client, GetOrigin(SentryGun[client]), EBotAimSpeed[client]);
+			
+			return;
+		}
+		else
+		{
+			ForcePressButton[client] |= IN_ATTACK;
 		}
 	}
 	
-	if(Dispenser[client] != -1 && IsValidEntity(Dispenser[client]) && IsValidEdict(Dispenser[client]) && !IsMetalLow(client) && (!DispenserIsMaxLevel[client] || !DispenserHealthIsFull[client]))
+	if(Dispenser[client] != -1 && IsValidEntity(Dispenser[client]) && IsValidEdict(Dispenser[client]) && !IsMetalLow(client) && GetVectorDistance(GetEyePosition(client), GetOrigin(Dispenser[client])) < 150.0 && (!DispenserIsMaxLevel[client] || !DispenserHealthIsFull[client]))
 	{
-		int i = Dispenser[client];
-		
-		if(IsPointVisibleTank(GetEyePosition(client), WorldSpaceCenter(i)))
+		if(IsPointVisibleTank(GetEyePosition(client), GetOrigin(Dispenser[client])))
 		{
-			if(GetVectorDistance(GetEyePosition(client), GetOrigin(i)) < 150.0)
+			TF2_LookAtPos(client, GetOrigin(Dispenser[client]), EBotAimSpeed[client]);
+			
+			if(IsWeaponSlotActive(client, 2))
 			{
-				TF2_LookAtPos(client, WorldSpaceCenter(i), EBotAimSpeed[client]);
+				AttackTimer[client] = GetGameTime() + 1.2;
 				
-				if(IsWeaponSlotActive(client, 2))
-				{
-					AttackTimer[client] = GetGameTime() + 1.2;
-					
-					ForcePressButton[client] |= IN_DUCK;
-				}
-				else
-				{
-					EquipWeaponSlot(client, 2);
-				}
-				
-				return;
+				CrouchTime[client] = GetGameTime() + 1.2;
 			}
+			else
+			{
+				EquipWeaponSlot(client, 2);
+			}
+			
+			return;
 		}
 	}
 	
-	if(TeleporterEnter[client] != -1 && !IsMetalLow(client) && IsValidEntity(TeleporterEnter[client]) && (!TeleporterEnterIsMaxLevel[client] || !TeleporterEnterHealthIsFull[client]))
+	if(TeleporterEnter[client] != -1 && !IsMetalLow(client) && IsValidEntity(TeleporterEnter[client]) && IsValidEdict(TeleporterEnter[client]) && GetVectorDistance(GetEyePosition(client), GetOrigin(TeleporterEnter[client])) < 150.0 && (!TeleporterEnterIsMaxLevel[client] || !TeleporterEnterHealthIsFull[client]))
 	{
-		int i = TeleporterEnter[client];
-		
-		if(IsPointVisibleTank(GetEyePosition(client), WorldSpaceCenter(i)))
+		if(IsPointVisibleTank(GetEyePosition(client), GetOrigin(TeleporterEnter[client])))
 		{
-			if(GetVectorDistance(GetEyePosition(client), GetOrigin(i)) < 150.0)
+			TF2_LookAtPos(client, GetOrigin(TeleporterEnter[client]), EBotAimSpeed[client]);
+			
+			if(IsWeaponSlotActive(client, 2))
 			{
-				TF2_LookAtPos(client, WorldSpaceCenter(i), EBotAimSpeed[client]);
+				AttackTimer[client] = GetGameTime() + 1.2;
 				
-				if(IsWeaponSlotActive(client, 2))
-				{
-					AttackTimer[client] = GetGameTime() + 1.2;
-					
-					ForcePressButton[client] |= IN_DUCK;
-				}
-				else
-				{
-					EquipWeaponSlot(client, 2);
-				}
-				
-				return;
+				CrouchTime[client] = GetGameTime() + 1.2;
 			}
+			else
+			{
+				EquipWeaponSlot(client, 2);
+			}
+			
+			return;
 		}
 	}
 	
@@ -334,6 +473,32 @@ stock void EngineerAimLogic(int client)
 	{
 		LookAtEnemiens(client);
 		SelectBestCombatWeapon(client);
+		
+		return;
+	}
+	
+	if(SentryGun[client] != -1 && IsValidEntity(SentryGun[client]) && IsValidEdict(SentryGun[client]) && GetVectorDistance(GetEyePosition(client), GetOrigin(SentryGun[client])) < 150.0)
+	{
+		if(IsPointVisibleTank(GetEyePosition(client), GetOrigin(SentryGun[client])))
+		{
+			TF2_LookAtPos(client, GetOrigin(SentryGun[client]), EBotAimSpeed[client]);
+			
+			if(IsWeaponSlotActive(client, 2))
+			{
+				AttackTimer[client] = GetGameTime() + 1.2;
+				
+				if(!TF2_IsNextToWall(client))
+				{
+					CrouchTime[client] = GetGameTime() + 1.2;
+				}
+			}
+			else
+			{
+				EquipWeaponSlot(client, 2);
+			}
+			
+			return;
+		}
 	}
 	
 	TF2_LookAround(client);

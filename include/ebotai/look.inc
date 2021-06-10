@@ -111,7 +111,7 @@ stock void Look(int client)
 			}
 			else
 			{
-				EquipWeaponSlot(client, 1);
+				EquipWeaponSlot(client, 5);
 			}
 			
 			return;
@@ -182,15 +182,6 @@ stock void Look(int client)
 		return;
 	}
 	
-	if(HasFriendsNear[client] && IsClientAimingToMe(client, NearestFriend[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(NearestFriend[client])) < 200.0 && IsAttacking(NearestFriend[client]) && IsWeaponSlotActive(NearestFriend[client], 2))
-	{
-		EquipWeaponSlot(client, 2);
-		TF2_LookAtPos(client, GetEyePosition(NearestFriend[client]), EBotAimSpeed[client]);
-		AttackTimer[client] = GetGameTime() + 0.2;
-		
-		return;
-	}
-	
 	if(TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
 		EngineerAimLogic(client);
@@ -198,97 +189,21 @@ stock void Look(int client)
 		return;
 	}
 	
-	if(TF2_GetPlayerClass(client) == TFClass_DemoMan && DefendFlag[client])
+	if(TF2_GetPlayerClass(client) == TFClass_DemoMan && DefendMode[client])
 	{
 		DemomanAim(client);
 		
 		return;
 	}
 	
-	TF2_LookAround(client);
-}
-
-
-stock int DemomanAim(int client)
-{
-	char currentMap[PLATFORM_MAX_PATH];
-	GetCurrentMap(currentMap, sizeof(currentMap));
-	
-	if(StrContains(currentMap, "ctf_" , false) != -1)
+	if(HasFriendsNear[client] && IsValidClient(NearestFriend[client]) && IsAttacking(NearestFriend[client]) && IsWeaponSlotActive(NearestFriend[client], 2) && GetVectorDistance(GetOrigin(client), GetOrigin(NearestFriend[client])) <= 100.0)
 	{
-		DemomanAimToFlagLogic(client);
+		EquipWeaponSlot(client, 2);
+		TF2_LookAtPos(client, GetEyePosition(NearestFriend[client]), EBotAimSpeed[client]);
+		AttackTimer[client] = GetGameTime() + 0.5;
 		
 		return;
 	}
 	
 	TF2_LookAround(client);
-}
-
-float SelectedStickyArea[MAXPLAYERS + 1][3];
-
-float DemoAttackTimer[MAXPLAYERS + 1];
-
-stock int DemomanAimToFlagLogic(int client)
-{
-	int flag;
-	while((flag = FindEntityByClassname(flag, "item_teamflag")) != INVALID_ENT_REFERENCE)
-	{
-		int FlagStatus = GetEntProp(flag, Prop_Send, "m_nFlagStatus");
-		if(IsValidEntity(flag) && GetClientTeam(client) == GetTeamNumber(flag))
-		{
-			if(!IsPointVisible(GetEyePosition(client), GetOrigin(flag)))
-			{
-				TF2_LookAround(client);
-				
-				return;
-			}
-			else if(FlagStatus == 1)
-			{
-				if(IsWeaponSlotActive(client, 1) && GetPlayerStickyCount(client) < 8)
-				{
-					if(DemoAttackTimer[client] < GetGameTime())
-					{
-						ForcePressButton[client] |= IN_ATTACK;
-						
-						DemoAttackTimer[client] = GetGameTime() + 0.2;
-					}
-				}
-				else if(GetPlayerStickyCount(client) < 8)
-				{
-					EquipWeaponSlot(client, 1);
-				}
-				
-				TF2_LookAtPos(client, GetOrigin(flag), EBotAimSpeed[client]);
-			}
-			else if(GetPlayerStickyCount(client) < 8)
-			{
-				if(IsSlowThink[client])
-				{
-					NavArea lookarea = TheNavMesh.GetNearestNavArea_Vec(GetOrigin(flag), true, 25000.0, true, true, GetClientTeam(client));
-					if(lookarea != NavArea_Null)
-					{
-						lookarea.GetRandomPoint(SelectedStickyArea[client]);
-					}
-					
-					StopTime[client] = GetGameTime() + GetRandomFloat(2.0, 5.0);
-				}
-				
-				if(IsWeaponSlotActive(client, 1))
-				{
-					if(DemoAttackTimer[client] < GetGameTime())
-					{
-						ForcePressButton[client] |= IN_ATTACK;
-						
-						DemoAttackTimer[client] = GetGameTime() + 0.2;
-					}
-				}
-				else
-				{
-					EquipWeaponSlot(client, 1);
-				}
-				
-				TF2_LookAtPos(client, SelectedStickyArea[client], EBotAimSpeed[client]);
-			}
-		}
-	}
 }

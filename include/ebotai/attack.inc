@@ -11,7 +11,7 @@ stock void Attack(int client)
 	}
 	else if(IsSlowThink[client])
 	{
-		if(TF2_GetPlayerClass(client) != TFClass_Medic && !CanAttack[client]) // its medic only, disabled for other classes.
+		if(TF2_GetPlayerClass(client) != TFClass_Medic && !CanAttack[client]) // its medic only, currently disabled for other classes.
 		{
 			CanAttack[client] = true;
 			
@@ -145,15 +145,6 @@ stock void AutoAttack(int client)
 stock void SpyAttack(int client)
 {
 	int i = NearestEnemy[client];
-	
-	if(GetVectorDistance(GetOrigin(client), GetOrigin(i), true) < 400.0)
-	{
-		EquipWeaponSlot(client, 2);
-	}
-	else
-	{
-		EquipWeaponSlot(client, 0);
-	}
 	
 	if(!HasEnemyBuildingsNear[client] && IsReadyForAttack(client))
 	{

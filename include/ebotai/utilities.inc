@@ -21,7 +21,7 @@ float TargetGoal[MAXPLAYERS + 1][3];
 
 int ForcePressButton[MAXPLAYERS + 1];
 
-bool DefendFlag[MAXPLAYERS+1];
+bool DefendMode[MAXPLAYERS+1];
 
 float g_flGoal[MAXPLAYERS + 1][3];
 
@@ -274,6 +274,28 @@ stock int AngleDifference(float angle1, float angle2)
 {
 	int diff = RoundToNearest((angle2 - angle1 + 180)) % 360 - 180;
 	return diff < -180 ? diff + 360 : diff;
+}
+
+stock float AngleDiff( float destAngle, float srcAngle )
+{
+	return AngleNormalize(destAngle - srcAngle);
+}
+
+stock float ApproachAngle( float target, float value, float speed )
+{
+	float delta = AngleDiff(target, value);
+	
+	if (speed < 0.0) 
+		speed = -speed;
+	
+	if (delta > speed) 
+		value += speed;
+	else if (delta < -speed) 
+		value -= speed;
+	else
+		value = target;
+	
+	return AngleNormalize(value);
 }
 
 public int GetNearestEntity(int client, char[] classname)
@@ -812,6 +834,59 @@ stock int GetUsableSniperHintsCount(int client)
 	}
 	
 	return SniperHintsCount;
+}
+
+stock int GetUsableSentryHintsCount(int client)
+{
+	int SentryHintsCount = 0;
+	int iEntity = -1;
+	
+	while((iEntity = FindEntityByClassname(iEntity, "bot_hint_sentrygun")) != -1)
+	{
+		if(!IsValidEntity(iEntity))
+			continue;
+		
+		if(!IsValidEdict(iEntity))
+			continue;
+			
+		//if(GetEntProp(iEntity, Prop_Data, "m_hOwnerEntity") != -1)
+		//	continue;
+		
+		if(GetEntProp(iEntity, Prop_Data, "m_isDisabled") == 1)
+			continue;
+			
+		if(GetEnemyTeam(client) == GetTeamNumber(iEntity)) // don't use enemy hints. but still can use UNDEFINED TEAM hints. (GetClientTeam(client) != GetTeamNumber(iEntity) is team only hints.)
+			continue;
+		
+		SentryHintsCount++;
+	}
+	
+	return SentryHintsCount;
+}
+
+stock int GetUsableTeleporterExitHintsCount(int client)
+{
+	int TeleporterExitHintsCount = 0;
+	int iEntity = -1;
+	
+	while((iEntity = FindEntityByClassname(iEntity, "bot_hint_teleporter_exit")) != -1)
+	{
+		if(!IsValidEntity(iEntity))
+			continue;
+		
+		if(!IsValidEdict(iEntity))
+			continue;
+		
+		if(GetEntProp(iEntity, Prop_Data, "m_isDisabled") == 1)
+			continue;
+			
+		if(GetEnemyTeam(client) == GetTeamNumber(iEntity)) // don't use enemy hints. but still can use UNDEFINED TEAM hints. (GetClientTeam(client) != GetTeamNumber(iEntity) is team only hints.)
+			continue;
+		
+		TeleporterExitHintsCount++;
+	}
+	
+	return TeleporterExitHintsCount;
 }
 
 stock GetNearestPayload(int client, int team)
