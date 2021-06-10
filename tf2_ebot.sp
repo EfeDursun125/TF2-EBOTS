@@ -17,8 +17,7 @@ float g_flLookPos[MAXPLAYERS + 1][3];
 
 float EBotAimSpeed[MAXPLAYERS + 1];
 
-float g_flVelocity0[MAXPLAYERS + 1];
-float g_flVelocity1[MAXPLAYERS + 1];
+bool MoveTargetsBehind[MAXPLAYERS + 1];
 
 float PlayerSpawn[MAXPLAYERS + 1][3];
 
@@ -35,7 +34,6 @@ int EBotSenseChance[MAXPLAYERS + 1];
 
 Handle EBotQuota;
 Handle EBotAFKMode;
-Handle EBotDisableCheats;
 Handle EBotPerformance;
 Handle EBotNoArea;
 Handle EBotUseVoiceline;
@@ -52,6 +50,30 @@ Handle EBotAimLag;
 Handle EBotNoTFBots;
 
 bool IsAttackDefendMap;
+
+float moveForward(float vel[3],float MaxSpeed)
+{
+	vel[0] = MaxSpeed;
+	return vel;
+}
+
+float moveBackwards(float vel[3],float MaxSpeed)
+{
+	vel[0] = -MaxSpeed;
+	return vel;
+}
+
+float moveRight(float vel[3],float MaxSpeed)
+{
+	vel[1] = MaxSpeed;
+	return vel;
+}
+
+float moveLeft(float vel[3],float MaxSpeed)
+{
+	vel[1] = -MaxSpeed;
+	return vel;
+}
 
 #include <ebotai/utilities>
 #include <ebotai/target>
@@ -75,11 +97,12 @@ bool IsAttackDefendMap;
 #include <ebotai/sniper>
 #include <ebotai/engineer>
 #include <ebotai/spy>
+#include <ebotai/demoman>
 #include <ebotai/pages>
 #include <ebotai/slenderbase>
 #include <ebotai/slenderai>
 
-#define PLUGIN_VERSION  "0.12"
+#define PLUGIN_VERSION  "0.13"
 
 public Plugin myinfo = 
 {
@@ -104,7 +127,6 @@ public OnPluginStart()
 	EBotAFKMode = CreateConVar("ebot_afk_mode", "1", "Controls the afk players.");
 	EBotPerformance = CreateConVar("ebot_performance_mode", "0", "Downgrades the ai for increase the fps!");
 	EBotNoArea = CreateConVar("ebot_noarea", "1", "Stops area checking for increase the fps!");
-	EBotDisableCheats = CreateConVar("ebot_disable_sv_cheats", "1", "E-BOTs can't join if sv_cheats 0, disable cheats after bot joined.");
 	EBotUseVoiceline = CreateConVar("ebot_use_voice_commands", "1", "");
 	EBotMinimumAimSpeed = CreateConVar("ebot_minimum_aim_speed", "0.1", "");
 	EBotMaximumAimSpeed = CreateConVar("ebot_maximum_aim_speed", "0.2", "");
@@ -116,7 +138,7 @@ public OnPluginStart()
 	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Min 1, Max 100");
 	EBotTauntChance = CreateConVar("ebot_taunt_chance", "25", "Min 1, Max 100");
 	EBotAimLag = CreateConVar("ebot_aim_lag", "0.04", "");
-	EBotNoTFBots = CreateConVar("ebot_no_tfbots", "0", "");
+	EBotNoTFBots = CreateConVar("ebot_no_tfbots", "1", "");
 	HookEvent("teamplay_round_start", RoundStarted);
 }
 
@@ -404,13 +426,6 @@ public void OnGameFrame()
 		{
 			KickEBotConsole();
 		}
-		else
-		{
-			if(GetConVarInt(EBotDisableCheats) == 1)
-			{
-				CreateTimer(0.1, ResetCheats);
-			}
-		}
 		
 		BotCheckTimer = GetGameTime() + 1.0;
 	}
@@ -439,24 +454,14 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 				char currentMap[PLATFORM_MAX_PATH];
 				GetCurrentMap(currentMap, sizeof(currentMap));
 				
-				if(g_flVelocity0[client] > 1)
-				{
-					vel[0] += g_flVelocity0[client];
-				}
-				
-				if(g_flVelocity1[client] > 1)
-				{
-					vel[1] += g_flVelocity1[client];
-				}
-				
 				if(IsSlowThink[client])
 				{
-					int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
-					SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
-					
-					if(TryUnStuck[client])
+					if(TryUnStuck[client] && CrouchTime[client] < GetGameTime())
 					{
-						if(GetEntityFlags(client) & FL_ONGROUND)
+						int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
+						SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
+						
+						if(GetEntityFlags(client) & FL_ONGROUND && ClientIsMoving(client))
 						{
 							buttons |= IN_JUMP;
 						}
@@ -474,20 +479,18 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 						EBotSenseChance[client] = GetRandomInt(GetConVarInt(EBotSenseMin), GetConVarInt(EBotSenseMax));
 					}
 				}
-				else
+				
+				GetClientEyePosition(client, g_flClientEyePos[client]);
+				GetClientAbsOrigin(client, g_flClientOrigin[client]);
+				
+				if(AttackTimer[client] > GetGameTime())
 				{
-					GetClientEyePosition(client, g_flClientEyePos[client]);
-					GetClientAbsOrigin(client, g_flClientOrigin[client]);
-					
-					if(AttackTimer[client] > GetGameTime())
-					{
-						buttons |= IN_ATTACK;
-					}
-					
-					if(Attack2Timer[client] > GetGameTime())
-					{
-						buttons |= IN_ATTACK2;
-					}
+					buttons |= IN_ATTACK;
+				}
+				
+				if(Attack2Timer[client] > GetGameTime())
+				{
+					buttons |= IN_ATTACK2;
 				}
 				
 				if(ForcePressButton[client] != 0)
@@ -497,7 +500,7 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 					ForcePressButton[client] = 0;
 				}
 				
-				if(HasEnemiesNear[client])
+				if(HasEnemiesNear[client] && IsValidClient(NearestEnemy[client]))
 				{
 					if(TF2_GetPlayerClass(client) == TFClass_Sniper)
 					{
@@ -557,49 +560,84 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 							}
 						}
 					}
-				}
-				
-				if(g_bAutoJump[client])
-				{
-					buttons |= IN_JUMP;
 					
-					g_bAutoJump[client] = false;
-				}
-				
-				if(g_bJump[client])
-				{
-					if(GetEntityFlags(client) & FL_ONGROUND)
+					if(MoveTargetsBehind[client])
 					{
-						buttons |= IN_JUMP;
-					}
-					else
-					{
-						buttons |= IN_JUMP; // for double jump
-						g_bJump[client] = false;
+						float flBotAng[3], flTargetAng[3];
+						GetClientEyeAngles(client, flBotAng);
+						GetClientEyeAngles(NearestEnemy[client], flTargetAng);
+						int iAngleDiff = AngleDifference(flBotAng[1], flTargetAng[1]);
+						
+						if(GetClientAimTarget(NearestEnemy[client]) == client)
+						{
+							vel = moveBackwards(vel, 300.0);
+						}
+						else
+						{
+							vel = moveForward(vel, 300.0);
+						}
+						
+						if(iAngleDiff > 90)
+						{
+							vel = moveRight(vel, 300.0);
+						}
+						else if(iAngleDiff < -90)
+						{
+							vel = moveLeft(vel, 300.0);
+						}
+						else
+						{
+							vel = moveBackwards(vel, 300.0);
+						}
 					}
 				}
 				
-				if(GetEntProp(client, Prop_Send, "m_bJumping"))
-				{
-					buttons |= IN_DUCK;
-				}
-				
-				if(g_bCrouch[client])
+				if(CrouchTime[client] > GetGameTime())
 				{
 					if(GetEntityFlags(client) & FL_ONGROUND)
 					{
 						buttons |= IN_DUCK;
 					}
 				}
-				
-				if(RandomJumpTimer[client] < GetGameTime())
+				else
 				{
-					if(!HasEnemiesNear[client] && ClientIsMoving(client) && StopTime[client] < GetGameTime())
+					int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
+					SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
+					
+					if(g_bAutoJump[client])
 					{
 						buttons |= IN_JUMP;
+						
+						g_bAutoJump[client] = false;
 					}
 					
-					RandomJumpTimer[client] = GetGameTime() + GetRandomFloat(5.0, 15.0);
+					if(g_bJump[client])
+					{
+						if(GetEntityFlags(client) & FL_ONGROUND)
+						{
+							buttons |= IN_JUMP;
+						}
+						else
+						{
+							buttons |= IN_JUMP; // for double jump
+							g_bJump[client] = false;
+						}
+					}
+					
+					if(GetEntProp(client, Prop_Send, "m_bJumping"))
+					{
+						buttons |= IN_DUCK;
+					}
+					
+					if(RandomJumpTimer[client] < GetGameTime())
+					{
+						if(!HasEnemiesNear[client] && StopTime[client] < GetGameTime())
+						{
+							buttons |= IN_JUMP;
+						}
+						
+						RandomJumpTimer[client] = GetGameTime() + GetRandomFloat(5.0, 15.0);
+					}
 				}
 				
 				if(StrContains(currentMap, "slender_" , false) != -1 || StrContains(currentMap, "sf2_" , false) != -1)
@@ -617,15 +655,22 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 					return Plugin_Continue;
 				}
 				
-				if(GetVectorDistance(GetOrigin(client), TargetGoal[client], true) > 30.0)
+				BaseAI(client);
+				
+				if(TryUnStuck[client])
+				{
+					vel = moveForward(vel, 400.0);
+					
+					return Plugin_Continue;
+				}
+				
+				if(GetVectorDistance(GetOrigin(client), TargetGoal[client]) > 30.0)
 				{
 					if(CanMove[client])
 					{
 						TF2_MoveTo(client, g_flGoal[client], vel, angles);
 					}
 				}
-				
-				BaseAI(client);
 			}
 			else
 			{
@@ -648,8 +693,8 @@ public Action AddEBot(int client, int args)
 	char currentMap[PLATFORM_MAX_PATH];
 	GetCurrentMap(currentMap, sizeof(currentMap));
 	
-	SetConVarFlags(FindConVar("sv_cheats"), FCVAR_NONE);
-	SetConVarInt(FindConVar("sv_cheats"), 1);
+	SetCommandFlags("bot", ~FCVAR_CHEAT);
+	
 	if(StrContains(currentMap, "mvm_" , false) != -1)
 	{
 		ServerCommand("bot -name %s -team red -class random", FakeNames[RandomBotName]);
@@ -677,10 +722,7 @@ public Action AddEBot(int client, int args)
 		}
 	}
 	
-	if(GetConVarInt(EBotDisableCheats) == 1)
-	{
-		CreateTimer(0.1, ResetCheats);
-	}
+	SetCommandFlags("bot", FCVAR_CHEAT);
 	
 	return Plugin_Handled;
 }
@@ -690,8 +732,7 @@ AddEBotConsole()
 	char currentMap[PLATFORM_MAX_PATH];
 	GetCurrentMap(currentMap, sizeof(currentMap));
 	
-	SetConVarFlags(FindConVar("sv_cheats"), FCVAR_NONE);
-	SetConVarInt(FindConVar("sv_cheats"), 1);
+	SetCommandFlags("bot", ~FCVAR_CHEAT);
 	
 	if(StrContains(currentMap, "mvm_" , false) != -1)
 	{
@@ -719,6 +760,8 @@ AddEBotConsole()
 			ServerCommand("bot -name %s -team red -class random", FakeNames[RandomBotName]);
 		}
 	}
+	
+	SetCommandFlags("bot", FCVAR_CHEAT);
 }
 
 public Action KickEBot(int client, int args)
@@ -760,15 +803,11 @@ public Action KickEBot(int client, int args)
 	Call_PushCellRef(Bot);
 	Call_Finish();
 	
-	SetConVarFlags(FindConVar("sv_cheats"), FCVAR_NONE);
-	SetConVarInt(FindConVar("sv_cheats"), 1);
+	SetCommandFlags("bot", ~FCVAR_CHEAT);
 	
 	ServerCommand("bot_kick \"%N\"", Bot);
 	
-	if(GetConVarInt(EBotDisableCheats) == 1)
-	{
-		CreateTimer(0.1, ResetCheats);
-	}
+	SetCommandFlags("bot", FCVAR_CHEAT);
 }
 
 KickEBotConsole()
@@ -810,10 +849,11 @@ KickEBotConsole()
 	Call_PushCellRef(Bot);
 	Call_Finish();
 	
-	SetConVarFlags(FindConVar("sv_cheats"), FCVAR_NONE);
-	SetConVarInt(FindConVar("sv_cheats"), 1);
+	SetCommandFlags("bot", ~FCVAR_CHEAT);
 	
 	ServerCommand("bot_kick \"%N\"", Bot);
+	
+	SetCommandFlags("bot", FCVAR_CHEAT);
 }
 
 public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
@@ -828,13 +868,25 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		g_iKothAction[client] = GetRandomInt(1,2);
 		HasMonstersNear[client] = false;
 		CanAttack[client] = true;
-		DefendFlag[client] = true;
+		DefendMode[client] = true;
 		Attack2Timer[client] = GetGameTime();
 		AttackTimer[client] = GetGameTime();
 		PlayerSpawn[client] = GetOrigin(client);
 		g_bPickRandomSentrySpot[client] = true;
 		HasABuildPosition[client] = false;
 		TargetEnemy[client] = -1;
+		
+		if(WantsBuildSentryGun[client] || !IsValidEntity(SentryGun[client]))
+		{
+			int hint = -1;
+			while((hint = FindEntityByClassname(hint, "bot_hint_sentrygun")) != -1)
+			{
+				if (client == GetOwnerEntity(hint))
+				{
+					SetEntPropEnt(hint, Prop_Send, "m_hOwnerEntity", INVALID_ENT_REFERENCE);
+				}
+			}
+		}
 		
 		if(ChanceOf(GetConVarInt(EBotTeleporter)))
 		{
@@ -869,7 +921,56 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 		{
 			g_flLookPos[client] = GetEyePosition(target);
 			
-			g_flLookTimer[client] = GetGameTime() + GetRandomFloat(2.0, 5.0);
+			g_flLookTimer[client] = GetGameTime() + GetRandomFloat(2.5, 5.0);
+		}
+	}
+	
+	if(GetConVarInt(EBotPerformance) != 1 && TF2_GetPlayerClass(client) == TFClass_Spy)
+	{
+		if(ChanceOf(EBotSenseChance[target]) && (IsFakeClient(target) || AFKMode[target]))
+		{
+			TargetSpyClient[target] = client;
+			
+			g_flSpyForgotTime[target] = GetGameTime() + GetRandomFloat(4.0, 12.0);
+		}
+		else
+		{
+			for(int search = 1; search <= MaxClients; search++)
+			{
+				if(IsValidClient(search) && IsClientInGame(search) && IsPlayerAlive(search) && search != client && GetClientTeam(client) != GetClientTeam(search))
+				{
+					if(ChanceOf(EBotSenseChance[search]) && (IsFakeClient(search) || AFKMode[search]))
+					{
+						TargetSpyClient[search] = client;
+						
+						g_flSpyForgotTime[search] = GetGameTime() + GetRandomFloat(2.0, 4.0); // just a warrning about spy.
+					}
+				}
+			}
+		}
+	}
+	else if(!IsFakeClient(client) && TF2_GetPlayerClass(client) == TFClass_Spy) // if performance mode enabled, only search clients for human spy
+	{
+		if(ChanceOf(EBotSenseChance[target]) && (IsFakeClient(target) || AFKMode[target]))
+		{
+			TargetSpyClient[target] = client;
+			
+			g_flSpyForgotTime[target] = GetGameTime() + GetRandomFloat(4.0, 12.0);
+		}
+		else
+		{
+			for(int search = 1; search <= MaxClients; search++)
+			{
+				if(IsValidClient(search) && IsClientInGame(search) && IsPlayerAlive(search) && search != client && GetClientTeam(client) != GetClientTeam(search))
+				{
+					if(ChanceOf(EBotSenseChance[search]) && (IsFakeClient(search) || AFKMode[search]))
+					{
+						TargetSpyClient[search] = client;
+						
+						g_flSpyForgotTime[search] = GetGameTime() + GetRandomFloat(2.0, 4.0); // just a warrning about spy.
+					}
+				}
+			}
 		}
 	}
 }
@@ -882,6 +983,8 @@ stock int GetHealth(int client)
 float g_flFindPathTimer[MAXPLAYERS+1];
 stock void TF2_FindPath(int client, float flTargetVector[3])
 {
+	float random = GetRandomFloat(0.5, 1.0);
+	
 	if(g_flFindPathTimer[client] < GetGameTime())
 	{
 		if (!PF_Exists(client))
@@ -890,7 +993,7 @@ stock void TF2_FindPath(int client, float flTargetVector[3])
 			
 			SetEntProp(client, Prop_Data, "m_bPredictWeapons", false);
 			
-			PF_Create(client, 24.0, 72.0, 1000.0, 0.6, MASK_PLAYERSOLID, 300.0, 1.0, 1.25, 1.25);
+			PF_Create(client, 36.0, 72.0, 1000.0, 0.6, MASK_PLAYERSOLID, 300.0, random, 1.25, 1.25);
 			
 			PF_EnableCallback(client, PFCB_Approach, Approach);
 			
@@ -920,7 +1023,7 @@ stock void TF2_FindPath(int client, float flTargetVector[3])
 		
 		PF_SetGoalVector(client, flTargetVector);
 		
-		if(GetVectorDistance(GetOrigin(client), flTargetVector, true) > 30.0)
+		if(GetVectorDistance(GetOrigin(client), flTargetVector) > 30.0)
 		{
 			PF_StartPathing(client);
 		}
@@ -929,13 +1032,67 @@ stock void TF2_FindPath(int client, float flTargetVector[3])
 			PF_StopPathing(client);
 		}
 		
-		g_flFindPathTimer[client] = GetGameTime() + 1.0;
+		g_flFindPathTimer[client] = GetGameTime() + random;
 	}
 }
 
 float AimLagDelay[MAXPLAYERS + 1];
 
+float m_itAimStart[MAXPLAYERS + 1];
+
 stock void TF2_LookAtPos(int client, float flGoal[3], float flAimSpeed = 0.05)
+{
+	float eye_to_target[3];
+	SubtractVectors(flGoal, GetEyePosition(client), eye_to_target);
+	
+	float eye_ang[3];
+	GetClientEyeAngles(client, eye_ang);
+	
+	NormalizeVector(eye_to_target, eye_to_target);
+	
+	float ang_to_target[3];
+	GetVectorAngles(eye_to_target, ang_to_target);
+	
+	float eye_vec[3];
+	GetAngleVectors(eye_ang, eye_vec, NULL_VECTOR, NULL_VECTOR);
+	
+	float cos_error = GetVectorDotProduct(eye_to_target, eye_vec);
+	
+	float max_angvel = 1024.0;
+	
+	if (cos_error > 0.7)
+		max_angvel *= Sine((3.14 / 2.0) * (1.0 + ((-49.0 / 15.0) * (cos_error - 0.7))));
+	
+	if(m_itAimStart[client] != -1 && (GetGameTime() - m_itAimStart[client] < 0.25))
+		max_angvel *= 4.0 * (GetGameTime() - m_itAimStart[client]);
+	
+	if (cos_error > 0.98 && !HasEnemiesNear[client])
+		m_itAimStart[client] = GetGameTime();
+	
+	float new_eye_angle[3];
+	new_eye_angle[0] = ApproachAngle(ang_to_target[0], eye_ang[0], (max_angvel * GetGameFrameTime()) * GetRandomFloat(0.4, 0.6));
+	new_eye_angle[1] = ApproachAngle(ang_to_target[1], eye_ang[1], (max_angvel * GetGameFrameTime()));
+	new_eye_angle[2] = 0.0;
+	
+	SubtractVectors(new_eye_angle, NULL_VECTOR, new_eye_angle);
+	new_eye_angle[0] = AngleNormalize(new_eye_angle[0]) + EBotAimSpeed[client];
+	new_eye_angle[1] = AngleNormalize(new_eye_angle[1]) + EBotAimSpeed[client];
+	new_eye_angle[2] = 0.0;
+	
+	SnapEyeAngles(client, new_eye_angle);
+}
+
+stock float Max(float one, float two)
+{
+	if(one > two)
+		return one;
+	else if(two > one)
+		return two;
+		
+	return two;
+}
+
+stock void TF2_LookAtPos2(int client, float flGoal[3], float flAimSpeed = 0.05)
 {
 	if(AimLagDelay[client] < GetGameTime())
 	{
@@ -953,7 +1110,6 @@ stock void TF2_LookAtPos(int client, float flGoal[3], float flAimSpeed = 0.05)
 		// ease the current direction to the target direction
 		flAng[0] += AngleNormalize(desired_dir[0] - flAng[0]) * (flAimSpeed + (GetConVarFloat(EBotAimLag) * 6));
 		flAng[1] += AngleNormalize(desired_dir[1] - flAng[1]) * (flAimSpeed + (GetConVarFloat(EBotAimLag) * 6));
-		flAng[2] += AngleNormalize(desired_dir[2] - flAng[2]) * (flAimSpeed + (GetConVarFloat(EBotAimLag) * 6));
 		
 		//TeleportEntity(client, NULL_VECTOR, flAng, NULL_VECTOR);
 		SnapEyeAngles(client, flAng);
@@ -964,16 +1120,9 @@ stock void TF2_LookAtPos(int client, float flGoal[3], float flAimSpeed = 0.05)
 
 stock float AngleNormalize(float angle)
 {
-	angle = fmodf(angle, 360.0);
-	if (angle > 180) 
-	{
-		angle -= 360;
-	}
-	if (angle < -180)
-	{
-		angle += 360;
-	}
-	
+	angle = angle - 360.0 * RoundToFloor(angle / 360.0);
+	while (angle > 180.0) angle -= 360.0;
+	while (angle < -180.0) angle += 360.0;
 	return angle;
 }
 
@@ -1179,8 +1328,9 @@ public AutoAddBot()
 	char currentMap[PLATFORM_MAX_PATH];
 	GetCurrentMap(currentMap, sizeof(currentMap));
 	new RandomName = GetRandomInt(0, 63);
-	SetConVarFlags(FindConVar("sv_cheats"), FCVAR_NONE);
-	SetConVarInt(FindConVar("sv_cheats"), 1);
+	
+	SetCommandFlags("bot", ~FCVAR_CHEAT);
+	
 	if(StrContains(currentMap, "mvm_" , false) != -1)
 	{
 		ServerCommand("bot -name %s -team red -class random", FakeNames[RandomName]);
@@ -1208,7 +1358,7 @@ public AutoAddBot()
 		}
 	}
 	
-	CreateTimer(0.1, ResetCheats);
+	SetCommandFlags("bot", FCVAR_CHEAT);
 }
 
 public bool IsEntityTraversable(int bot_entidx, int other_entidx, TraverseWhenType when)
@@ -1217,29 +1367,19 @@ public bool IsEntityTraversable(int bot_entidx, int other_entidx, TraverseWhenTy
 	GetEdictClassname(other_entidx, ClassName, 32);
 	
 	if(HasEntProp(other_entidx, Prop_Send, "m_hBuilder") && GetEntPropEnt(other_entidx, Prop_Send, "m_hBuilder") == bot_entidx)
-	{
 		return false;
-	}
 	
 	if(StrContains(ClassName, "monster_generic", false) != -1 || StrContains(ClassName, "monster", false) != -1 || StrContains(ClassName, "npc", false) != -1)
-	{
 		return false;
-	}
 	
 	if(IsWeaponSlotActive(bot_entidx, 2) && IsValidClient(other_entidx) && GetTeamNumber(bot_entidx) == GetTeamNumber(other_entidx))
-	{
 		return false;
-	}
 	
 	if(IsValidClient(other_entidx) && GetTeamNumber(bot_entidx) == GetTeamNumber(other_entidx))
-	{
 		return true;
-	}
 	
 	if(IsValidClient(other_entidx) && GetTeamNumber(bot_entidx) != GetTeamNumber(other_entidx))
-	{
 		return false;
-	}
 	
 	return true;
 }
@@ -1255,23 +1395,23 @@ public float PathCost(int bot_entidx, NavArea area, NavArea from_area, float len
 		area.GetCenter(Center);
 		
 		if(IsPointVisible(LastKnownEnemyPosition[bot_entidx], Center))
-		{
 			dist *= 5.0;
-		}
 		
 		if((TF2_GetClientTeam(bot_entidx) == TFTeam_Red  && HasTFAttributes(area, BLUE_SENTRY)) || (TF2_GetClientTeam(bot_entidx) == TFTeam_Blue && HasTFAttributes(area, RED_SENTRY))) 
-		{
 			dist *= 5.0;
-		}
 		
-		dist *= area.GetPlayerCount(GetEnemyTeam(bot_entidx));
+		if(area.ComputeAdjacentConnectionHeightChange(from_area) >= 18.0)
+			dist *= 5.0;
+		
+		if(TF2_GetPlayerClass(bot_entidx) == TFClass_Spy) // we dont like go with our team
+			dist *= (area.GetPlayerCount(GetClientTeam(bot_entidx)) + 1);
+		
+		dist *= ((area.GetPlayerCount(GetEnemyTeam(bot_entidx)) + 1) * area.GetPlayerCount(GetEnemyTeam(bot_entidx)));
 	}
 	else
 	{
 		if (length > 0.0) 
-		{
 			dist = length;
-		} 
 		else 
 		{
 			float center[3];          area.GetCenter(center);
@@ -1283,9 +1423,9 @@ public float PathCost(int bot_entidx, NavArea area, NavArea from_area, float len
 		}
 		
 		if(area.ComputeAdjacentConnectionHeightChange(from_area) >= 18.0)
-		{
-			dist *= 2.0;
-		}
+			dist *= 5.0;
+		
+		dist *= (area.GetPlayerCount(GetEnemyTeam(bot_entidx)) + 1);
 		
 		if (!GetEntProp(bot_entidx, Prop_Send, "m_bIsMiniBoss")) 
 		{
@@ -1319,12 +1459,6 @@ bool NameAlreadyTakenByPlayer(const char[] name)
 	}
 	
 	return false;
-}
-
-public Action ResetCheats(Handle timer)
-{
-	SetConVarInt(FindConVar("sv_cheats"), 0);
-	SetConVarFlags(FindConVar("sv_cheats"), FCVAR_NOTIFY|FCVAR_REPLICATED);
 }
 
 public Action ReloadPlugin(Handle timer)
