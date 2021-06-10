@@ -5,6 +5,9 @@ Type "!afk" to chat for enable bot or use ebot_quota command for add ebots to yo
 
 Requires PathFollower & tf2.pets gamedata
 
+https://github.com/Pelipoika/PathFollower
+
+https://github.com/Pelipoika/TF2_NextBot/blob/master/gamedata/tf2.pets.txt
 
 
 
