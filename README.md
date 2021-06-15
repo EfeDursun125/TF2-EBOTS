@@ -11,7 +11,7 @@ https://github.com/Pelipoika/TF2_NextBot/blob/master/gamedata/tf2.pets.txt
 
 
 
-# WORKINRG GAMEMODES
+# WORKING GAMEMODES
 1. CTF
 2. KOTH
 3. CP (Non Attack/Defend Maps)
