@@ -102,7 +102,7 @@ float moveLeft(float vel[3],float MaxSpeed)
 #include <ebotai/slenderbase>
 #include <ebotai/slenderai>
 
-#define PLUGIN_VERSION  "0.13"
+#define PLUGIN_VERSION  "0.14"
 
 public Plugin myinfo = 
 {
@@ -160,25 +160,10 @@ public OnMapStart()
 			if(IsValidEntity(tmflag))
 			{
 				if(iTeamNumObj == 2)
-				{
 					GetEntPropVector(tmflag, Prop_Send, "m_vecOrigin", g_flRedFlagCapPoint);
-				}
 				if(iTeamNumObj == 3)
-				{
 					GetEntPropVector(tmflag, Prop_Send, "m_vecOrigin", g_flBluFlagCapPoint);
-				}
 			}
-		}
-	}
-	else if(StrContains(currentMap, "cp_" , false) != -1)
-	{
-		if(GetNearestBluControlPoint() != -1)
-		{
-			IsAttackDefendMap = false;
-		}
-		else
-		{
-			IsAttackDefendMap = true;
 		}
 	}
 	
@@ -411,28 +396,18 @@ public void OnGameFrame()
 	if(BotCheckTimer < GetGameTime())
 	{
 		if(GetTotalPlayersCount() < GetConVarInt(EBotQuota))
-		{
 			AddEBotConsole();
-		}
 		else if(GetTotalPlayersCount() > GetConVarInt(EBotQuota))
-		{
 			KickEBotConsole();
-		}
 		else if((GetPlayersCountRed() + 1) < GetPlayersCountBlu())
-		{
 			KickEBotConsole();
-		}
 		else if((GetPlayersCountBlu() + 1) < GetPlayersCountRed())
-		{
 			KickEBotConsole();
-		}
 		
 		BotCheckTimer = GetGameTime() + 1.0;
 	}
 	else if(RandomBotName == -1)
-	{
 		RandomBotName = GetRandomInt(0, 63);
-	}
 	else
 	{
 		do
@@ -462,36 +437,26 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 						SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
 						
 						if(GetEntityFlags(client) & FL_ONGROUND && ClientIsMoving(client))
-						{
 							buttons |= IN_JUMP;
-						}
 						
 						buttons |= IN_DUCK;
 					}
 					
 					if(EBotAimSpeed[client] == -1 || EBotAimSpeed[client] == 0)
-					{
 						EBotAimSpeed[client] = GetRandomFloat(GetConVarFloat(EBotMinimumAimSpeed), GetConVarFloat(EBotMaximumAimSpeed));
-					}
 					
 					if(EBotSenseChance[client] == -1 || EBotSenseChance[client] == 0)
-					{
 						EBotSenseChance[client] = GetRandomInt(GetConVarInt(EBotSenseMin), GetConVarInt(EBotSenseMax));
-					}
 				}
 				
 				GetClientEyePosition(client, g_flClientEyePos[client]);
 				GetClientAbsOrigin(client, g_flClientOrigin[client]);
 				
 				if(AttackTimer[client] > GetGameTime())
-				{
 					buttons |= IN_ATTACK;
-				}
 				
 				if(Attack2Timer[client] > GetGameTime())
-				{
 					buttons |= IN_ATTACK2;
-				}
 				
 				if(ForcePressButton[client] != 0)
 				{
@@ -509,38 +474,24 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 							if(PrimaryID[client] == 56 || PrimaryID[client] == 1005 || PrimaryID[client] == 1092 || PrimaryID[client] == 1098)
 							{
 								if(FireTimer[client] < GetGameTime())
-								{
 									FireTimer[client] = GetGameTime() + GetRandomFloat(1.3, 2.0);
-								}
 								else if(FireTimer[client] > GetGameTime())
-								{
 									buttons |= IN_ATTACK;
-								}
 							}
 							else if(IsSlowThink[client] && TF2_IsPlayerInCondition(client, TFCond_Zoomed))
-							{
 								buttons |= IN_ATTACK;
-							}
 							else if(!TF2_IsPlayerInCondition(client, TFCond_Zoomed))
 							{
 								if(TF2_HasTheFlag(client))
-								{
 									buttons |= IN_ATTACK;
-								}
 								else
-								{
 									buttons |= IN_ATTACK2;
-								}
 							}
 							else if(!IsWeaponSlotActive(client, 0))
-							{
 								buttons |= IN_ATTACK;
-							}
 						}
 						else
-						{
 							buttons |= IN_ATTACK;
-						}
 					}
 					else if(TF2_GetPlayerClass(client) == TFClass_Soldier)
 					{
@@ -550,13 +501,9 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 							{
 								int ClipAmmo = GetEntProp(GetPlayerWeaponSlot(client, 0), Prop_Send, "m_iClip1");
 								if(ClipAmmo < 3)
-								{
 									buttons |= IN_ATTACK;
-								}
 								else
-								{
 									buttons &= ~IN_ATTACK;
-								}
 							}
 						}
 					}
@@ -569,35 +516,23 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 						int iAngleDiff = AngleDifference(flBotAng[1], flTargetAng[1]);
 						
 						if(GetClientAimTarget(NearestEnemy[client]) == client)
-						{
 							vel = moveBackwards(vel, 300.0);
-						}
 						else
-						{
 							vel = moveForward(vel, 300.0);
-						}
 						
 						if(iAngleDiff > 90)
-						{
 							vel = moveRight(vel, 300.0);
-						}
 						else if(iAngleDiff < -90)
-						{
 							vel = moveLeft(vel, 300.0);
-						}
 						else
-						{
 							vel = moveBackwards(vel, 300.0);
-						}
 					}
 				}
 				
 				if(CrouchTime[client] > GetGameTime())
 				{
 					if(GetEntityFlags(client) & FL_ONGROUND)
-					{
 						buttons |= IN_DUCK;
-					}
 				}
 				else
 				{
@@ -614,9 +549,7 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 					if(g_bJump[client])
 					{
 						if(GetEntityFlags(client) & FL_ONGROUND)
-						{
 							buttons |= IN_JUMP;
-						}
 						else
 						{
 							buttons |= IN_JUMP; // for double jump
@@ -625,16 +558,12 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 					}
 					
 					if(GetEntProp(client, Prop_Send, "m_bJumping"))
-					{
 						buttons |= IN_DUCK;
-					}
 					
 					if(RandomJumpTimer[client] < GetGameTime())
 					{
 						if(!HasEnemiesNear[client] && StopTime[client] < GetGameTime())
-						{
 							buttons |= IN_JUMP;
-						}
 						
 						RandomJumpTimer[client] = GetGameTime() + GetRandomFloat(5.0, 15.0);
 					}
@@ -645,9 +574,7 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 					if(GetClientTeam(client) == 2)
 					{
 						if(CanMove[client])
-						{
 							TF2_MoveTo(client, g_flGoal[client], vel, angles);
-						}
 						
 						SlenderBaseAI(client);
 					}
@@ -664,13 +591,8 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 					return Plugin_Continue;
 				}
 				
-				if(GetVectorDistance(GetOrigin(client), TargetGoal[client]) > 30.0)
-				{
-					if(CanMove[client])
-					{
-						TF2_MoveTo(client, g_flGoal[client], vel, angles);
-					}
-				}
+				if(CanMove[client])
+					TF2_MoveTo(client, g_flGoal[client], vel, angles);
 			}
 			else
 			{
@@ -696,30 +618,20 @@ public Action AddEBot(int client, int args)
 	SetCommandFlags("bot", ~FCVAR_CHEAT);
 	
 	if(StrContains(currentMap, "mvm_" , false) != -1)
-	{
 		ServerCommand("bot -name %s -team red -class random", FakeNames[RandomBotName]);
-	}
 	else if(StrContains(currentMap, "tfdb_" , false) != -1)
 	{
 		if(GetTeamsCount(2) > GetTeamsCount(3))
-		{
 			ServerCommand("bot -name %s -team blue -class pyro", FakeNames[RandomBotName]);
-		}
 		else
-		{
 			ServerCommand("bot -name %s -team red -class pyro", FakeNames[RandomBotName]);
-		}
 	}
 	else
 	{
 		if(GetTeamsCount(2) > GetTeamsCount(3))
-		{
 			ServerCommand("bot -name %s -team blue -class random", FakeNames[RandomBotName]);
-		}
 		else
-		{
 			ServerCommand("bot -name %s -team red -class random", FakeNames[RandomBotName]);
-		}
 	}
 	
 	SetCommandFlags("bot", FCVAR_CHEAT);
@@ -735,30 +647,20 @@ AddEBotConsole()
 	SetCommandFlags("bot", ~FCVAR_CHEAT);
 	
 	if(StrContains(currentMap, "mvm_" , false) != -1)
-	{
 		ServerCommand("bot -name %s -team red -class random", FakeNames[RandomBotName]);
-	}
 	else if(StrContains(currentMap, "tfdb_" , false) != -1)
 	{
 		if(GetTeamsCount(2) > GetTeamsCount(3))
-		{
 			ServerCommand("bot -name %s -team blue -class pyro", FakeNames[RandomBotName]);
-		}
 		else
-		{
 			ServerCommand("bot -name %s -team red -class pyro", FakeNames[RandomBotName]);
-		}
 	}
 	else
 	{
 		if(GetTeamsCount(2) > GetTeamsCount(3))
-		{
 			ServerCommand("bot -name %s -team blue -class random", FakeNames[RandomBotName]);
-		}
 		else
-		{
 			ServerCommand("bot -name %s -team red -class random", FakeNames[RandomBotName]);
-		}
 	}
 	
 	SetCommandFlags("bot", FCVAR_CHEAT);
@@ -769,25 +671,17 @@ public Action KickEBot(int client, int args)
 	int BotTeam;
 	
 	if(GetTeamClientCount(2) > GetTeamClientCount(3))
-	{
 		BotTeam = 2;
-	} 
 	else if(GetTeamClientCount(2) < GetTeamClientCount(3))
-	{
 		BotTeam = 3;
-	}
 	else
-	{
 		BotTeam = GetRandomInt(2, 3);
-	}
 	
 	Handle AllBots = CreateArray();
 	for(int i = 1; i <= MaxClients; i++)
 	{
 		if(IsClientConnected(i) && !IsClientSourceTV(i) && !IsClientReplay(i) && IsFakeClient(i) && GetClientTeam(i) == BotTeam)
-		{
 			PushArrayCell(AllBots, i);
-		}
 	}
 	
 	if(GetArraySize(AllBots) == 0)
@@ -815,25 +709,17 @@ KickEBotConsole()
 	int BotTeam;
 	
 	if(GetTeamClientCount(2) > GetTeamClientCount(3))
-	{
 		BotTeam = 2;
-	} 
 	else if(GetTeamClientCount(2) < GetTeamClientCount(3))
-	{
 		BotTeam = 3;
-	}
 	else
-	{
 		BotTeam = GetRandomInt(2, 3);
-	}
 	
 	Handle AllBots = CreateArray();
 	for(int i = 1; i <= MaxClients; i++)
 	{
 		if(IsClientConnected(i) && !IsClientSourceTV(i) && !IsClientReplay(i) && IsFakeClient(i) && GetClientTeam(i) == BotTeam)
-		{
 			PushArrayCell(AllBots, i);
-		}
 	}
 	
 	if(GetArraySize(AllBots) == 0)
@@ -882,31 +768,21 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 			while((hint = FindEntityByClassname(hint, "bot_hint_sentrygun")) != -1)
 			{
 				if (client == GetOwnerEntity(hint))
-				{
 					SetEntPropEnt(hint, Prop_Send, "m_hOwnerEntity", INVALID_ENT_REFERENCE);
-				}
 			}
 		}
 		
 		if(ChanceOf(GetConVarInt(EBotTeleporter)))
-		{
 			UseTeleporter[client] = true;
-		}
 		else
-		{
 			UseTeleporter[client] = false;
-		}
 	}
 	else if(IsValidClient(client))
 	{
 		if(GetClientTeam(client) == 2)
-		{
 			RedTeamSpawn = GetOrigin(client);
-		}
 		else if(GetClientTeam(client) == 3)
-		{
 			BluTeamSpawn = GetOrigin(client);
-		}
 	}
 }
 
@@ -999,10 +875,6 @@ stock void TF2_FindPath(int client, float flTargetVector[3])
 			
 			PF_EnableCallback(client, PFCB_ClimbUpToLedge, PF_ClibmUpToLedge);
 			
-			PF_EnableCallback(client, PFCB_IsEntityTraversable, IsEntityTraversable);
-			
-			PF_EnableCallback(client, PFCB_GetPathCost, PathCost);
-			
 			return;
 		}
 		
@@ -1010,26 +882,17 @@ stock void TF2_FindPath(int client, float flTargetVector[3])
 		TargetGoal[client][1] = flTargetVector[1];
 		TargetGoal[client][2] = flTargetVector[2];
 		
-		if(!PF_IsPathToVectorPossible(client, flTargetVector))
-		{
-			CanMove[client] = false;
-			
-			return;
-		}
-		else
-		{
-			CanMove[client] = true;
-		}
-		
 		PF_SetGoalVector(client, flTargetVector);
 		
 		if(GetVectorDistance(GetOrigin(client), flTargetVector) > 30.0)
 		{
 			PF_StartPathing(client);
+			CanMove[client] = true;
 		}
 		else
 		{
 			PF_StopPathing(client);
+			CanMove[client] = false;
 		}
 		
 		g_flFindPathTimer[client] = GetGameTime() + random;
@@ -1242,21 +1105,6 @@ stock bool IsWeaponSlotActive(int client, int slot)
 
 stock bool IsPointVisible(float start[3], float end[3])
 {
-	Handle hTrace = TR_TraceRayFilterEx(start, end, MASK_SHOT|CONTENTS_GRATE, RayType_EndPoint, ClientViewsFilter);
-	if(TR_DidHit(hTrace))
-	{
-		CloseHandle(hTrace);
-		
-		return false;
-	}
-	
-	CloseHandle(hTrace);
-	
-	return true;
-}
-
-stock bool IsPointVisible2(float start[3], float end[3])
-{
 	TR_TraceRayFilter(start, end, MASK_SHOT|CONTENTS_GRATE, RayType_EndPoint, TraceEntityFilterStuff);
 	return TR_GetFraction() >= 0.9;
 }
@@ -1332,130 +1180,37 @@ public AutoAddBot()
 	SetCommandFlags("bot", ~FCVAR_CHEAT);
 	
 	if(StrContains(currentMap, "mvm_" , false) != -1)
-	{
 		ServerCommand("bot -name %s -team red -class random", FakeNames[RandomName]);
-	}
 	else if(StrContains(currentMap, "tfdb_" , false) != -1)
 	{
 		if(GetTeamsCount(2) > GetTeamsCount(3))
-		{
 			ServerCommand("bot -name %s -team blue -class pyro", FakeNames[RandomName]);
-		}
 		else
-		{
 			ServerCommand("bot -name %s -team red -class pyro", FakeNames[RandomName]);
-		}
 	}
 	else
 	{
 		if(GetTeamsCount(2) > GetTeamsCount(3))
-		{
 			ServerCommand("bot -name %s -team blue -class random", FakeNames[RandomName]);
-		}
 		else
-		{
 			ServerCommand("bot -name %s -team red -class random", FakeNames[RandomName]);
-		}
 	}
 	
 	SetCommandFlags("bot", FCVAR_CHEAT);
 }
 
-public bool IsEntityTraversable(int bot_entidx, int other_entidx, TraverseWhenType when)
-{
-	char ClassName[32];
-	GetEdictClassname(other_entidx, ClassName, 32);
-	
-	if(HasEntProp(other_entidx, Prop_Send, "m_hBuilder") && GetEntPropEnt(other_entidx, Prop_Send, "m_hBuilder") == bot_entidx)
-		return false;
-	
-	if(StrContains(ClassName, "monster_generic", false) != -1 || StrContains(ClassName, "monster", false) != -1 || StrContains(ClassName, "npc", false) != -1)
-		return false;
-	
-	if(IsWeaponSlotActive(bot_entidx, 2) && IsValidClient(other_entidx) && GetTeamNumber(bot_entidx) == GetTeamNumber(other_entidx))
-		return false;
-	
-	if(IsValidClient(other_entidx) && GetTeamNumber(bot_entidx) == GetTeamNumber(other_entidx))
-		return true;
-	
-	if(IsValidClient(other_entidx) && GetTeamNumber(bot_entidx) != GetTeamNumber(other_entidx))
-		return false;
-	
-	return true;
-}
-
-public float PathCost(int bot_entidx, NavArea area, NavArea from_area, float length)
-{
-	float multiplier = 1.0;
-	float dist;
-	
-	if(TF2_GetPlayerClass(bot_entidx) == TFClass_Spy || TF2_GetPlayerClass(bot_entidx) == TFClass_Sniper || TF2_GetPlayerClass(bot_entidx) == TFClass_Medic || TF2_GetPlayerClass(bot_entidx) == TFClass_Engineer || HidingSpotIsReady[bot_entidx] || g_bHealthIsLow[bot_entidx] || g_bAmmoIsLow[bot_entidx]) 
-	{
-		float Center[3];
-		area.GetCenter(Center);
-		
-		if(IsPointVisible(LastKnownEnemyPosition[bot_entidx], Center))
-			dist *= 5.0;
-		
-		if((TF2_GetClientTeam(bot_entidx) == TFTeam_Red  && HasTFAttributes(area, BLUE_SENTRY)) || (TF2_GetClientTeam(bot_entidx) == TFTeam_Blue && HasTFAttributes(area, RED_SENTRY))) 
-			dist *= 5.0;
-		
-		if(area.ComputeAdjacentConnectionHeightChange(from_area) >= 18.0)
-			dist *= 5.0;
-		
-		if(TF2_GetPlayerClass(bot_entidx) == TFClass_Spy) // we dont like go with our team
-			dist *= (area.GetPlayerCount(GetClientTeam(bot_entidx)) + 1);
-		
-		dist *= ((area.GetPlayerCount(GetEnemyTeam(bot_entidx)) + 1) * area.GetPlayerCount(GetEnemyTeam(bot_entidx)));
-	}
-	else
-	{
-		if (length > 0.0) 
-			dist = length;
-		else 
-		{
-			float center[3];          area.GetCenter(center);
-			float fromCenter[3]; from_area.GetCenter(fromCenter);
-		
-			float subtracted[3]; SubtractVectors(center, fromCenter, subtracted);
-		
-			dist = GetVectorLength(subtracted);
-		}
-		
-		if(area.ComputeAdjacentConnectionHeightChange(from_area) >= 18.0)
-			dist *= 5.0;
-		
-		dist *= (area.GetPlayerCount(GetEnemyTeam(bot_entidx)) + 1);
-		
-		if (!GetEntProp(bot_entidx, Prop_Send, "m_bIsMiniBoss")) 
-		{
-			int seed = RoundToFloor(GetGameTime() * 0.1) + 1;
-			seed *= area.GetID();
-			seed *= bot_entidx;
-			
-			multiplier += (Cosine(float(seed)) + 1.0) * 10.0;
-		}
-	}
-	
-	float cost = dist * multiplier;
-	
-	return from_area.GetCostSoFar() + cost;
-}
-
-bool NameAlreadyTakenByPlayer(const char[] name)
+stock bool NameAlreadyTakenByPlayer(const char[] name)
 {
 	char buffer[MAX_NAME_LENGTH];
 	for(int i = 1; i <= MaxClients; i++)
 	{
 		if(!IsValidClient(i))
-		{
 			continue;
-		}
+		
 		GetClientName(i, buffer, sizeof(buffer));
+		
 		if(StrEqual(name, buffer))
-		{
 			return true;
-		}
 	}
 	
 	return false;
