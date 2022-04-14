@@ -225,7 +225,7 @@ stock void LookAround(int client)
 	}
 
 	float BestLookPos[3];
-	float SelectRandomNav[3];
+	float SelectRandom[3];
 	
 	if (m_searchTime[client] < GetGameTime())
 	{
@@ -235,30 +235,56 @@ stock void LookAround(int client)
 		BestLookPos[1] += GetRandomFloat(-768.0, 768.0);
 		BestLookPos[2] += GetRandomFloat(-256.0, 256.0);
 		
-		CNavArea area = NavMesh_GetNearestArea(BestLookPos, true, 512.0, false, false);
-		if (area != INVALID_NAV_AREA)
-			area.GetRandomPoint(SelectRandomNav);
+		if (m_hasWaypoints)
+		{
+			int index = FindNearestWaypoint(BestLookPos, 999999.0, client);
+			if (index != -1)
+			{
+				SelectRandom[0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
+				SelectRandom[1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
+				SelectRandom[2] = float(m_paths[index].origin[2]);
+			}
+		}
+		else
+		{
+			CNavArea area = NavMesh_GetNearestArea(BestLookPos, true, 512.0, false, false);
+			if (area != INVALID_NAV_AREA)
+				area.GetRandomPoint(SelectRandom);
+		}
 		
 		m_searchTime[client] = GetGameTime() + 0.2;
 	}
 	
-	if (IsVisible(GetEyePosition(client), SelectRandomNav) && GetVectorDistance(GetOrigin(client), SelectRandomNav, true) > Squared(256))
+	if (IsVisible(GetEyePosition(client), SelectRandom) && GetVectorDistance(GetOrigin(client), SelectRandom, true) > Squared(256))
 	{
 		if (m_pauseTime[client] < GetGameTime())
 		{
-			m_lookAt[client][0] = SelectRandomNav[0];
-			m_lookAt[client][1] = SelectRandomNav[1];
-			m_lookAt[client][2] = SelectRandomNav[2] + GetHeight(client);
+			m_lookAt[client][0] = SelectRandom[0];
+			m_lookAt[client][1] = SelectRandom[1];
+			m_lookAt[client][2] = SelectRandom[2] + GetHeight(client);
 			m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.25);
 		}
 	}
-	else if (IsMoving(client) && m_isSlowThink[client])
+	else if (m_isSlowThink[client] && IsMoving(client))
 	{
-		CNavArea area = NavMesh_GetNearestArea(m_pathAhead[client], true, 512.0, false, false);
-		if (area != INVALID_NAV_AREA)
+		if (m_hasWaypoints)
 		{
-			area.GetRandomPoint(m_lookAt[client]);
-			m_lookAt[client][2] += GetHeight(client);
+			int index = FindNearestWaypoint(m_pathAhead[client], 999999.0, client);
+			if (index != -1)
+			{
+				m_lookAt[client][0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
+				m_lookAt[client][1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
+				m_lookAt[client][2] = float(m_paths[index].origin[2]) + GetHeight(client);
+			}
+		}
+		else
+		{
+			CNavArea area = NavMesh_GetNearestArea(m_pathAhead[client], true, 512.0, false, false);
+			if (area != INVALID_NAV_AREA)
+			{
+				area.GetRandomPoint(m_lookAt[client]);
+				m_lookAt[client][2] += GetHeight(client);
+			}
 		}
 	}
 }

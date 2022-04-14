@@ -2,6 +2,9 @@ float pathdelayer;
 
 stock bool IsPathPossible(float start[3], float goal[3], float maxrange = 0.0, float maxstepsize = 48.0)
 {
+	if (m_hasWaypoints)
+	 	return true;
+	
 	// no checks for now, just return true because we don't have a pathfinder yet, using it too much makes game run slow
 	if (pathdelayer > GetGameTime())
 		return true;
@@ -17,20 +20,14 @@ stock bool IsPathPossible(float start[3], float goal[3], float maxrange = 0.0, f
 
 stock void FollowPath(int client, float targetposition[3])
 {
+	int currentIndex = -1;
 	if (m_positions[client] != null)
 	{
 		if (m_targetNode[client] >= 0 && m_targetNode[client] < m_positions[client].Length)
 		{
+			currentIndex = m_pathIndex[client].Get(m_currentWaypointIndex[client]);
 			float flGoPos[3];
 			m_positions[client].GetArray(m_targetNode[client], flGoPos);
-			
-			if (m_nextStuckCheck[client] <= GetGameTime() && pathdelayer < GetGameTime())
-			{
-				m_buttons[client] |= IN_JUMP;
-				m_nextStuckCheck[client] = GetGameTime() + 5.0;
-				m_nextPathUpdate[client] = GetGameTime() + 5.5;
-				FindPath(client, targetposition);
-			}
 			
 			float flPos[3]
 			GetClientAbsOrigin(client, flPos);
@@ -39,38 +36,90 @@ stock void FollowPath(int client, float targetposition[3])
 			flToPos[0] = flGoPos[0];
 			flToPos[1] = flGoPos[1];
 			flToPos[2] = flGoPos[2];
-			
 			flToPos[2] += GetHeight(client);
 			
 			if (GetConVarInt(EBotDebug) == 1)
 			{
 				TE_SetupBeamPoints(flGoPos, flToPos, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 30);
 				TE_SendToClient(m_hostEntity);
+				if (m_hasWaypoints && currentIndex != -1)
+				{
+					float Vector[3];
+					float Vector2[3];
+					Vector = VectorAsFloat(m_paths[currentIndex].origin);
+					Vector2 = Vector;
+					Vector2[2] += GetHeight(client);
+					TE_SetupBeamPoints(Vector, Vector2, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, {0, 255, 0, 255}, 30);
+					TE_SendToClient(m_hostEntity);
+				}
 			}
 			
 			flGoPos[2] = flPos[2];
-			float flNodeDist = GetVectorDistance(flGoPos, flPos, true);
-			MoveTo(client, flGoPos);
 
-			float value = 32.0 + (GetConVarFloat(EBotFPS) * 280);
-			if (flNodeDist <= Squaredf(value))
+			if (m_nextStuckCheck[client] <= GetGameTime())
 			{
-				m_nextStuckCheck[client] = GetGameTime() + 5.0;
-				if (m_hasWaypoints)
+				MoveTo(client, flGoPos);
+				if (pathdelayer < GetGameTime())
+					m_buttons[client] |= IN_JUMP;
+				if (m_nextStuckCheck[client] + 3.0 <= GetGameTime())
 				{
-					m_currentWaypointIndex[client]--;
+					m_nextStuckCheck[client] = GetGameTime() + 7.0;
+					m_nextPathUpdate[client] = GetGameTime() + 7.0;
+					FindPath(client, targetposition);
 				}
-				else
+			}
+			else
+				MoveTo(client, flGoPos, !m_hasWaypoints);
+
+			float speed = 300.0;
+			if (TF2_GetPlayerClass(client) == TFClass_Scout)
+				speed = 450.0;
+
+			if (m_hasWaypoints)
+			{
+				float value = 10.0;
+				if (currentIndex != -1 && m_paths[currentIndex].radius > 0.0)
+					value = float(Squared(m_paths[currentIndex].radius)) / 72.0;
+				value += (GetConVarFloat(EBotFPS) * speed);
+				float flNodeDist = GetVectorDistance(flGoPos, flPos, true);
+				if (flNodeDist <= Squaredf(value))
 				{
+					m_nextStuckCheck[client] = GetGameTime() + 5.0;
+					m_currentWaypointIndex[client]--;
+					m_targetNode[client]--;
+					if (m_paths[currentIndex].flags == _:WAYPOINT_JUMP || m_paths[currentIndex].flags == _:WAYPOINT_DOUBLEJUMP)
+					{
+						MoveTo(client, flGoPos, !m_hasWaypoints);
+						m_buttons[client] |= IN_JUMP;
+						if (TF2_GetPlayerClass(client) == TFClass_Scout)
+						{
+							DJTime[client] = GetGameTime() + 0.5;
+							NoDodge[client] = GetGameTime() + 6.5;
+						}
+					}
+					else if (TF2_GetPlayerClass(client) == TFClass_Soldier && m_paths[currentIndex].flags == _:WAYPOINT_ROCKETJUMP)
+					{
+						m_pauseTime[client] = GetGameTime() + 1.0;
+						m_buttons[client] |= IN_JUMP;
+						m_lookAt[client] = VectorAsFloat(m_paths[currentIndex].origin);
+						m_buttons[client] |= IN_ATTACK;
+					}
+				}
+			}
+			else
+			{
+				float flNodeDist = GetVectorDistance(flGoPos, flPos, true);
+				float value = 16.0 + (GetConVarFloat(EBotFPS) * speed);
+				if (flNodeDist <= Squaredf(value))
+				{
+					m_nextStuckCheck[client] = GetGameTime() + 5.0;
 					float jumppos[3];
 					CNavArea jump = NavMesh_GetArea(jumppos);
 					if (jump != INVALID_NAV_AREA && jump.Attributes & NAV_MESH_JUMP)
 						m_buttons[client] |= IN_JUMP;
+					m_targetNode[client]--;
 				}
-				m_targetNode[client]--;
-				
 			}
-
 			m_pathAhead[client] = flToPos;
 		}
 		else if (m_nextPathUpdate[client] <= GetGameTime())
@@ -91,7 +140,7 @@ stock void FindPath(int client, float targetposition2[3])
 
 	if (m_hasWaypoints)
 	{
-		int destIndex = FindNearestWaypoint(targetposition2);
+		int destIndex = FindNearestWaypoint(targetposition2, 999999.0, client);
 		AStarFindPath(-1, destIndex, client);
 		return;
 	}

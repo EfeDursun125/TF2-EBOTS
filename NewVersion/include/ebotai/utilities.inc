@@ -378,6 +378,14 @@ stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);
 
+	if (flPos[0] == flGoal[0] && flPos[1] == flGoal[1])
+	{
+		m_moveVel[client][0] = 0.0;
+		m_moveVel[client][1] = 0.0;
+		m_moveVel[client][2] = 0.0;
+		return;
+	}
+
 	float fAng[3];
 	GetClientEyeAngles(client, fAng);
 	
@@ -472,11 +480,9 @@ stock void BackstabMove(int client, int target, bool checkStuck = true)
 		m_moveVel[client][0] = 500.0;
 	
 	if (iAngleDiff > 90)
-		m_moveVel[client][1] = 500.0;
-	else if (iAngleDiff < -90)
 		m_moveVel[client][1] = -500.0;
-	else
-		m_moveVel[client][0] = -500.0;
+	else if (iAngleDiff < -90)
+		m_moveVel[client][1] = 500.0;
 }
 
 stock bool IsValidClient(int client)
@@ -908,6 +914,14 @@ stock float GetFastDistance(float vec1[3], float vec[3])
 	return result;
 }
 
+stock int GetFastDistanceInt(int vec1[3], int vec[3])
+{
+	int result = (vec1[0] - vec[0]) + (vec1[1] - vec[1]) + (vec1[2] - vec[2]);
+	if (result < 0)
+		result = -result;
+	return result;
+}
+
 stock int GetUsableSniperHintsCount(int team)
 {
 	int SniperHintsCount = 0;
@@ -1004,22 +1018,23 @@ stock bool IsClientAimingToPosition(int client, float targetposition[3])
 	return false;
 }
 
-stock float Max(float one, float two)
+stock int Max(int one, int two)
 {
 	if (one > two)
 		return one;
-	else if (two > one)
-		return two;
 	return two;
 }
 
-stock float Min(float one, float two)
+stock int Min(int one, int two)
 {
 	if (one < two)
 		return one;
-	else if (two < one)
-		return two;
 	return two;
+}
+
+stock int Abs(int value)
+{
+   return value < 0 ? -value : value;
 }
 
 stock bool ClientViews(int Viewer, int Target, float fMaxDistance = 0.0, float fThreshold = 0.70)

@@ -125,6 +125,9 @@ stock void CheckSlowThink(int client)
 				if (!IsClientAimingToMe(client, search))
 					continue;
 				
+				if (!ClientViews(client, search, 0.7))
+					continue;
+				
 				m_knownSpy[client] = search;
 			}
 		}
@@ -160,7 +163,7 @@ stock void CheckHealth(int client)
 		m_lowHealth[client] = false;
 	
 	if (m_lowHealth[client])
-		SetProcess(client, PRO_GETHEALTH, false, 30.0, "| process started -> need health pack.");
+		SetProcess(client, PRO_GETHEALTH, false, 90.0, "| process started -> need health pack.");
 }
 
 // automaticly triggers the collect health pack process
@@ -175,7 +178,7 @@ stock void CheckAmmo(int client)
 		m_lowAmmo[client] = false;
 	
 	if (m_lowAmmo[client])
-		SetProcess(client, PRO_GETAMMO, false, 30.0, "| process started -> need ammo pack.");
+		SetProcess(client, PRO_GETAMMO, false, 90.0, "| process started -> need ammo pack.");
 }
 
 stock void CheckWalls(int client)
