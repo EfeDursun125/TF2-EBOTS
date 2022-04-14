@@ -4,6 +4,9 @@
 #include <tf2_stocks>
 #include <navmesh>
 
+float DJTime[MAXPLAYERS + 1];
+float NoDodge[MAXPLAYERS + 1];
+
 public Plugin myinfo = 
 {
 	name = "[TF2] E-BOT",
@@ -44,8 +47,8 @@ public void OnPluginStart()
 	RegConsoleCmd("ebot_waypoint_select", Select);
 	RegConsoleCmd("ebot_waypoint_delete_path", PathDelete);
 	RegConsoleCmd("ebot_waypoint_add_radius", AddRadius, "after 128 it will be 0");
-	RegConsoleCmd("ebot_waypoint_add_flags", AddFlags);
-	RegConsoleCmd("ebot_waypoint_delete_flags", DeleteFlags);
+	RegConsoleCmd("ebot_waypoint_set_flag", SetFlag);
+	RegConsoleCmd("ebot_waypoint_set_team", SetTeam);
 	CreateDirectory("addons/sourcemod/ebotWaypoints", 3);
 	HookEvent("player_hurt", BotHurt, EventHookMode_Post);
 	HookEvent("player_spawn", BotSpawn, EventHookMode_Post);
@@ -187,24 +190,28 @@ public Action AddRadius(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action AddFlags(int client, int args)
+public Action SetFlag(int client, int args)
 {
+	char flag[32];
+    GetCmdArgString(flag, sizeof(flag));
 	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
 	{
-		m_paths[nearestIndex].flags |= args;
-		PrintHintTextToAll("Waypoint Flag Added: %d", view_as<WaypointFlag>(args));
+		m_paths[nearestIndex].flags = StringToInt(flag);
+		PrintHintTextToAll("Waypoint Flag Added: %d", StringToInt(flag));
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
 	return Plugin_Handled;
 }
 
-public Action DeleteFlags(int client, int args)
+public Action SetTeam(int client, int args)
 {
+	char team[32];
+    GetCmdArgString(team, sizeof(team));
 	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
 	{
-		m_paths[nearestIndex].flags |= args;
-		PrintHintTextToAll("Waypoint Flag Deleted: %d", view_as<WaypointFlag>(args));
+		m_paths[nearestIndex].team = StringToInt(team);
+		PrintHintTextToAll("Waypoint Team Changed: %d", view_as<TFTeam>(StringToInt(team)));
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
@@ -279,6 +286,19 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 	if (!IsFakeClient(client))
 		return Plugin_Continue;
 	
+	// trigger scout double jump
+	if (DJTime[client] <= GetGameTime())
+	{
+		if (m_positions[client] != null && m_positions[client].Length > 0)
+		{
+			float flGoPos[3];
+			m_positions[client].GetArray(m_targetNode[client], flGoPos);
+			MoveTo(client, flGoPos, !m_hasWaypoints);
+		}
+		buttons |= IN_JUMP;
+		DJTime[client] = GetGameTime() + 99999;
+	}
+	
 	// check if client pressing any buttons and set them
 	if (m_buttons[client] != 0)
 	{
@@ -348,6 +368,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_hasFriendsNear[client] = false;
 		m_lowAmmo[client] = false;
 		m_lowHealth[client] = false;
+		m_knownSpy[client] = -1;
 	}
 }
 
