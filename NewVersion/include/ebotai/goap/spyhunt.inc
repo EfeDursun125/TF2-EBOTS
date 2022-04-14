@@ -6,9 +6,12 @@ stock bool SpyHuntRequirements(int client)
 	if (!TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		return false;
 	
-	if (!IsValidClient(m_goalEntity[client]))
+	if (!IsValidClient(m_goalEntity[client]) || !IsPlayerAlive(m_goalEntity[client]))
 		return false;
-
+	
+	if (TF2_HasTheFlag(client))
+		return false;
+	
 	return true;
 }
 
@@ -27,7 +30,7 @@ stock void SpyHuntUpdate(int client)
 		return;
 	}
 
-	if (!IsValidClient(m_goalEntity[client]))
+	if (!IsValidClient(m_goalEntity[client]) || !IsPlayerAlive(m_goalEntity[client]))
 	{
 		FinishCurrentProcess(client);
 		return;
@@ -38,7 +41,13 @@ stock void SpyHuntUpdate(int client)
 
 	float distance = GetVectorDistance(GetOrigin(client), GetOrigin(m_goalEntity[client]), true);
 	int range = Squared(256);
-	if (IsValidClient(m_goalEntity[client]))
+	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) && distance <= range)
+	{
+		BackstabMove(client, m_goalEntity[client]);
+		m_moveVel[client][1] = -500.0;
+		return;
+	}
+	else
 	{
 		if (m_hasEnemiesNear[client] && m_enemiesNearCount[client] > 1)
 		{

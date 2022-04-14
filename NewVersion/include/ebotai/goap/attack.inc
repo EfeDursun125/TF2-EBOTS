@@ -3,6 +3,9 @@ stock bool AttackRequirements(int client)
 	if (m_lowHealth[client])
 		return false;
 	
+	if (NoDodge[client] >= GetGameTime())
+		return false;
+	
 	if (m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]))
 		return false;
 	

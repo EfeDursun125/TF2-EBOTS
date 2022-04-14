@@ -1,5 +1,8 @@
 stock bool SpyLurkRequirements(int client)
 {
+	if (TF2_HasTheFlag(client))
+		return false;
+	
 	return true;
 }
 

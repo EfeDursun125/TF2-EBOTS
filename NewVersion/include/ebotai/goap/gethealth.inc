@@ -8,6 +8,8 @@ stock bool GetHealthRequirements(int client)
 
 	if (!m_lowHealth[client])
 		return false;
+
+	if (m_hasWaypoints && !m_hasHealthWaypoints)
 	
 	if (TF2_HasTheFlag(client))
 		return false;
@@ -33,7 +35,26 @@ stock void GetHealthUpdate(int client)
 	FindFriendsAndEnemiens(client);
 	LookUpdate(client);
 	
-	if (IsValidEntity(m_goalEntity[client]))
+	if (m_hasWaypoints)
+	{
+		int index = FindHealthWaypoint(client);
+		if (index != -1)
+		{
+			m_goalPosition[client] = VectorAsFloat(m_paths[index].origin);
+			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squared(48))
+				MoveTo(client, m_goalPosition[client], false);
+			else
+				FollowPath(client, m_goalPosition[client]);
+		}
+		else
+		{
+			FindNearestHealthPack(client);
+			// check again
+			if (!IsValidEntity(m_goalEntity[client])) // no avaliable health packs.
+				SetProcess(client, PRO_DEFAULT, true, 9999.0, "| process cancelled -> no health packs found");
+		}
+	}
+	else if (IsValidEntity(m_goalEntity[client]))
 	{
 		if (!IsValidHealthPack(m_goalEntity[client]))
 		{
@@ -61,6 +82,43 @@ stock void GetHealthEnd(int client)
 	m_goalEntity[client] = -1;
 }
 
+stock int FindHealthWaypoint(int client)
+{
+	int index = -1;
+	ArrayList NearHealthPacks = new ArrayList();
+	ArrayList MedHealthPacks = new ArrayList();
+	ArrayList AllHealthPacks = new ArrayList();
+	for (int i = 0; i < m_waypointNumber; i++)
+	{
+		if (m_paths[i].flags != _:WAYPOINT_HEALTH || (m_paths[i].flags == _:WAYPOINT_RESUPPLY && m_paths[i].team != GetClientTeam(client)))
+			continue;
+		
+		// only get safe health packs
+		if (m_hasEnemiesNear[client] && GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(m_nearestEnemy[client]), true) <= Squared(1536))
+			continue;
+		
+		if (GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client), true) <= Squared(1024))
+			NearHealthPacks.Push(i);
+		else if (GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client), true) <= Squared(2048))
+			MedHealthPacks.Push(i);
+		else
+			AllHealthPacks.Push(i);
+	}
+
+	if (NearHealthPacks.Length > 0)
+		index = NearHealthPacks.Get(GetRandomInt(0, NearHealthPacks.Length - 1));
+	else if (MedHealthPacks.Length > 0)
+		index = MedHealthPacks.Get(GetRandomInt(0, MedHealthPacks.Length - 1));
+	else if (AllHealthPacks.Length > 0)
+		index = AllHealthPacks.Get(GetRandomInt(0, AllHealthPacks.Length - 1));
+
+	delete NearHealthPacks;
+	delete MedHealthPacks;
+	delete AllHealthPacks;
+
+	return index;
+}
+
 stock void FindNearestHealthPack(int client)
 {
 	float distance = -1.0;
@@ -74,8 +132,8 @@ stock void FindNearestHealthPack(int client)
 		if (m_hasEnemiesNear[client] && GetVectorDistance(GetOrigin(x), GetOrigin(m_nearestEnemy[client]), true) <= Squared(1536))
 			continue;
 		
-		//if (!IsPathPossible(GetOrigin(client), GetOrigin(x)))
-		//	continue;
+		if (!IsPathPossible(GetOrigin(client), GetOrigin(x)))
+			continue;
 		
 		float edict_distance = GetFastDistance(GetOrigin(client), GetOrigin(x));
 		if (edict_distance < distance || distance == -1.0)

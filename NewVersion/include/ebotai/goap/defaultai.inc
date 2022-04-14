@@ -12,11 +12,12 @@ stock void DefaultStart(int client)
 
 stock void DefaultUpdate(int client)
 {
+	LookUpdate(client);
+
 	if (TF2_IsPlayerInCondition(client, TFCond_CritOnWin) && m_hasEnemiesNear[client])
 	{
 		FollowPath(client, GetOrigin(m_nearestEnemy[client]));
 		FindFriendsAndEnemiens(client);
-		LookUpdate(client);
 		return;
 	}
 
@@ -31,7 +32,7 @@ stock void DefaultUpdate(int client)
 	FindFriendsAndEnemiens(client);
 	CheckHealth(client);
 	CheckAmmo(client);
-	LookUpdate(client);
+	
 }
 
 stock void DefaultEnd(int client)
