@@ -53,13 +53,16 @@ stock void DefaultUpdate(int client)
 				else
 					m_lookAt[client] = VectorAsFloat(m_paths[index].campEnd);
 				m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.0, 7.0);
-				if (m_hasEnemiesNear[client])
-					m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
 			}
 			if (TF2_GetPlayerClass(client) == TFClass_Sniper)
 			{
 				if (!TF2_IsPlayerInCondition(client, TFCond_Zoomed) && !IsMoving(client))
 					m_buttons[client] |= IN_ATTACK2;
+			}
+			if (m_hasEnemiesNear[client])
+			{
+				LookAtEnemiens(client);
+				AutoAttack(client);
 			}
 			return;
 		}
