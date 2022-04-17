@@ -425,8 +425,9 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_lowHealth[client] = false;
 		m_knownSpy[client] = -1;
 		m_goalIndex[client] = -1;
-		SelectObjective(client);
 		SetProcess(client, PRO_DEFAULT, true, 99999.0, "", true);
+		SelectObjective(client);
+		DeletePathNodes(client);
 	}
 }
 
