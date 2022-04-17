@@ -87,6 +87,7 @@ public void OnMapStart()
 	currentActiveArea = 1;
 	healthpacks = 0;
 	ammopacks = 0;
+	pathdelayer = 0;
 	for (int x = 0; x <= GetMaxEntities(); x++)
 	{
 		if (IsValidHealthPack(x))
@@ -110,7 +111,7 @@ public void OnMapStart()
 			}
 		}
 	}
-
+	
 	InitializeWaypoints();
 }
 
