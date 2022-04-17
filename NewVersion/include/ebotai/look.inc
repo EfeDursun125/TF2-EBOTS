@@ -198,9 +198,24 @@ stock void LookAround(int client)
 				continue;
 			
 			float PlayerArea[3];
-			CNavArea area = NavMesh_GetNearestArea(GetOrigin(search), true, 768.0, false, false);
-			if (area != INVALID_NAV_AREA)
-				area.GetRandomPoint(PlayerArea);
+			if (TF2_HasTheFlag(search))
+				PlayerArea = GetOrigin(search);
+			else if (m_hasWaypoints)
+			{
+				int index = FindNearestWaypoint(GetEyePosition(search), 999999.0, client);
+				if (index != -1)
+				{
+					PlayerArea[0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
+					PlayerArea[1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
+					PlayerArea[2] = float(m_paths[index].origin[2]);
+				}
+			}
+			else
+			{
+				CNavArea area = NavMesh_GetNearestArea(GetEyePosition(search), true, 768.0, false, false);
+				if (area != INVALID_NAV_AREA)
+					area.GetRandomPoint(PlayerArea);
+			}
 			
 			if (TF2_GetPlayerClass(client) == TFClass_Heavy && IsWeaponSlotActive(client, 0))
 			{

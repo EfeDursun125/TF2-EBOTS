@@ -5,7 +5,8 @@ stock void CheckSlowThink(int client)
 	if (m_checkTimer[client] < GetGameTime())
 	{
 		m_isSlowThink[client] = true;
-		CheckWalls(client);
+		if (!m_hasWaypoints)
+			CheckWalls(client);
 
 		if (m_eBotSenseChance[client] <= 0)
 		{
@@ -26,6 +27,12 @@ stock void CheckSlowThink(int client)
 			if (GetConVarInt(m_eBotDodgeRangeMin) > GetConVarInt(m_eBotDodgeRangeMax))
 				SetConVarInt(m_eBotDodgeRangeMin, GetConVarInt(m_eBotDodgeRangeMax));
 			m_eBotDodgeRange[client] = GetRandomInt(GetConVarInt(m_eBotDodgeRangeMin), GetConVarInt(m_eBotDodgeRangeMax));
+		}
+
+		if (TF2_GetPlayerClass(client) == TFClass_Sniper && !m_hasEnemiesNear[client])
+		{
+			if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && IsMoving(client))
+				m_buttons[client] |= IN_ATTACK2;
 		}
 
 		if (TF2_GetPlayerClass(client) == TFClass_Pyro)
@@ -52,7 +59,7 @@ stock void CheckSlowThink(int client)
 			else
 				m_maxSticky[client] = false;
 
-			if (StrContains(currentMap, "ctf_" , false) != -1)
+			if (StrContains(currentMap, "ctdf_" , false) != -1)
 			{
 				int flag;
 				while ((flag = FindEntityByClassname(flag, "item_teamflag")) != INVALID_ENT_REFERENCE)

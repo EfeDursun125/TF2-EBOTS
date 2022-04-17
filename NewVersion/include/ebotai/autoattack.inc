@@ -9,19 +9,13 @@ stock void Attack(int client)
 	}
 	else
 	{
-		if (TF2_GetPlayerClass(client) != TFClass_Medic && !m_canAttack[client]) // its medic only, currently disabled for other classes.
-		{
-			m_canAttack[client] = true;
-			return;
-		}
-		
 		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Spy)
 		{
 			SpyAttack(client);
 			return;
 		}
 		
-		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) != TFClass_Spy && m_canAttack[client])
+		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) != TFClass_Spy)
 		{
 			AutoAttack(client);
 			return;
@@ -34,6 +28,18 @@ stock void AutoAttack(int client)
 	if (IsReloading(client))
 		return;
 	
+	if (TF2_GetPlayerClass(client) == TFClass_Sniper)
+	{
+		if (IsWeaponSlotActive(client, 0))
+		{
+			if (!TF2_IsPlayerInCondition(client, TFCond_Zoomed))
+				m_buttons[client] |= IN_ATTACK2;
+			else if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && m_isSlowThink[client] && GetRandomInt(1, 2) == 1)
+				m_buttons[client] |= IN_ATTACK;
+			return;
+		}
+	}
+
 	if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
 		m_attackTimer[client] = GetGameTime() + 0.4;

@@ -10,7 +10,7 @@ enum // highest = highest priority
 	PRO_GETAMMO,
 	PRO_GETHEALTH,
 	PRO_FLEE,
-	PRO_HIDEUNTILFIRE,
+	PRO_DEFEND,
 	PRO_HIDE,
 	PRO_BUILDDISPENSER,
 	PRO_BUILDTELEPORTER,
@@ -51,6 +51,10 @@ stock void StartProcess(int client, int process)
 			SpyLurkStart(client);
 		case PRO_SPYHUNT:
 			SpyHuntStart(client);
+		case PRO_DEFEND:
+			DefendStart(client);
+		case PRO_HEAL:
+			HealStart(client);
 	}
 }
 
@@ -74,6 +78,10 @@ stock void EndProcess(int client, int process)
 			SpyLurkEnd(client);
 		case PRO_SPYHUNT:
 			SpyHuntEnd(client);
+		case PRO_DEFEND:
+			DefendEnd(client);
+		case PRO_HEAL:
+			HealEnd(client);
 	}
 }
 
@@ -103,6 +111,10 @@ stock void UpdateProcess(int client)
 			SpyLurkUpdate(client);
 		case PRO_SPYHUNT:
 			SpyHuntUpdate(client);
+		case PRO_DEFEND:
+			DefendUpdate(client);
+		case PRO_HEAL:
+			HealUpdate(client);
 	}
 }
 
@@ -110,7 +122,7 @@ stock void FinishCurrentProcess(int client, bool nodbg = false)
 {
 	if (CurrentProcess[client] != PRO_DEFAULT)
 	{
-		if (!nodbg)
+		if (nodbg && CurrentProcess[client] != PRO_ATTACK)
 			PrintToServer("%N is cancelled %s process -> finished by the system.", client, GetProcessName(CurrentProcess[client]));
 		EndProcess(client, CurrentProcess[client]);
 		CurrentProcess[client] = PRO_DEFAULT;
@@ -136,6 +148,10 @@ stock bool IsReadyForTheProcess(int client, int process)
 			return SpyLurkRequirements(client);
 		case PRO_SPYHUNT:
 			return SpyHuntRequirements(client);
+		case PRO_DEFEND:
+			return DefendRequirements(client);
+		case PRO_HEAL:
+			return HealRequirements(client);
 	}
 
 	return true;
@@ -160,6 +176,10 @@ stock char GetProcessName(int process)
 			string = "SPY_LURK";
 		case PRO_SPYHUNT:
 			string = "SPY_HUNT";
+		case PRO_DEFEND:
+			string = "DEFEND";
+		case PRO_HEAL:
+			string = "HEAL";
 	}
 	return string;
 }

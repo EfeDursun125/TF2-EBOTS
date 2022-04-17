@@ -12,12 +12,13 @@ float nextDrawTime = 0.5;
 
 bool m_hasHealthWaypoints;
 bool m_hasAmmoWaypoints;
+bool m_hasSniperWaypoints;
 
 enum WaypointFlag
 {
 	WAYPOINT_JUMP = 1,
     WAYPOINT_SNIPER = 2,
-    WAYPOINT_HIDE = 3,
+    WAYPOINT_DEFEND = 3,
     WAYPOINT_FALLDAMAGE = 4,
     WAYPOINT_CROUCH = 5,
     WAYPOINT_AMMO = 6,
@@ -25,13 +26,14 @@ enum WaypointFlag
     WAYPOINT_RESUPPLY = 8,
     WAYPOINT_DOUBLEJUMP = 9,
     WAYPOINT_ROCKETJUMP = 10,
-    WAYPOINT_DEMOMANDEFEND = 11,
+    WAYPOINT_DEMOMANCAMP = 11,
     WAYPOINT_SENTRY = 12,
     WAYPOINT_DISPENSER = 13,
     WAYPOINT_TELEPORTERENTER = 14,
     WAYPOINT_TELEPORTEREXIT = 15,
     WAYPOINT_CAPTUREPOINT = 16,
-    WAYPOINT_NOSTRAFE = 17
+    WAYPOINT_NOSTRAFE = 17,
+    WAYPOINT_NOSPY = 18
 };
 
 enum AStarState_t {OPEN, CLOSED, NEW};
@@ -138,10 +140,11 @@ stock void DrawWaypoints()
 
     // reset the minimal distance changed before
     float nearestDistance = 999999999.0;
+    int range = 768;
     for (int i = 0; i < m_waypointNumber; i++)
     {
         float distance = GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(m_hostEntity), true);
-        if (distance > Squared(768))
+        if (distance > Squared(range))
             continue;
 
         // check the distance
@@ -164,19 +167,9 @@ stock void DrawWaypoints()
             color[1] = 52;
             color[2] = 123;
         }
-        else if (m_paths[i].team == 2)
-        {
-            color[0] = 255;
-            color[1] = 0;
-        }
-        else if (m_paths[i].team == 3)
-        {
-            color[1] = 0;
-            color[2] = 255;
-        }
         else if (m_paths[i].flags == _:WAYPOINT_SNIPER)
             color[2] = 255;
-        else if (m_paths[i].flags == _:WAYPOINT_HIDE)
+        else if (m_paths[i].flags == _:WAYPOINT_DEFEND)
         {
             color[0] = 255;
             color[1] = 125;
@@ -223,21 +216,37 @@ stock void DrawWaypoints()
             color[1] = 6;
             color[2] = 150;
         }
+        else if (m_paths[i].flags == _:WAYPOINT_NOSPY)
+        {
+            color[0] = 160;
+            color[1] = 124;
+            color[2] = 122;
+        }
+        else if (m_paths[i].team == 2)
+        {
+            color[0] = 255;
+            color[1] = 0;
+        }
+        else if (m_paths[i].team == 3)
+        {
+            color[1] = 0;
+            color[2] = 255;
+        }
 
         // convert int to float
         float indexOrigin[3];
         indexOrigin = VectorAsFloat(m_paths[i].origin);
         indexOrigin[2] += float(height);
 
-        TE_SetupBeamPoints(VectorAsFloat(m_paths[i].origin), indexOrigin, m_beamIndex, m_beamIndex, 0, 30, nextDrawTime, 1.75, 1.75, 5, 0.0, color, 20);
+        TE_SetupBeamPoints(VectorAsFloat(m_paths[i].origin), indexOrigin, m_beamIndex, m_beamIndex, 0, 30, nextDrawTime + 0.02, 1.75, 1.75, 5, 0.0, color, 20);
         TE_SendToClient(m_hostEntity);
     }
 
     // draw a paths, camplines and danger directions for nearest waypoint
-    if (nearestIndex != -1 && IsVisibleWaypoint(VectorAsInt(GetEyePosition(m_hostEntity)), m_paths[nearestIndex].origin))
+    if (nearestIndex != -1 && GetVectorDistance(GetEyePosition(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(range) && IsVisibleWaypoint(VectorAsInt(GetEyePosition(m_hostEntity)), m_paths[nearestIndex].origin))
     {
         // draw the camplines
-        if (m_paths[nearestIndex].flags == _:WAYPOINT_SNIPER)
+        if (m_paths[nearestIndex].flags == _:WAYPOINT_SNIPER || m_paths[nearestIndex].flags == _:WAYPOINT_DEFEND)
         {
             int height = 72;
             if (m_paths[nearestIndex].flags == _:WAYPOINT_CROUCH)
@@ -246,11 +255,11 @@ stock void DrawWaypoints()
             // convert int to float
             float indexOrigin[3];
             indexOrigin = VectorAsFloat(m_paths[nearestIndex].origin);
-            indexOrigin[2] = float(height);
+            indexOrigin[2] += float(height);
 
-            TE_SetupBeamPoints(indexOrigin, VectorAsFloat(m_paths[nearestIndex].campStart), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime, 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 20);
+            TE_SetupBeamPoints(indexOrigin, VectorAsFloat(m_paths[nearestIndex].campStart), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 20);
             TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(indexOrigin, VectorAsFloat(m_paths[nearestIndex].campEnd), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime, 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 20);
+            TE_SetupBeamPoints(indexOrigin, VectorAsFloat(m_paths[nearestIndex].campEnd), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 20);
             TE_SendToClient(m_hostEntity);
         }
 
@@ -278,12 +287,12 @@ stock void DrawWaypoints()
 
             if (IsConnected(m_paths[nearestIndex].pathIndex[i], nearestIndex)) // two way connection
             {
-                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime, 1.0, 1.0, 5, 0.0, {255, 255, 0, 255}, 20);
+                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, {255, 255, 0, 255}, 20);
                 TE_SendToClient(m_hostEntity);
             }
             else // one way connection
             {
-                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime, 1.0, 1.0, 5, 0.0, {255, 255, 255, 255}, 20);
+                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, {255, 255, 255, 255}, 20);
                 TE_SendToClient(m_hostEntity);
             }
         }
@@ -309,7 +318,7 @@ stock void DrawWaypoints()
                 indexOrigin2 = VectorAsFloat(m_paths[i].origin);
                 indexOrigin2[2] = float(m_paths[i].origin[2] + height2);
 
-                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime, 1.0, 1.0, 5, 0.0, {0, 192, 96, 255}, 20);
+                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, {0, 192, 96, 255}, 20);
                 TE_SendToClient(m_hostEntity);
             }
         }
@@ -322,24 +331,35 @@ stock void DrawWaypoints()
         if (m_paths[nearestIndex].flags == _:WAYPOINT_CROUCH)
             height = 9;
         origin[2] += height;
+        if (m_paths[nearestIndex].team == 2)
+        {
+            color[0] = 255;
+            color[2] = 0;
+        }
+        else if (m_paths[nearestIndex].team != 3)
+        {
+            color[0] = 255;
+            color[1] = 255;
+            color[2] = 255;
+        }
         if (m_paths[nearestIndex].radius > 0)
         {
             int root = m_paths[nearestIndex].radius;
-            TE_SetupBeamPoints(VectorWithRoot(origin, root, root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime, 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SetupBeamPoints(VectorWithRoot(origin, root, root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, color, 20);
             TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(VectorWithRoot(origin, root, root), VectorWithRoot(origin, root, -root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime, 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SetupBeamPoints(VectorWithRoot(origin, root, root), VectorWithRoot(origin, root, -root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, color, 20);
             TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, root, -root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime, 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, root, -root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, color, 20);
             TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime, 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, color, 20);
             TE_SendToClient(m_hostEntity);
         }
         else
         {
             int root = 8;
-            TE_SetupBeamPoints(VectorWithRoot(origin, root, -root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime, 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SetupBeamPoints(VectorWithRoot(origin, root, -root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, color, 20);
             TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime, 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, color, 20);
             TE_SendToClient(m_hostEntity);
         }
 
@@ -354,11 +374,11 @@ stock void DrawWaypoints()
         if (m_paths[i].flags == _:WAYPOINT_AMMO)
             wpflags = "Ammo";
         else if (m_paths[i].flags == _:WAYPOINT_CAPTUREPOINT)
-            wpflags = "Capture Point";
+            wpflags = "Capture";
         else if (m_paths[i].flags == _:WAYPOINT_CROUCH)
             wpflags = "Crouch";
-        else if (m_paths[i].flags == _:WAYPOINT_DEMOMANDEFEND)
-            wpflags = "DemoMan Defend";
+        else if (m_paths[i].flags == _:WAYPOINT_DEMOMANCAMP)
+            wpflags = "Demoman Sticky Trap";
         else if (m_paths[i].flags == _:WAYPOINT_DISPENSER)
             wpflags = "Dispenser";
         else if (m_paths[i].flags == _:WAYPOINT_DOUBLEJUMP)
@@ -367,8 +387,8 @@ stock void DrawWaypoints()
             wpflags = "Jump";
         else if (m_paths[i].flags == _:WAYPOINT_HEALTH)
             wpflags = "Health";
-        else if (m_paths[i].flags == _:WAYPOINT_HIDE)
-            wpflags = "Hide";
+        else if (m_paths[i].flags == _:WAYPOINT_DEFEND)
+            wpflags = "Defend";
         else if (m_paths[i].flags == _:WAYPOINT_FALLDAMAGE)
             wpflags = "Fall Damage";
         else if (m_paths[i].flags == _:WAYPOINT_RESUPPLY)
@@ -385,6 +405,8 @@ stock void DrawWaypoints()
             wpflags = "Teleporter Exit";
         else if (m_paths[i].flags == _:WAYPOINT_NOSTRAFE)
             wpflags = "No Strafe (Safe Movement)";
+        else if (m_paths[i].flags == _:WAYPOINT_NOSPY)
+            wpflags = "No Spy";
         
         SetHudTextParams(0.0, 0.0, nextDrawTime + 0.02, 255, 255, 255, 255, 2, 1.0, 0.0, 0.0);
         ShowHudText(m_hostEntity, -1, "Nearest Waypoint Data\nIndex: %d (%d/%d)\nTeam: %s\nActive Area: %d\nFlags: %s\nRadius: %d\nOrigin: %d %d %d\nAim Start Origin: %d %d %d\nAim End Origin: %d %d %d", m_paths[i].index, m_waypointNumber, MaxWaypoints, wpteam, m_paths[i].activeArea, wpflags, m_paths[i].radius, m_paths[i].origin[0], m_paths[i].origin[1], m_paths[i].origin[2], m_paths[i].campStart[0], m_paths[i].campStart[1], m_paths[i].campStart[2], m_paths[i].campEnd[0], m_paths[i].campEnd[1], m_paths[i].campEnd[2]);
@@ -415,7 +437,7 @@ stock bool IsWaypointReachable(int src[3], int destination[3])
         return false;
     
     // is the destination not close enough?
-    if (GetVectorDistance(VectorAsFloat(src), VectorAsFloat(destination)) > 350)
+    if (GetVectorDistance(VectorAsFloat(src), VectorAsFloat(destination)) > 300)
         return false;
     
     return IsVisibleWaypoint(src, destination);
@@ -425,7 +447,7 @@ stock void WaypointAdd(int origin[3])
 {
     if (m_waypointNumber >= MaxWaypoints)
     {
-        PrintHintTextToAll("Maximum number of waypoints reached (%d)", MaxWaypoints);
+        PrintHintTextToAll("Maximum number of waypoints reached (%d/%d)", MaxWaypoints, MaxWaypoints);
         return;
     }
 
@@ -612,27 +634,43 @@ stock int HeuristicNormal(int start, int goal)
     return GetWaypointDistance(start, goal);
 }
 
-stock int Normal(int current, int parent, int client)
+stock int CostNormal(int current, int parent, int client)
 {
-    int health = GetClientHealth(client);
-    if (m_paths[current].flags == _:WAYPOINT_FALLDAMAGE && health <= 100)
+    if (m_paths[current].flags == _:WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
         return 65355;
-
+    
+    // blocked waypoint
+    if (m_paths[current].activeArea != 0 && m_paths[current].activeArea != currentActiveArea)
+        return 65535;
+    
+    // not for our team
     int cteam = GetClientTeam(client);
-    if (m_paths[current].team == 2 && cteam == 3)
-        return 65355;
-    else if (m_paths[current].team == 3 && cteam == 2)
-        return 65355;
-    
-    if (TF2_GetPlayerClass(client) == TFClass_Scout)
-        return GetWaypointDistance(current, parent);
-    else if (m_paths[current].flags == _:WAYPOINT_DOUBLEJUMP)
+ 	if (cteam == 3 && m_paths[current].team == 2)
+    	return 65355;
+				
+   	if (cteam == 2 && m_paths[current].team == 3)
         return 65355;
     
-    if (m_paths[current].flags == _:WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || health <= 143))
+    // low health or don't want take any damage
+    if (m_paths[current].flags == _:WAYPOINT_FALLDAMAGE && (m_lowHealth[client] || GetRandomInt(1, 3) == 1 || TF2_GetPlayerClass(client) == TFClass_Spy))
         return 65355;
     
-	return GetWaypointDistance(current, parent) + GetRandomInt(client, 64);
+    if (m_paths[current].flags == _:WAYPOINT_NOSPY && TF2_GetPlayerClass(client) == TFClass_Spy)
+        return 65355;
+    
+    if (m_paths[current].flags == _:WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
+        return 65355;
+    
+    int distance = GetWaypointDistance(current, parent);
+    if (m_hasEnemiesNear[client] && distance <= GetWaypointDistance(FindNearestWaypoint(GetOrigin(client)), FindNearestWaypoint(m_lastEnemyOrigin[client])))
+        return 65355;
+    
+    // they don't let us jump
+    if (m_hasEnemiesNear[client] && m_paths[current].flags == _:WAYPOINT_JUMP)
+        return 65355;
+    
+    // litte randomness
+	return distance + GetRandomInt(client, 360);
 }
 
 // A* Pathfinding
@@ -655,7 +693,7 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client)
         astar[i].state = NEW;
     }
 
-    astar[srcIndex].g = Normal(srcIndex, -1, client);
+    astar[srcIndex].g = CostNormal(srcIndex, -1, client);
     astar[srcIndex].f = astar[srcIndex].g + HeuristicNormal(srcIndex, destIndex);
     astar[srcIndex].state = OPEN;
 
@@ -692,7 +730,7 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client)
                 continue;
 
             // calculate the F value as F = G + H
-            int g = astar[currentIndex].g + Normal(self, currentIndex, client);
+            int g = astar[currentIndex].g + CostNormal(self, currentIndex, client);
             int h = HeuristicNormal(self, destIndex);
             int f = g + h;
 
@@ -888,6 +926,7 @@ stock void InitTypes()
 {
     m_hasHealthWaypoints = false;
     m_hasAmmoWaypoints = false;
+    m_hasSniperWaypoints = false;
 
     for (int i = 0; i < m_waypointNumber; i++)
     {
@@ -900,6 +939,8 @@ stock void InitTypes()
             m_hasHealthWaypoints = true;
         else if (m_paths[i].flags == _:WAYPOINT_AMMO)
             m_hasAmmoWaypoints = true;
+        else if (m_paths[i].flags == _:WAYPOINT_SNIPER)
+            m_hasSniperWaypoints = true;
     }
 }
 

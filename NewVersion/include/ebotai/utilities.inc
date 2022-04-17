@@ -1,4 +1,5 @@
 char currentMap[PLATFORM_MAX_PATH];
+int currentActiveArea;
 
 int healthpacks = -1;
 int ammopacks = -1;
@@ -28,12 +29,12 @@ float m_moveVel[MAXPLAYERS + 1][3];
 
 int m_goalEntity[MAXPLAYERS + 1];	
 float m_goalPosition[MAXPLAYERS + 1][3];
+int m_goalIndex[MAXPLAYERS + 1];
 
 float m_attackTimer[MAXPLAYERS + 1];
 float m_attack2Timer[MAXPLAYERS + 1];
 
 bool m_isSlowThink[MAXPLAYERS + 1];
-bool m_canAttack[MAXPLAYERS+ 1 ];
 
 bool m_hasEnemiesNear[MAXPLAYERS + 1];
 bool m_hasFriendsNear[MAXPLAYERS + 1];
@@ -43,6 +44,7 @@ int m_friendsNearCount[MAXPLAYERS + 1];
 
 int m_nearestEnemy[MAXPLAYERS + 1];
 int m_nearestFriend[MAXPLAYERS + 1];
+float m_lastEnemyOrigin[MAXPLAYERS + 1][3];
 
 float m_enemyDistance[MAXPLAYERS + 1];
 float m_friendDistance[MAXPLAYERS + 1];
@@ -61,6 +63,7 @@ Handle EBotFPS;
 Handle EBotMelee;
 Handle EBotSenseMax;
 Handle EBotSenseMin;
+Handle m_eBotMedicFollowRange;
 Handle m_eBotDodgeRangeMin;
 Handle m_eBotDodgeRangeMax;
 Handle m_eBotDodgeRangeChance;
@@ -184,6 +187,11 @@ stock float[] GetOrigin(int entity)
 	float vector[3];
 	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vector);
 	return vector;
+}
+
+stock int GetEnemyTeam(int team)
+{
+	return team == 2 ? 3 : 2;
 }
 
 stock int[] VectorAsInt(float origin[3])
@@ -424,6 +432,45 @@ stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
 	}
 }
 
+stock void MoveToWaypoint(int client, float flGoal[3], float flDest[3])
+{
+	m_movePosition[client] = flGoal;
+
+	float flPos[3];
+	GetClientAbsOrigin(client, flPos);
+
+	if (flPos[0] == flGoal[0] && flPos[1] == flGoal[1])
+	{
+		m_moveVel[client][0] = 0.0;
+		m_moveVel[client][1] = 0.0;
+		m_moveVel[client][2] = 0.0;
+		return;
+	}
+
+	float fAng[3];
+	GetClientEyeAngles(client, fAng);
+	
+	float newmove[3];
+	SubtractVectors(flGoal, flPos, newmove);
+	
+	newmove[1] = -newmove[1];
+	
+	float sin = Sine(fAng[1] * FLOAT_PI / 180.0);
+	float cos = Cosine(fAng[1] * FLOAT_PI / 180.0);
+	
+	m_moveVel[client][0] = cos * newmove[0] - sin * newmove[1];
+	m_moveVel[client][1] = sin * newmove[0] + cos * newmove[1];
+	
+	NormalizeVector(m_moveVel[client], m_moveVel[client]);
+	
+	float distance = GetVectorDistance(flPos, flDest, true);
+	float maxSpeed = GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
+	if (distance <= Squaredf(maxSpeed))
+		ScaleVector(m_moveVel[client], distance / (maxSpeed / 10.0));
+	else
+		ScaleVector(m_moveVel[client], maxSpeed);
+}
+
 stock void MoveOut(int client, float flGoal[3], bool checkStuck = true)
 {
 	m_movePosition[client] = flGoal;
@@ -467,16 +514,16 @@ stock void MoveOut(int client, float flGoal[3], bool checkStuck = true)
 	}
 }
 
-stock void BackstabMove(int client, int target, bool checkStuck = true)
+stock void BackstabMove(int client, int target, bool moveForward = true)
 {
 	float flBotAng[3], flTargetAng[3];
 	GetClientEyeAngles(client, flBotAng);
 	GetClientEyeAngles(target, flTargetAng);
 	float iAngleDiff = AngleDiff(flBotAng[1], flTargetAng[1]);
 	
-	if (GetClientAimTarget(target) > 0)
+	if (moveForward && GetClientAimTarget(target) > 0)
 		m_moveVel[client][0] = -500.0;
-	else
+	else if (moveForward)
 		m_moveVel[client][0] = 500.0;
 	
 	if (iAngleDiff > 90)
@@ -1018,6 +1065,21 @@ stock bool IsClientAimingToPosition(int client, float targetposition[3])
 	return false;
 }
 
+stock void GetAimOrigin(int client, float aimorigin[3]) 
+{
+	if (!IsValidClient(client))
+		return;
+	
+    float angles[3];
+	float origin[3];
+    GetClientEyePosition(client, origin);
+    GetClientEyeAngles(client, angles);
+
+    Handle trace = TR_TraceRayFilterEx(origin, angles, MASK_CUSTOM, RayType_Infinite, TraceEntityFilterStuff);
+	TR_GetEndPosition(aimorigin, trace);
+    delete trace;
+}
+
 stock int Max(int one, int two)
 {
 	if (one > two)
@@ -1037,7 +1099,7 @@ stock int Abs(int value)
    return value < 0 ? -value : value;
 }
 
-stock bool ClientViews(int Viewer, int Target, float fMaxDistance = 0.0, float fThreshold = 0.70)
+stock bool ClientViews(int Viewer, int Target, float fMaxDistance = 0.0, float fThreshold = 0.75)
 {
     float fViewPos[3];   GetClientEyePosition(Viewer, fViewPos);
     float fViewAng[3];   GetClientEyeAngles(Viewer, fViewAng);
