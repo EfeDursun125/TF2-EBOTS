@@ -12,10 +12,11 @@ public Plugin myinfo =
 	name = "[TF2] E-BOT",
 	author = "EfeDursun125",
 	description = "",
-	version = "0.01",
+	version = "0.02",
 	url = "https://steamcommunity.com/id/EfeDursun91/"
 }
 
+#pragma tabsize 0
 #include <ebotai/process>
 #include <ebotai/utilities>
 #include <ebotai/waypoints>
@@ -32,8 +33,10 @@ public Plugin myinfo =
 #include <ebotai/goap/getammo>
 #include <ebotai/goap/attack>
 #include <ebotai/goap/idle>
+#include <ebotai/goap/defend>
 #include <ebotai/goap/spylurk>
 #include <ebotai/goap/spyhunt>
+#include <ebotai/goap/heal>
 
 // trigger on plugin start
 public void OnPluginStart()
@@ -49,16 +52,23 @@ public void OnPluginStart()
 	RegConsoleCmd("ebot_waypoint_add_radius", AddRadius, "after 128 it will be 0");
 	RegConsoleCmd("ebot_waypoint_set_flag", SetFlag);
 	RegConsoleCmd("ebot_waypoint_set_team", SetTeam);
+	RegConsoleCmd("ebot_waypoint_set_area", SetArea);
+	RegConsoleCmd("ebot_waypoint_set_aim_start", SetAim1);
+	RegConsoleCmd("ebot_waypoint_set_aim_end", SetAim2);
 	CreateDirectory("addons/sourcemod/ebotWaypoints", 3);
 	HookEvent("player_hurt", BotHurt, EventHookMode_Post);
 	HookEvent("player_spawn", BotSpawn, EventHookMode_Post);
+	HookEvent("teamplay_point_startcapture", PointStartCapture, EventHookMode_Post);
+	HookEvent("teamplay_point_unlocked", PointUnlocked, EventHookMode_Post);
+	HookEvent("teamplay_point_captured", PointCaptured, EventHookMode_Post);
 	EBotDebug = CreateConVar("ebot_debug", "0", "");
 	EBotFPS = CreateConVar("ebot_run_fps", "0.05", "0.033 = 29 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS | 0.2 = 5 FPS");
 	EBotMelee = CreateConVar("ebot_melee_range", "128", "");
 	EBotSenseMin = CreateConVar("ebot_minimum_sense_chance", "10", "Minimum 10");
 	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Maximum 90");
-	m_eBotDodgeRangeMin = CreateConVar("ebot_minimum_dodge_range", "768", "the range when enemy closer than a value, bot will start dodging enemies");
-	m_eBotDodgeRangeMax = CreateConVar("ebot_maximum_dodge_range", "1536", "the range when enemy closer than a value, bot will start dodging enemies");
+	m_eBotMedicFollowRange = CreateConVar("ebot_medic_follow_range", "300", "");
+	m_eBotDodgeRangeMin = CreateConVar("ebot_minimum_dodge_range", "512", "the range when enemy closer than a value, bot will start dodging enemies");
+	m_eBotDodgeRangeMax = CreateConVar("ebot_maximum_dodge_range", "1024", "the range when enemy closer than a value, bot will start dodging enemies");
 	m_eBotDodgeRangeChance = CreateConVar("ebot_dodge_change_range_chance", "10", "the chance for change dodge range when attack process ends (1-100)");
 }
 
@@ -74,6 +84,7 @@ public void OnMapStart()
 	ServerCommand("sv_tags ebot");
 	AddServerTag("ebot");
 
+	currentActiveArea = 1;
 	healthpacks = 0;
 	ammopacks = 0;
 	for (int x = 0; x <= GetMaxEntities(); x++)
@@ -106,6 +117,8 @@ public void OnMapStart()
 // trigger on client put in the server
 public void OnClientPutInServer(int client)
 {
+	SetConVarInt(FindConVar("mp_waitingforplayers_cancel"), 1);
+
 	// delete path positions
 	delete m_positions[client];
 	m_positions[client] = new ArrayList(3);
@@ -258,6 +271,48 @@ public Action PathDelete(int client, int args)
 	return Plugin_Handled;
 }
 
+public Action SetArea(int client, int args)
+{
+	char area[32];
+    GetCmdArgString(area, sizeof(area));
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	{
+		m_paths[nearestIndex].activeArea = StringToInt(area);
+		PrintHintTextToAll("Waypoint Area Set: %d", StringToInt(area));
+	}
+	else
+		PrintHintTextToAll("Move closer to waypoint");
+	return Plugin_Handled;
+}
+
+public Action SetAim1(int client, int args)
+{
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	{
+		float origin[3];
+		GetAimOrigin(m_hostEntity, origin);
+		m_paths[nearestIndex].campStart = VectorAsInt(origin);
+		PrintHintTextToAll("Waypoint Set Aim Start: %d %d %d", m_paths[nearestIndex].campStart[0], m_paths[nearestIndex].campStart[1], m_paths[nearestIndex].campStart[2]);
+	}
+	else
+		PrintHintTextToAll("Move closer to waypoint");
+	return Plugin_Handled;
+}
+
+public Action SetAim2(int client, int args)
+{
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	{
+		float origin[3];
+		GetAimOrigin(m_hostEntity, origin);
+		m_paths[nearestIndex].campEnd = VectorAsInt(origin);
+		PrintHintTextToAll("Waypoint Set Aim End: %d %d %d", m_paths[nearestIndex].campEnd[0], m_paths[nearestIndex].campEnd[1], m_paths[nearestIndex].campEnd[2]);
+	}
+	else
+		PrintHintTextToAll("Move closer to waypoint");
+	return Plugin_Handled;
+}
+
 public void OnGameFrame()
 {
 	DrawWaypoints();
@@ -369,6 +424,9 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_lowAmmo[client] = false;
 		m_lowHealth[client] = false;
 		m_knownSpy[client] = -1;
+		m_goalIndex[client] = -1;
+		SelectObjective(client);
+		SetProcess(client, PRO_DEFAULT, true, 99999.0, "", true);
 	}
 }
 
@@ -394,7 +452,7 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 		{
 			for (int search = 1; search <= MaxClients; search++)
 			{
-				if (IsValidClient(search) && IsClientInGame(search) && IsPlayerAlive(search) && search != client && GetClientTeam(client) != GetClientTeam(search))
+				if (IsValidClient(search) && IsPlayerAlive(search) && search != client && GetClientTeam(client) != GetClientTeam(search))
 				{
 					if (ChanceOf(m_eBotSenseChance[search]) && IsFakeClient(search))
 						m_knownSpy[search] = client;
@@ -402,4 +460,44 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 			}
 		}
 	}
+}
+
+public Action PointStartCapture(Handle event, char[] name, bool dontBroadcast)
+{
+	int currentArea = GetEventInt(event, "cp");
+	currentActiveArea = currentArea + 1;
+	if (currentActiveArea >= 7)
+		currentActiveArea = 1;
+	if (currentActiveArea < 1)
+		currentActiveArea = 1;
+	if (GetConVarInt(EBotDebug) == 1)
+		PrintHintTextToAll("Active area: %d", currentActiveArea);
+}
+
+public Action PointUnlocked(Handle event, char[] name, bool dontBroadcast)
+{
+	int currentArea = GetEventInt(event, "cp");
+	currentActiveArea = currentArea + 1;
+	if (currentActiveArea >= 7)
+		currentActiveArea = 1;
+	if (currentActiveArea < 1)
+		currentActiveArea = 1;
+	if (GetConVarInt(EBotDebug) == 1)
+		PrintHintTextToAll("Active area: %d", currentActiveArea);
+}
+
+public Action PointCaptured(Handle event, char[] name, bool dontBroadcast)
+{
+	int currentArea = GetEventInt(event, "cp");
+	int team = GetEventInt(event, "team");
+	if (team == 3)
+		currentActiveArea = currentArea + 2;
+	else
+		currentActiveArea = currentArea - 2;
+	if (currentActiveArea >= 7)
+		currentActiveArea = 1;
+	if (currentActiveArea < 1)
+		currentActiveArea = 1;
+	if (GetConVarInt(EBotDebug) == 1)
+		PrintHintTextToAll("Active area: %d", currentActiveArea);
 }
