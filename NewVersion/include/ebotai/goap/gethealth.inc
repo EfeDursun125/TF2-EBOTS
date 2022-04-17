@@ -90,11 +90,23 @@ stock int FindHealthWaypoint(int client)
 	ArrayList AllHealthPacks = new ArrayList();
 	for (int i = 0; i < m_waypointNumber; i++)
 	{
-		if (m_paths[i].flags != _:WAYPOINT_HEALTH || (m_paths[i].flags == _:WAYPOINT_RESUPPLY && m_paths[i].team != GetClientTeam(client)))
+		// blocked waypoint
+		if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
 			continue;
 		
+		if (m_paths[i].flags != _:WAYPOINT_HEALTH && m_paths[i].flags != _:WAYPOINT_RESUPPLY)
+			continue;
+		
+		// not for our team
+    	if (m_paths[i].team == GetEnemyTeam(GetClientTeam(client)))
+      		continue;
+		
 		// only get safe health packs
-		if (m_hasEnemiesNear[client] && GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(m_nearestEnemy[client]), true) <= Squared(1536))
+		float distance = GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(m_nearestEnemy[client]), true);
+		if (m_hasEnemiesNear[client] && distance <= Squared(768))
+			continue;
+		
+		if (m_hasEnemiesNear[client] && distance <= GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client)))
 			continue;
 		
 		if (GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client), true) <= Squared(1024))
@@ -105,9 +117,9 @@ stock int FindHealthWaypoint(int client)
 			AllHealthPacks.Push(i);
 	}
 
-	if (NearHealthPacks.Length > 0)
+	if (NearHealthPacks.Length > 1)
 		index = NearHealthPacks.Get(GetRandomInt(0, NearHealthPacks.Length - 1));
-	else if (MedHealthPacks.Length > 0)
+	else if (MedHealthPacks.Length > 1)
 		index = MedHealthPacks.Get(GetRandomInt(0, MedHealthPacks.Length - 1));
 	else if (AllHealthPacks.Length > 0)
 		index = AllHealthPacks.Get(GetRandomInt(0, AllHealthPacks.Length - 1));
@@ -116,6 +128,7 @@ stock int FindHealthWaypoint(int client)
 	delete MedHealthPacks;
 	delete AllHealthPacks;
 
+	m_goalIndex[client] = index;
 	return index;
 }
 

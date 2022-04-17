@@ -35,6 +35,9 @@ stock void AttackStart(int client)
 float m_wasdTimer[MAXPLAYERS + 1];
 stock void AttackUpdate(int client)
 {
+	if (m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]))
+		FinishCurrentProcess(client, true);
+	
 	if (TF2_IsPlayerInCondition(client, TFCond_CritOnWin) && m_hasEnemiesNear[client])
 	{
 		FollowPath(client, GetOrigin(m_nearestEnemy[client]));

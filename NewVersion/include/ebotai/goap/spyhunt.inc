@@ -44,19 +44,27 @@ stock void SpyHuntUpdate(int client)
 	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) && distance <= range)
 	{
 		BackstabMove(client, m_goalEntity[client]);
-		m_moveVel[client][1] = -500.0;
+		if (distance <= Squared(128))
+			m_moveVel[client][0] = -500.0;
 		return;
 	}
 	else
 	{
 		if (m_hasEnemiesNear[client] && m_enemiesNearCount[client] > 1)
 		{
-			if (distance >= range)
+			float distance2 = GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true);
+			int range2 = Squared(256);
+			if (distance2 <= range2)
+			{
+				BackstabMove(client, m_nearestEnemy[client]);
+				if (distance2 <= Squared(128))
+					m_moveVel[client][0] = -500.0;
+				return;
+			}
+			else if (distance >= range)
 				FollowPath(client, GetOrigin(m_goalEntity[client]));
-			//else if (IsClientAimingToMe(client, m_))
-			//{
-				// Content
-			//}
+			else if (IsClientAimingToMe(client, m_nearestEnemy[client]) && IsAttacking(m_nearestEnemy[client]) && GetRandomInt(1, 2) == 1)
+				SetProcess(client, PRO_ATTACK, true, 180.0, "", true);
 		}
 		else
 		{
@@ -93,7 +101,7 @@ stock void SpyReactChecker(int client)
 			if (!m_lowHealth[client] && GetClientHealth(m_nearestEnemy[client]) <= 175.0) // maybe i can kill him?
 			{
 				EquipWeaponSlot(client, 0);
-				SetProcess(client, PRO_ATTACK, false, 120.0, "", true);
+				SetProcess(client, PRO_ATTACK, false, 180.0, "", true);
 			}
 			else // maybe not.
 				m_buttons[client] |= IN_ATTACK2;

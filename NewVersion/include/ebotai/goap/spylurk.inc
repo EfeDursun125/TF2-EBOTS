@@ -22,7 +22,7 @@ stock void SpyLurkUpdate(int client)
 		return;
 	}
 
-	if (IsValidClient(m_goalEntity[client]))
+	if (IsValidClient(m_goalEntity[client]) && IsPlayerAlive(m_goalEntity[client]))
 		FollowPath(client, GetOrigin(m_goalEntity[client]));
 	else if (IsValidEntity(m_goalEntity[client]))
 		ObjectiveMovement(client);
@@ -40,10 +40,19 @@ stock void SpyLurkUpdate(int client)
 	
 	if (m_hasEnemiesNear[client])
 	{
+		float distance = GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true);
+		int range = Squared(256);
+		if (distance <= range)
+		{
+			BackstabMove(client, m_nearestEnemy[client]);
+			if (distance <= Squared(128))
+				m_moveVel[client][0] = -500.0;
+			return;
+		}
 		m_goalEntity[client] = m_nearestEnemy[client];
 		if (IsValidClient(m_goalEntity[client]))
 		{
-			SetProcess(client, PRO_SPYHUNT, false, GetRandomFloat(10.0, 20.0), "| process started -> try to hunt down enemies");
+			SetProcess(client, PRO_SPYHUNT, true, GetRandomFloat(10.0, 20.0), "| process started -> try to hunt down enemies");
 			return;
 		}
 	}
