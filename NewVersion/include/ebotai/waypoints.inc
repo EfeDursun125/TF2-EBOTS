@@ -1032,7 +1032,7 @@ stock void WaypointSave()
     
     // remember original waypoint author
     File rf = OpenFile(filepath, "rb");
-    if (rf == null)
+    if (rf != null)
     {
         rf.Read(header, sizeof(header), 4);
         rf.Close();
