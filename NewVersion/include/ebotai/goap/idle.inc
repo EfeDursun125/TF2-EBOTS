@@ -19,6 +19,7 @@ stock void IdleStart(int client)
 stock void IdleUpdate(int client)
 {
 	FindFriendsAndEnemiens(client);
+	FindEnemyEntities(client);
 	LookUpdate(client, false);
 }
 

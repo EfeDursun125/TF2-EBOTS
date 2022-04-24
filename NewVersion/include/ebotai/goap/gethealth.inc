@@ -10,6 +10,7 @@ stock bool GetHealthRequirements(int client)
 		return false;
 
 	if (m_hasWaypoints && !m_hasHealthWaypoints)
+		return false;
 	
 	if (TF2_HasTheFlag(client))
 		return false;
@@ -33,6 +34,7 @@ stock void GetHealthUpdate(int client)
 	}
 	
 	FindFriendsAndEnemiens(client);
+	FindEnemyEntities(client);
 	LookUpdate(client);
 	
 	if (m_hasWaypoints)
@@ -47,12 +49,7 @@ stock void GetHealthUpdate(int client)
 				FollowPath(client, m_goalPosition[client]);
 		}
 		else
-		{
-			FindNearestHealthPack(client);
-			// check again
-			if (!IsValidEntity(m_goalEntity[client])) // no avaliable health packs.
-				SetProcess(client, PRO_DEFAULT, true, 9999.0, "| process cancelled -> no health packs found");
-		}
+			FinishCurrentProcess(client, true);
 	}
 	else if (IsValidEntity(m_goalEntity[client]))
 	{
@@ -73,7 +70,7 @@ stock void GetHealthUpdate(int client)
 		FindNearestHealthPack(client);
 		// check again
 		if (!IsValidEntity(m_goalEntity[client])) // no avaliable health packs.
-			SetProcess(client, PRO_DEFAULT, true, 9999.0, "| process cancelled -> no health packs found");
+			FinishCurrentProcess(client, true);
 	}
 }
 
@@ -92,6 +89,9 @@ stock int FindHealthWaypoint(int client)
 	{
 		// blocked waypoint
 		if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+			continue;
+		
+		if (m_lastFailedWaypoint[client] == i)
 			continue;
 		
 		if (m_paths[i].flags != _:WAYPOINT_HEALTH && m_paths[i].flags != _:WAYPOINT_RESUPPLY)
@@ -142,7 +142,7 @@ stock void FindNearestHealthPack(int client)
 			continue;
 		
 		// only get safe health packs
-		if (m_hasEnemiesNear[client] && GetVectorDistance(GetOrigin(x), GetOrigin(m_nearestEnemy[client]), true) <= Squared(1536))
+		if (m_hasEnemiesNear[client] && GetVectorDistance(GetOrigin(x), GetOrigin(m_nearestEnemy[client]), true) <= Squared(768))
 			continue;
 		
 		if (!IsPathPossible(GetOrigin(client), GetOrigin(x)))

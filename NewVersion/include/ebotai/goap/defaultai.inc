@@ -1,16 +1,16 @@
-stock bool DefaultRequirements(int client)
+public bool DefaultRequirements(int client)
 {
 	return true;
 }
 
-stock void DefaultStart(int client)
+public void DefaultStart(int client)
 {
 	if (TF2_GetPlayerClass(client) == TFClass_Spy)
-		SetProcess(client, PRO_SPYLURK, true, 9999.0, "", true);
+		SetProcess(client, PRO_SPYLURK, 9999.0, "", true);
 	SelectObjective(client);
 }
 
-stock void DefaultUpdate(int client)
+public void DefaultUpdate(int client)
 {
 	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_CritOnWin))
 	{
@@ -21,16 +21,17 @@ stock void DefaultUpdate(int client)
 	}
 
 	FindFriendsAndEnemiens(client);
+	FindEnemyEntities(client);
 
 	if (m_hasEnemiesNear[client])
-		SetProcess(client, PRO_ATTACK, false, 180.0, "", true);
+		SetProcess(client, PRO_ATTACK, 180.0, "", true);
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Medic)
 	{
 		if (m_hasEnemiesNear[client] && m_hasFriendsNear[client] && m_friendDistance[client] <= m_enemyDistance[client])
-			SetProcess(client, PRO_HEAL, true, 6.0, "", true);
+			SetProcess(client, PRO_HEAL, 6.0, "", true);
 		else if (!m_hasEnemiesNear[client] && m_hasFriendsNear[client])
-			SetProcess(client, PRO_HEAL, true, 6.0, "", true);
+			SetProcess(client, PRO_HEAL, 6.0, "", true);
 	}
 
 	CheckHealth(client);
@@ -78,14 +79,14 @@ stock void DefaultUpdate(int client)
 	LookUpdate(client);
 }
 
-stock void DefaultEnd(int client)
+public void DefaultEnd(int client)
 {
 	if (TF2_GetPlayerClass(client) == TFClass_Spy)
 		return;
 	m_goalEntity[client] = -1;
 }
 
-stock void SelectObjective(int client)
+public void SelectObjective(int client)
 {
 	if (m_hasWaypoints && TF2_GetPlayerClass(client) == TFClass_Sniper && m_hasSniperWaypoints)
 	{
@@ -96,6 +97,9 @@ stock void SelectObjective(int client)
 		{
 			// blocked waypoint
    			if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+				continue;
+			
+			if (m_lastFailedWaypoint[client] == i)
 				continue;
 
 			if (m_paths[i].flags != _:WAYPOINT_SNIPER)
@@ -109,7 +113,7 @@ stock void SelectObjective(int client)
    			if (cteam == 2 && m_paths[i].team == 3)
         		continue;
 
-			if (m_hasEnemiesNear[client] && GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(m_nearestEnemy[client]), true) > Squared(768))
+			if (!IsWaypointUsed(i))
 				GoodSniperPoints.Push(i);
 			else
 				AllSniperPoints.Push(i);
@@ -225,6 +229,9 @@ stock void SelectObjective(int client)
 				
 				if (m_paths[i].flags == _:WAYPOINT_CAPTUREPOINT)
 					ControlPoints.Push(i);
+				
+				if (m_lastFailedWaypoint[client] == i)
+					continue;
 				
 				if (m_paths[i].flags != _:WAYPOINT_DEFEND)
 					continue;

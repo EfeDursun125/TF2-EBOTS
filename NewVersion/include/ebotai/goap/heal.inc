@@ -1,7 +1,5 @@
 stock bool HealRequirements(int client)
 {
-	if (TF2_GetPlayerClass(client) != TFClass_Medic)
-		return false;
 	return true;
 }
 
@@ -12,26 +10,16 @@ stock void HealStart(int client)
 
 stock void HealUpdate(int client)
 {
-	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_CritOnWin))
-	{
-		LookUpdate(client);
-		FollowPath(client, GetOrigin(m_nearestEnemy[client]));
-		FindFriendsAndEnemiens(client);
-		return;
-	}
-
 	FindFriendsAndEnemiens(client);
+	FindEnemyEntities(client);
 
 	if (m_hasEnemiesNear[client] && m_hasFriendsNear[client] && m_friendDistance[client] > m_enemyDistance[client])
-		SetProcess(client, PRO_ATTACK, true, 180.0, "", true);
-
-	//CheckHealth(client); not ready now
-	CheckAmmo(client);
-
+		SetProcess(client, PRO_ATTACK, 180.0, "", true);
+	
 	if (m_hasFriendsNear[client])
 	{
 		CurrentProcessTime[client] = GetGameTime() + 6.0; // no timeout if we have friends nearby
-		if (m_friendDistance[client] < Squared(GetConVarInt(m_eBotMedicFollowRange)))
+		if (m_friendDistance[client] <= Squared(GetConVarInt(m_eBotMedicFollowRange)))
 		{
 			if (IsWeaponSlotActive(client, 1))
 			{

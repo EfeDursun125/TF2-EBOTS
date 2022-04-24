@@ -1,4 +1,4 @@
-stock bool SpyHuntRequirements(int client)
+public bool SpyHuntRequirements(int client)
 {
 	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked) && IsVisible(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client])))
 		return false;
@@ -15,21 +15,13 @@ stock bool SpyHuntRequirements(int client)
 	return true;
 }
 
-stock void SpyHuntStart(int client)
+public void SpyHuntStart(int client)
 {
 	EquipWeaponSlot(client, 2);
 }
 
-stock void SpyHuntUpdate(int client)
+public void SpyHuntUpdate(int client)
 {
-	if (TF2_IsPlayerInCondition(client, TFCond_CritOnWin) && m_hasEnemiesNear[client])
-	{
-		FollowPath(client, GetOrigin(m_nearestEnemy[client]));
-		FindFriendsAndEnemiens(client);
-		LookUpdate(client);
-		return;
-	}
-
 	if (!IsValidClient(m_goalEntity[client]) || !IsPlayerAlive(m_goalEntity[client]))
 	{
 		FinishCurrentProcess(client);
@@ -44,8 +36,6 @@ stock void SpyHuntUpdate(int client)
 	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) && distance <= range)
 	{
 		BackstabMove(client, m_goalEntity[client]);
-		if (distance <= Squared(128))
-			m_moveVel[client][0] = -500.0;
 		return;
 	}
 	else
@@ -57,14 +47,12 @@ stock void SpyHuntUpdate(int client)
 			if (distance2 <= range2)
 			{
 				BackstabMove(client, m_nearestEnemy[client]);
-				if (distance2 <= Squared(128))
-					m_moveVel[client][0] = -500.0;
 				return;
 			}
 			else if (distance >= range)
 				FollowPath(client, GetOrigin(m_goalEntity[client]));
 			else if (IsClientAimingToMe(client, m_nearestEnemy[client]) && IsAttacking(m_nearestEnemy[client]) && GetRandomInt(1, 2) == 1)
-				SetProcess(client, PRO_ATTACK, true, 180.0, "", true);
+				SetProcess(client, PRO_ATTACK, 180.0, "", true);
 		}
 		else
 		{
@@ -79,17 +67,18 @@ stock void SpyHuntUpdate(int client)
 	}
 
 	FindFriendsAndEnemiens(client);
+	FindEnemyEntities(client);
 	CheckHealth(client);
 	CheckAmmo(client);
 }
 
-stock void SpyHuntEnd(int client)
+public void SpyHuntEnd(int client)
 {
 	if (IsValidClient(m_goalEntity[client]) && ChanceOf(m_eBotSenseChance[client]))
 		FakeClientCommandThrottled(client, "lastdisguise");
 }
 
-stock void SpyReactChecker(int client) 
+public void SpyReactChecker(int client) 
 {
 	if (m_hasEnemiesNear[client])
 	{
@@ -101,33 +90,30 @@ stock void SpyReactChecker(int client)
 			if (!m_lowHealth[client] && GetClientHealth(m_nearestEnemy[client]) <= 175.0) // maybe i can kill him?
 			{
 				EquipWeaponSlot(client, 0);
-				SetProcess(client, PRO_ATTACK, false, 180.0, "", true);
+				SetProcess(client, PRO_ATTACK, 180.0, "", true);
 			}
 			else // maybe not.
 				m_buttons[client] |= IN_ATTACK2;
 		}
 	}
 	
-	/*if (HasEnemyBuildingsNear[client])
+	if (m_hasEntitiesNear[client])
 	{
-		if (!IsValidEntity(NearestEnemyBuilding[client]))
-			return;
-		
 		if (!TF2_IsPlayerInCondition(client, TFCond_Cloaked) && !TF2_IsPlayerInCondition(client, TFCond_Disguised))
 			m_buttons[client] |= IN_ATTACK2;
-	}*/
+	}
 	
-	if (!m_hasEnemiesNear[client])// && (!HasEnemyBuildingsNear[client]) && TF2_IsPlayerInCondition(client, TFCond_Disguised))
+	if (!m_hasEnemiesNear[client] && (!m_hasEntitiesNear[client]) && TF2_IsPlayerInCondition(client, TFCond_Disguised))
 	{
 		if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) && TF2_IsPlayerInCondition(client, TFCond_Disguised))
 			m_buttons[client] |= IN_ATTACK2;
 	}
 	
-	if (IsWeaponSlotActive(client, 5) && !m_hasEnemiesNear[client]) //&& !HasEnemyBuildingsNear[client])
+	if (IsWeaponSlotActive(client, 5) && !m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])
 		EquipWeaponSlot(client, 2);
 }
 
-stock void SpyAimLogic(int client)
+public void SpyAimLogic(int client)
 {
 	if (TF2_IsPlayerInCondition(client, TFCond_Disguised) && m_hasEnemiesNear[client] && GetClientAimTarget(m_nearestEnemy[client]) == client && IsAttacking(m_nearestEnemy[client])) // enemy looking at me
 	{

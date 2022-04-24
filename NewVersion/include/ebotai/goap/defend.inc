@@ -25,7 +25,7 @@ stock void DefendUpdate(int client)
 	}
 	
 	if (m_hasEnemiesNear[client] && ClientViews(m_nearestEnemy[client], client, 0.7) && IsAttacking(m_nearestEnemy[client]))
-		SetProcess(client, PRO_ATTACK, true, 180.0, "", true);
+		SetProcess(client, PRO_ATTACK, 180.0, "", true);
 
 	if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squared(24))
 	{

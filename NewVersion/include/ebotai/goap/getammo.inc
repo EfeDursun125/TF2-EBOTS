@@ -9,6 +9,9 @@ stock bool GetAmmoRequirements(int client)
 	if (!m_lowHealth[client])
 		return false;
 	
+	if (m_hasWaypoints && !m_hasAmmoWaypoints)
+		return false;
+	
 	if (TF2_HasTheFlag(client))
 		return false;
 	
@@ -30,9 +33,22 @@ stock void GetAmmoUpdate(int client)
 	}
 	
 	FindFriendsAndEnemiens(client);
+	FindEnemyEntities(client);
 	LookUpdate(client);
 	
-	if (IsValidEntity(m_goalEntity[client]))
+	if (m_hasWaypoints)
+	{
+		int index = FindAmmoWaypoint(client);
+		if (index != -1)
+		{
+			m_goalPosition[client] = VectorAsFloat(m_paths[index].origin);
+			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squared(48))
+				MoveTo(client, m_goalPosition[client], false);
+			else
+				FollowPath(client, m_goalPosition[client]);
+		}
+	}
+	else if (IsValidEntity(m_goalEntity[client]))
 	{
 		if (!IsValidAmmoPack(m_goalEntity[client]))
 		{
@@ -51,13 +67,66 @@ stock void GetAmmoUpdate(int client)
 		FindNearestAmmoPack(client);
 		// check again
 		if (!IsValidEntity(m_goalEntity[client])) // no avaliable ammo packs.
-			SetProcess(client, PRO_DEFAULT, true, 9999.0, "| process cancelled -> no ammo packs found");
+			FinishCurrentProcess(client, true);
 	}
 }
 
 stock void GetAmmoEnd(int client)
 {
 	m_goalEntity[client] = -1;
+}
+
+stock int FindAmmoWaypoint(int client)
+{
+	int index = -1;
+	ArrayList NearAmmoPacks = new ArrayList();
+	ArrayList MedAmmoPacks = new ArrayList();
+	ArrayList AllAmmoPacks = new ArrayList();
+	for (int i = 0; i < m_waypointNumber; i++)
+	{
+		// blocked waypoint
+		if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+			continue;
+		
+		if (m_lastFailedWaypoint[client] == i)
+			continue;
+		
+		if (m_paths[i].flags != _:WAYPOINT_AMMO && m_paths[i].flags != _:WAYPOINT_RESUPPLY)
+			continue;
+		
+		// not for our team
+    	if (m_paths[i].team == GetEnemyTeam(GetClientTeam(client)))
+      		continue;
+		
+		// only get safe ammo packs
+		float distance = GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(m_nearestEnemy[client]), true);
+		if (m_hasEnemiesNear[client] && distance <= Squared(768))
+			continue;
+		
+		if (m_hasEnemiesNear[client] && distance <= GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client)))
+			continue;
+		
+		if (GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client), true) <= Squared(1024))
+			NearAmmoPacks.Push(i);
+		else if (GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client), true) <= Squared(2048))
+			MedAmmoPacks.Push(i);
+		else
+			AllAmmoPacks.Push(i);
+	}
+
+	if (NearAmmoPacks.Length > 1)
+		index = NearAmmoPacks.Get(GetRandomInt(0, NearAmmoPacks.Length - 1));
+	else if (MedAmmoPacks.Length > 1)
+		index = MedAmmoPacks.Get(GetRandomInt(0, MedAmmoPacks.Length - 1));
+	else if (AllAmmoPacks.Length > 0)
+		index = AllAmmoPacks.Get(GetRandomInt(0, AllAmmoPacks.Length - 1));
+
+	delete NearAmmoPacks;
+	delete MedAmmoPacks;
+	delete AllAmmoPacks;
+
+	m_goalIndex[client] = index;
+	return index;
 }
 
 stock void FindNearestAmmoPack(int client)
@@ -70,11 +139,11 @@ stock void FindNearestAmmoPack(int client)
 			continue;
 		
 		// only get safe ammo packs
-		if (m_hasEnemiesNear[client] && GetVectorDistance(GetOrigin(x), GetOrigin(m_nearestEnemy[client]), true) <= Squared(1536))
+		if (m_hasEnemiesNear[client] && GetVectorDistance(GetOrigin(x), GetOrigin(m_nearestEnemy[client]), true) <= Squared(768))
 			continue;
 
-		//if (!IsPathPossible(GetOrigin(client), GetOrigin(x)))
-		//	continue;
+		if (!IsPathPossible(GetOrigin(client), GetOrigin(x)))
+			continue;
 		
 		float edict_distance = GetFastDistance(GetOrigin(client), GetOrigin(x));
 		if (edict_distance < distance || distance == -1.0)

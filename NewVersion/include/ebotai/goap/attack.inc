@@ -51,6 +51,7 @@ stock void AttackUpdate(int client)
 
 	if (m_isSlowThink[client] || !IsPlayerAlive(m_nearestEnemy[client]))
 		FindFriendsAndEnemiens(client);
+	FindEnemyEntities(client);
 	
 	if (!m_hasEnemiesNear[client])
 	{
@@ -58,7 +59,7 @@ stock void AttackUpdate(int client)
 		if (!IsVisible(GetCenter(client), m_pathAhead[client])) // repath required
 			DeletePathNodes(client);
 		if (m_lowHealth[client])
-			SetProcess(client, PRO_IDLE, true, GetRandomFloat(2.0, 4.0), "", true);
+			SetProcess(client, PRO_IDLE, GetRandomFloat(2.0, 4.0), "", true);
 	}
 
 	if (TF2_GetPlayerClass(client) == TFClass_Spy && (TF2_IsPlayerInCondition(client, TFCond_Disguised) || TF2_IsPlayerInCondition(client, TFCond_Cloaked)))
@@ -77,13 +78,16 @@ stock void AttackUpdate(int client)
 			else if (IsPathPossible(GetOrigin(client), GetOrigin(m_nearestEnemy[client])))
 				m_goalEntity[client] = m_nearestEnemy[client];
 		}
-		else
+		else if (ClientViews(m_nearestEnemy[client], client))
 			RandomMovement(client);
 		return;
 	}
 
-	RandomMovement(client);
-	m_goalEntity[client] = m_nearestEnemy[client];
+	if (ClientViews(m_nearestEnemy[client], client))
+	{
+		RandomMovement(client);
+		m_goalEntity[client] = m_nearestEnemy[client];
+	}
 }
 
 stock void RandomMovement(int client)
