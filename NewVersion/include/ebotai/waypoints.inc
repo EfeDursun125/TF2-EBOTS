@@ -1,7 +1,7 @@
 // from https://github.com/EfeDursun125/CS-EBOT/blob/main/source/waypoint.cpp
 // higher version waypoints will be ignored due to updated waypoint system
 const int WaypointVersion = 1;
-const int MaxWaypoints = 1024;
+const int MaxWaypoints = 2048;
 const int MaxPathIndex = 8;
 
 int nearestIndex = -1;
@@ -13,10 +13,14 @@ float nextDrawTime = 0.5;
 bool m_hasHealthWaypoints;
 bool m_hasAmmoWaypoints;
 bool m_hasSniperWaypoints;
+bool m_hasRouteWaypoints;
+
+float m_pathDelay[MAXPLAYERS + 1];
+int m_lastFailedWaypoint[MAXPLAYERS + 1];
 
 enum WaypointFlag
 {
-	WAYPOINT_JUMP = 1,
+    WAYPOINT_JUMP = 1,
     WAYPOINT_SNIPER = 2,
     WAYPOINT_DEFEND = 3,
     WAYPOINT_FALLDAMAGE = 4,
@@ -28,7 +32,7 @@ enum WaypointFlag
     WAYPOINT_ROCKETJUMP = 10,
     WAYPOINT_DEMOMANCAMP = 11,
     WAYPOINT_SENTRY = 12,
-    WAYPOINT_DISPENSER = 13,
+    WAYPOINT_ROUTE = 13,
     WAYPOINT_TELEPORTERENTER = 14,
     WAYPOINT_TELEPORTEREXIT = 15,
     WAYPOINT_CAPTUREPOINT = 16,
@@ -70,44 +74,79 @@ enum struct Path
 	int campEnd[3];
 }
 
-methodmap Queue < Handle {
-    public Queue(int size=32) {
-        ArrayList data = new ArrayList(1, size+3);
-        data.Set(0, 0);        // tail
-        data.Set(1, 0);        // head
-        data.Set(2, size);    // Size
+methodmap Queue < Handle
+{
+    public Queue(int size = 32)
+    {
+        ArrayList data = new ArrayList(1, size + 3);
+        data.Set(0, 0);
+        data.Set(1, 0);
+        data.Set(2, size);
         return view_as<Queue>(data);
     }
-    
-    property int Tail {
-        public get() { return view_as<ArrayList>(this).Get(0); }
-        public set(const int value) { view_as<ArrayList>(this).Set(0, value); }
+
+    property int Tail
+    {
+        public get()
+        {
+            return view_as<ArrayList>(this).Get(0);
+        }
+        public set(const int value)
+        {
+            view_as<ArrayList>(this).Set(0, value);
+        }
     }
-    property int Head {
-        public get() { return view_as<ArrayList>(this).Get(1); }
-        public set(const int value) { view_as<ArrayList>(this).Set(1, value); }
+
+    property int Head
+    {
+        public get()
+        {
+            return view_as<ArrayList>(this).Get(1);
+        }
+        public set(const int value)
+        {
+            view_as<ArrayList>(this).Set(1, value);
+        }
     }
-    property int Size {
-        public get() { return view_as<ArrayList>(this).Get(2); }
+    property int Size
+    {
+        public get()
+        {
+            return view_as<ArrayList>(this).Get(2);
+        }
     }
-    // ----
-    property bool isEmpty {
-        public get() { return this.Head == this.Tail; }
+
+    property bool isEmpty
+    {
+        public get()
+        {
+            return this.Head == this.Tail;
+        }
     }
-    property bool isFull {
-        public get() { return ((this.Head+1)%this.Size) == this.Tail; }
+
+    property bool isFull
+    {
+        public get()
+        {
+            return ((this.Head + 1) % this.Size) == this.Tail;
+        }
     }
-    // ----
-    public void Push(const int value) {
-        view_as<ArrayList>(this).Set(this.Head+3, value);
+
+    public void Push(const int value)
+    {
+        view_as<ArrayList>(this).Set(this.Head + 3, value);
         this.Head = (this.Head + 1) % this.Size;
     }
-    public int Pop() {
-        int tmp = view_as<ArrayList>(this).Get(this.Tail+3);
+
+    public int Pop()
+    {
+        int tmp = view_as<ArrayList>(this).Get(this.Tail + 3);
         this.Tail = (this.Tail + 1) % this.Size;
         return tmp;
     }
-    public int Front() {
+
+    public int Front()
+    {
         return view_as<ArrayList>(this).Get(this.Tail+3);
     }
 }
@@ -137,6 +176,8 @@ stock void DrawWaypoints()
 
     if (waypointDrawTime > GetGameTime())
         return;
+    
+    m_lastFailedWaypoint[m_hostEntity] = -1;
 
     // reset the minimal distance changed before
     float nearestDistance = 999999999.0;
@@ -221,6 +262,12 @@ stock void DrawWaypoints()
             color[0] = 160;
             color[1] = 124;
             color[2] = 122;
+        }
+       else if (m_paths[i].flags == _:WAYPOINT_ROUTE)
+        {
+            color[0] = 70;
+            color[1] = 70;
+            color[2] = 70;
         }
         else if (m_paths[i].team == 2)
         {
@@ -379,8 +426,8 @@ stock void DrawWaypoints()
             wpflags = "Crouch";
         else if (m_paths[i].flags == _:WAYPOINT_DEMOMANCAMP)
             wpflags = "Demoman Sticky Trap";
-        else if (m_paths[i].flags == _:WAYPOINT_DISPENSER)
-            wpflags = "Dispenser";
+        else if (m_paths[i].flags == _:WAYPOINT_ROUTE)
+            wpflags = "Route";
         else if (m_paths[i].flags == _:WAYPOINT_DOUBLEJUMP)
             wpflags = "Double Jump";
         else if (m_paths[i].flags == _:WAYPOINT_JUMP)
@@ -636,9 +683,6 @@ stock int HeuristicNormal(int start, int goal)
 
 stock int CostNormal(int current, int parent, int client)
 {
-    if (m_paths[current].flags == _:WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
-        return 65355;
-    
     // blocked waypoint
     if (m_paths[current].activeArea != 0 && m_paths[current].activeArea != currentActiveArea)
         return 65535;
@@ -655,14 +699,7 @@ stock int CostNormal(int current, int parent, int client)
     if (m_paths[current].flags == _:WAYPOINT_FALLDAMAGE && (m_lowHealth[client] || GetRandomInt(1, 3) == 1 || TF2_GetPlayerClass(client) == TFClass_Spy))
         return 65355;
     
-    if (m_paths[current].flags == _:WAYPOINT_NOSPY && TF2_GetPlayerClass(client) == TFClass_Spy)
-        return 65355;
-    
-    if (m_paths[current].flags == _:WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
-        return 65355;
-    
-    int distance = GetWaypointDistance(current, parent);
-    if (m_hasEnemiesNear[client] && distance <= GetWaypointDistance(FindNearestWaypoint(GetOrigin(client)), FindNearestWaypoint(m_lastEnemyOrigin[client])))
+    if (m_hasEnemiesNear[client] && m_nearestEnemy[client] != -1 && GetVectorDistance(GetOrigin(client), VectorAsFloat(m_paths[current].origin), true) <= GetVectorDistance(GetOrigin(m_nearestEnemy[client]), VectorAsFloat(m_paths[current].origin), true))
         return 65355;
     
     // they don't let us jump
@@ -670,21 +707,26 @@ stock int CostNormal(int current, int parent, int client)
         return 65355;
     
     // litte randomness
-	return distance + GetRandomInt(client, 360);
+	return GetWaypointDistance(current, parent) + GetRandomInt(client, 128);
 }
 
 // A* Pathfinding
 stock void AStarFindPath(int srcIndex, int destIndex, int client)
 {
-	if (srcIndex == destIndex)
-		return;
-
 	if (destIndex == -1)
 		return;
 	
+    if (m_pathDelay[client] >= GetGameTime())
+        return;
+    
 	if (srcIndex <= 0)
 		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
+    
+    if (srcIndex == destIndex)
+		return;
 	
+    m_pathDelay[client] = GetGameTime() + 0.5;
+
     for (int i = 0; i < m_waypointNumber; i++)
     {
         astar[i].g = 0;
@@ -713,7 +755,7 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client)
 				AddToPath(currentIndex, client);
                 currentIndex = astar[currentIndex].parent;
 			}
-            break;
+            return;
         }
 
         if (astar[currentIndex].state != OPEN)
@@ -727,6 +769,15 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client)
         {
             int self = m_paths[currentIndex].pathIndex[i];
             if (self == -1)
+                continue;
+            
+            if (m_paths[self].flags == _:WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
+                continue;
+
+            if (m_paths[self].flags == _:WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
+                continue;
+            
+            if (m_paths[self].flags == _:WAYPOINT_NOSPY && TF2_GetPlayerClass(client) == TFClass_Spy && self != destIndex)
                 continue;
 
             // calculate the F value as F = G + H
@@ -745,6 +796,8 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client)
             }
         }
     }
+
+    m_lastFailedWaypoint[client] = destIndex;
 }
         
 stock void AddToPath(int currentIndex, int client)
@@ -810,12 +863,12 @@ stock int FindNearestWaypoint(float origin[3], float maxDistance = 999999.0, int
     maxDistance = maxDistance * maxDistance;
     for (int i = 0; i < m_waypointNumber; i++)
     {
+        if (m_lastFailedWaypoint[client] == i)
+            continue;
         if (client != -1 && GetClientTeam(client) == 2 && m_paths[i].team == 3)
             continue;
-
         if (client != -1 && GetClientTeam(client) == 3 && m_paths[i].team == 2)
             continue;
-        
         float distance = GetVectorDistance(VectorAsFloat(m_paths[i].origin), origin, true);
         if (distance < maxDistance)
         {
@@ -866,6 +919,8 @@ stock void WaypointClear(int index)
 
 stock int GetWaypointDistance(int srcIndex, int destIndex)
 {
+    if (srcIndex == -1 || destIndex == -1)
+        return 99999;
     if (srcIndex == destIndex)
         return 0;
     for (int i = 0; i < MaxPathIndex; i++)
@@ -874,6 +929,22 @@ stock int GetWaypointDistance(int srcIndex, int destIndex)
             return m_paths[srcIndex].distance[i];
     }
     return GetFastDistanceInt(m_paths[srcIndex].origin, m_paths[destIndex].origin);
+}
+
+stock bool IsWaypointUsed(int index)
+{
+    for (int i = 0; i < MaxClients; i++)
+    {
+        if (!IsValidClient(i))
+            continue;
+        
+        if (!IsPlayerAlive(i))
+            continue;
+
+        if (m_goalIndex[i] == index || GetFastDistanceInt(VectorAsInt(GetOrigin(i)), m_paths[index].origin) <= 128)
+            return true;
+    }
+    return false;
 }
 
 stock void WaypointLoad()
@@ -927,6 +998,7 @@ stock void InitTypes()
     m_hasHealthWaypoints = false;
     m_hasAmmoWaypoints = false;
     m_hasSniperWaypoints = false;
+    m_hasRouteWaypoints = false;
 
     for (int i = 0; i < m_waypointNumber; i++)
     {
@@ -941,6 +1013,8 @@ stock void InitTypes()
             m_hasAmmoWaypoints = true;
         else if (m_paths[i].flags == _:WAYPOINT_SNIPER)
             m_hasSniperWaypoints = true;
+        else if (m_paths[i].flags == _:WAYPOINT_ROUTE)
+            m_hasRouteWaypoints = true;
     }
 }
 
@@ -951,12 +1025,22 @@ stock void WaypointSave()
         GetClientName(m_hostEntity, waypointAuthor, sizeof(waypointAuthor));
 
     WaypointHeader header;
-    header.fileVersion = WaypointVersion;
-    header.pointNumber = m_waypointNumber;
     header.author = waypointAuthor;
 
     char filepath[PLATFORM_MAX_PATH];
     BuildPath(Path_SM, filepath, sizeof(filepath), "ebotWaypoints/%s.ewp", currentMap);
+    
+    // remember original waypoint author
+    File rf = OpenFile(filepath, "rb");
+    if (rf == null)
+    {
+        rf.Read(header, sizeof(header), 4);
+        rf.Close();
+    }
+    
+    header.fileVersion = WaypointVersion;
+    header.pointNumber = m_waypointNumber;
+    
     File fp = OpenFile(filepath, "wb");
 
     // write the all waypoint data

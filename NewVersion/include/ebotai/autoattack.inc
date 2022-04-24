@@ -155,10 +155,6 @@ stock bool IsReadyForAttack(int client) // 1 core cpu killer...
 	|| TF2_IsPlayerInCondition(client, TFCond_UberchargedHidden) 
 	|| TF2_IsPlayerInCondition(client, TFCond_UberchargedCanteen) 
 	|| TF2_IsPlayerInCondition(client, TFCond_HalloweenBombHead) 
-	|| TF2_IsPlayerInCondition(client, TFCond_NoHealingDamageBuff) 
-	|| TF2_IsPlayerInCondition(client, TFCond_RegenBuffed) 
-	|| TF2_IsPlayerInCondition(client, TFCond_DefenseBuffed) 
-	|| TF2_IsPlayerInCondition(client, TFCond_SpeedBuffAlly) 
 	|| TF2_HasTheFlag(m_nearestEnemy[client]))
 		return true;
 	return false;
@@ -166,7 +162,7 @@ stock bool IsReadyForAttack(int client) // 1 core cpu killer...
 
 stock void SelectBestCombatWeapon(int client)
 {
-	float distance = m_hasEnemiesNear[client] ? m_enemyDistance[client] : GetVectorDistance(GetOrigin(client), m_lookAt[client], true);
+	float distance = GetVectorDistance(GetOrigin(client), m_lookAt[client], true);
 	float meleerange = Squaredf(GetConVarFloat(EBotMelee));
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Pyro)
@@ -197,7 +193,7 @@ stock void SelectBestCombatWeapon(int client)
 		}
 		else if(TF2_GetPlayerClass(client) == TFClass_Pyro)
 		{
-			if (clip0 > 0 && distance <= Squared(400))
+			if (clip0 > 0 && distance <= Squared(384))
 				EquipWeaponSlot(client, 0);
 			else if (clip1 > 0)
 				EquipWeaponSlot(client, 1);

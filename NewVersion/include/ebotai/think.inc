@@ -1,4 +1,4 @@
-stock void ThinkAI(int client)
+public void ThinkAI(int client)
 {
 	UpdateProcess(client);
 }
@@ -6,7 +6,7 @@ stock void ThinkAI(int client)
 // automatic look update
 stock void LookUpdate(int client, bool lookaround = true)
 {
-	if (TF2_GetPlayerClass(client) == TFClass_Pyro && m_hasFriendsNear[client] && TF2_IsPlayerInCondition(m_nearestFriend[client], TFCond_OnFire) && m_friendDistance[client] <= Squared(512))
+	if (TF2_GetPlayerClass(client) == TFClass_Pyro && m_hasFriendsNear[client] && TF2_IsPlayerInCondition(m_nearestFriend[client], TFCond_OnFire) && m_friendDistance[client] <= Squared(384))
 	{
 		m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
 		if (m_friendDistance[client] <= Squared(192))
@@ -16,12 +16,33 @@ stock void LookUpdate(int client, bool lookaround = true)
 		return;
 	}
 
-	if (m_hasEnemiesNear[client])
+	if (m_hasEnemiesNear[client] && m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
+	{
+		float center[3];
+		center = GetCenter(m_nearestEntity[client]);
+		if (m_enemyDistance[client] < GetVectorDistance(GetOrigin(client), center))
+			LookAtEnemiens(client);
+		else
+			m_lookAt[client] = center;
+		AutoAttack(client);
+		SelectBestCombatWeapon(client);
+		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+		return;
+	}
+	else if (m_hasEnemiesNear[client])
 	{
 		LookAtEnemiens(client);
 		AutoAttack(client);
 		SelectBestCombatWeapon(client);
-		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.25, 2.25);
+		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+		return;
+	}
+	else if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
+	{
+		m_lookAt[client] = GetCenter(m_nearestEntity[client]);
+		AutoAttack(client);
+		SelectBestCombatWeapon(client);
+		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
 		return;
 	}
 

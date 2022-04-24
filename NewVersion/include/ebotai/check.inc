@@ -143,7 +143,7 @@ stock void CheckSlowThink(int client)
 			m_knownSpy[client] = m_nearestEnemy[client];
 		
 		if (TF2_GetPlayerClass(client) == TFClass_Spy && !TF2_IsPlayerInCondition(client, TFCond_Disguised) && !TF2_HasTheFlag(client))
-			TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), view_as<TFClassType>(GetRandomInt(1, 9)));
+			DisguiseAsEnemy(client);
 
 		m_checkTimer[client] = GetGameTime() + GetRandomFloat(0.95, 1.05);
 	}
@@ -170,7 +170,7 @@ stock void CheckHealth(int client)
 		m_lowHealth[client] = false;
 	
 	if (m_lowHealth[client])
-		SetProcess(client, PRO_GETHEALTH, false, 90.0, "| process started -> need health pack.");
+		SetProcess(client, PRO_GETHEALTH, 90.0, "| process started -> need health pack.");
 }
 
 // automaticly triggers the collect health pack process
@@ -185,7 +185,7 @@ stock void CheckAmmo(int client)
 		m_lowAmmo[client] = false;
 	
 	if (m_lowAmmo[client])
-		SetProcess(client, PRO_GETAMMO, false, 90.0, "| process started -> need ammo pack.");
+		SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack.");
 }
 
 stock void CheckWalls(int client)

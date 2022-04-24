@@ -1,4 +1,4 @@
-stock void FindFriendsAndEnemiens(int client)
+public void FindFriendsAndEnemiens(int client)
 {
 	m_enemyDistance[client] = 99999999.0;
 	m_friendDistance[client] = 99999999.0;
@@ -16,6 +16,9 @@ stock void FindFriendsAndEnemiens(int client)
 			continue;
 		
 		if (i == client)
+			continue;
+		
+		if (GetEntProp(i, Prop_Data, "m_takedamage") != 2)
 			continue;
 		
 		if (!IsVisible(GetEyePosition(client), GetEyePosition(i)))
@@ -43,19 +46,17 @@ stock void FindFriendsAndEnemiens(int client)
 				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsFakeClient(i) && IsWeaponSlotActive(i, 5))
 					continue;
 		
-				m_friendsNearCount[client] += 1;
-				m_friendDistance[client] = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
-				float dist = GetClientHealth(i) * m_friendDistance[client]; // prefer lower health
-				float frienddistance = 99999999.0;
-				if (dist < frienddistance)
+				m_friendsNearCount[client]++;
+				float dist = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
+				if (dist < m_friendDistance[client])
 				{
-					frienddistance = dist;
+					m_friendDistance[client] = dist;
 					m_nearestFriend[client] = i;
 				}
 				return;
 			}
 			
-			m_friendsNearCount[client] += 1;
+			m_friendsNearCount[client]++;
 			float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
 			if (edict_distance < m_friendDistance[client])
 			{
@@ -71,7 +72,7 @@ stock void FindFriendsAndEnemiens(int client)
 			if (TF2_GetPlayerClass(i) == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
 				continue;
 			
-			m_enemiesNearCount[client] += 1;
+			m_enemiesNearCount[client]++;
 			float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
 			if (edict_distance < m_enemyDistance[client])
 			{
@@ -85,4 +86,62 @@ stock void FindFriendsAndEnemiens(int client)
 	m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
 	if (m_hasEnemiesNear[client])
 		m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+}
+
+public void FindEnemyEntities(int client)
+{
+	if (!m_isSlowThink[client])
+		return;
+	
+	m_hasEntitiesNear[client] = false;
+	int m_hasEntitiesNearCount = 0;
+	float nearestDistance = -1.0;
+	for (int i = 1; i <= GetEntityCount(); i++)
+	{
+		if (!IsValidEntity(i))
+			continue;
+		
+		if (i <= MaxClients)
+			continue;
+
+		if (!HasEntProp(i, Prop_Data, "m_iHealth"))
+			continue;
+		
+		if (GetEntProp(i, Prop_Data, "m_iHealth") <= 0)
+			continue;
+		
+		if (!HasEntProp(i, Prop_Data, "m_iTeamNum"))
+			continue;
+		
+		if (GetTeamNumber(i) == GetClientTeam(client))
+			continue;
+
+		if (HasEntProp(i, Prop_Send, "m_bHasSapper") && GetEntProp(i, Prop_Send, "m_bHasSapper") != 0)
+			continue;
+		
+		if (!HasEntProp(i, Prop_Data, "m_takedamage"))
+			continue;
+		
+		char class[64];
+		GetEntityClassname(i, class, sizeof(class));
+		if (StrContains(class, "obj_", false) == -1 && !StrEqual(class, "tf_zombie", false) && !StrEqual(class, "tank_boss", false) && !StrEqual(class, "merasmus", false) && !StrEqual(class, "eyeball_boss", false) && !StrEqual(class, "headless_hatman", false) && !StrEqual(class, "tf_robot_destruction_robot", false))
+			continue;
+		
+		float eyeposition[3];
+		float center[3];
+		eyeposition = GetEyePosition(client);
+		center = GetCenter(i);
+		if (!IsVisible(eyeposition, center))
+			continue;
+
+		m_hasEntitiesNearCount++;
+		float distance = GetFastDistance(eyeposition, center);
+		if (distance < nearestDistance || nearestDistance == -1.0)
+		{
+			m_nearestEntity[client] = i;
+			nearestDistance = distance;
+		}
+	}
+	
+	m_hasEntitiesNear[client] = m_hasEntitiesNearCount > 0;
 }

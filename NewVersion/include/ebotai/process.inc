@@ -1,4 +1,4 @@
-enum // highest = highest priority
+enum
 {
     PRO_DEFAULT = 0,
 	PRO_IDLE,
@@ -18,14 +18,18 @@ enum // highest = highest priority
 }
 
 int CurrentProcess[MAXPLAYERS + 1] = PRO_DEFAULT;
-float CurrentProcessTime[MAXPLAYERS + 1];
+int RememberedProcess[MAXPLAYERS + 1] = PRO_DEFAULT;
+float CurrentProcessTime[MAXPLAYERS + 1] = 9999.0;
+float RememberedProcessTime[MAXPLAYERS + 1] = 0.0;
 
-stock void SetProcess(int client, int process, bool forcedpriority = false, float time = 9999.0, const char[] debugnote = "clear", bool ignoredebug = false)
+stock void SetProcess(int client, int process, float time = 9999.0, const char[] debugnote = "clear", bool ignoredebug = false)
 {
-	if (IsReadyForTheProcess(client, process) && (CurrentProcess[client] < process || (forcedpriority && CurrentProcess[client] != process)))
+	if (IsReadyForTheProcess(client, process) && CurrentProcess[client] != process)
 	{
 		if (!ignoredebug)
 			PrintToServer("%N has got a new process from %s to %s %s", client, GetProcessName(CurrentProcess[client]), GetProcessName(process), debugnote);
+		RememberedProcess[client] = CurrentProcess[client];
+		RememberedProcessTime[client] = CurrentProcessTime[client];
 		EndProcess(client, CurrentProcess[client]);
 		CurrentProcess[client] = process;
 		StartProcess(client, process);
@@ -33,7 +37,7 @@ stock void SetProcess(int client, int process, bool forcedpriority = false, floa
 	}
 }
 
-stock void StartProcess(int client, int process)
+public void StartProcess(int client, int process)
 {
 	switch (process)
 	{
@@ -58,7 +62,7 @@ stock void StartProcess(int client, int process)
 	}
 }
 
-stock void EndProcess(int client, int process)
+public void EndProcess(int client, int process)
 {
 	CurrentProcessTime[client] = GetGameTime();
 	
@@ -85,7 +89,7 @@ stock void EndProcess(int client, int process)
 	}
 }
 
-stock void UpdateProcess(int client)
+public void UpdateProcess(int client)
 {
 	if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcessTime[client] < GetGameTime())
 	{
@@ -95,7 +99,7 @@ stock void UpdateProcess(int client)
 		StartProcess(client, PRO_DEFAULT);
 	}
 	
-	switch(CurrentProcess[client])
+	switch (CurrentProcess[client])
 	{
 		case PRO_DEFAULT:
 			DefaultUpdate(client);
@@ -118,19 +122,25 @@ stock void UpdateProcess(int client)
 	}
 }
 
-stock void FinishCurrentProcess(int client, bool nodbg = false)
+stock void FinishCurrentProcess(int client, bool nodbg = false, const char[] debugnote = "finished by the system")
 {
 	if (CurrentProcess[client] != PRO_DEFAULT)
 	{
 		if (nodbg && CurrentProcess[client] != PRO_ATTACK)
-			PrintToServer("%N is cancelled %s process -> finished by the system.", client, GetProcessName(CurrentProcess[client]));
+			PrintToServer("%N is cancelled %s process -> %s", client, GetProcessName(CurrentProcess[client]), debugnote);
 		EndProcess(client, CurrentProcess[client]);
-		CurrentProcess[client] = PRO_DEFAULT;
+		if (RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime())
+		{
+			StartProcess(client, RememberedProcess[client]);
+			CurrentProcess[client] = RememberedProcess[client];
+			return;
+		}
 		StartProcess(client, PRO_DEFAULT);
+		CurrentProcess[client] = PRO_DEFAULT;
 	}
 }
 
-stock bool IsReadyForTheProcess(int client, int process)
+public bool IsReadyForTheProcess(int client, int process)
 {
 	switch (process)
 	{

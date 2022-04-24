@@ -216,7 +216,7 @@ stock void LookAround(int client)
 				if (area != INVALID_NAV_AREA)
 					area.GetRandomPoint(PlayerArea);
 			}
-			
+
 			if (TF2_GetPlayerClass(client) == TFClass_Heavy && IsWeaponSlotActive(client, 0))
 			{
 				if (IsValidEntity(GetPlayerWeaponSlot(client, TFWeaponSlot_Primary)))

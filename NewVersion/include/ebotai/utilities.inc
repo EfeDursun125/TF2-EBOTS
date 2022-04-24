@@ -38,12 +38,14 @@ bool m_isSlowThink[MAXPLAYERS + 1];
 
 bool m_hasEnemiesNear[MAXPLAYERS + 1];
 bool m_hasFriendsNear[MAXPLAYERS + 1];
+bool m_hasEntitiesNear[MAXPLAYERS + 1];
 
 int m_enemiesNearCount[MAXPLAYERS + 1];
 int m_friendsNearCount[MAXPLAYERS + 1];
 
 int m_nearestEnemy[MAXPLAYERS + 1];
 int m_nearestFriend[MAXPLAYERS + 1];
+int m_nearestEntity[MAXPLAYERS + 1];
 float m_lastEnemyOrigin[MAXPLAYERS + 1][3];
 
 float m_enemyDistance[MAXPLAYERS + 1];
@@ -57,12 +59,14 @@ int m_eBotDodgeRange[MAXPLAYERS + 1];
 
 int m_knownSpy[MAXPLAYERS + 1];
 int m_maxSticky[MAXPLAYERS + 1];
+int m_knownSentry[MAXPLAYERS + 1] = -1;
 
 Handle EBotDebug;
 Handle EBotFPS;
 Handle EBotMelee;
 Handle EBotSenseMax;
 Handle EBotSenseMin;
+Handle EBotDifficulty;
 Handle m_eBotMedicFollowRange;
 Handle m_eBotDodgeRangeMin;
 Handle m_eBotDodgeRangeMax;
@@ -309,44 +313,35 @@ stock int FindNearestEnemy(int client, float flMaxDistance = 999999.0)
 	return iBestTarget;
 }
 
-float m_itAimStart[MAXPLAYERS];
 stock void LookAtPosition(int client, float flGoal[3], float angle[3])
 {
-	float eye_to_target[3];
-	SubtractVectors(flGoal, GetEyePosition(client), eye_to_target);
+	float aimspeed = 0.1;
+	if (GetConVarInt(EBotDifficulty) == 1)
+		aimspeed = 0.12;
+	else if (GetConVarInt(EBotDifficulty) == 2)
+		aimspeed = 0.14;
+	else if (GetConVarInt(EBotDifficulty) == 3)
+		aimspeed = 0.16;
+	else if (GetConVarInt(EBotDifficulty) == 4)
+		aimspeed = 0.18;
+
+	float flPos[3];
+	GetClientEyePosition(client, flPos);
+
+	float flAng[3];
+	GetClientEyeAngles(client, flAng);
 	
-	float eye_ang[3];
-	GetClientEyeAngles(client, eye_ang);
+	// get normalised direction from target to client
+	float desired_dir[3];
+	MakeVectorFromPoints(flPos, flGoal, desired_dir);
+	GetVectorAngles(desired_dir, desired_dir);
 	
-	NormalizeVector(eye_to_target, eye_to_target);
+	// ease the current direction to the target direction
+	flAng[0] += AngleNormalize(desired_dir[0] - flAng[0]) * aimspeed;
+	flAng[1] += AngleNormalize(desired_dir[1] - flAng[1]) * aimspeed;
 	
-	float ang_to_target[3];
-	GetVectorAngles(eye_to_target, ang_to_target);
-	
-	float eye_vec[3];
-	GetAngleVectors(eye_ang, eye_vec, NULL_VECTOR, NULL_VECTOR);
-	
-	float cos_error = GetVectorDotProduct(eye_to_target, eye_vec);
-	float max_angvel = 1024.0;
-	
-	if (cos_error > 0.7)
-		max_angvel *= Sine((3.14 / 2.0) * (1.0 + ((-49.0 / 15.0) * (cos_error - 0.7))));
-	
-	if(m_itAimStart[client] != -1 && (GetGameTime() - m_itAimStart[client] < 0.25))
-		max_angvel *= 4.0 * (GetGameTime() - m_itAimStart[client]);
-	
-	if (!m_hasEnemiesNear[client] && cos_error > 0.98)
-		m_itAimStart[client] = GetGameTime();
-	
-	float new_eye_angle[3];
-	new_eye_angle[0] = ApproachAngle(ang_to_target[0], eye_ang[0], (max_angvel * GetGameFrameTime()));
-	new_eye_angle[1] = ApproachAngle(ang_to_target[1], eye_ang[1], (max_angvel * GetGameFrameTime()));
-	
-	new_eye_angle[0] = AngleNormalize(new_eye_angle[0]);
-	new_eye_angle[1] = AngleNormalize(new_eye_angle[1]);
-	
-	angle = new_eye_angle;
-	TeleportEntity(client, NULL_VECTOR, new_eye_angle, NULL_VECTOR);
+	angle = flAng;
+	TeleportEntity(client, NULL_VECTOR, flAng, NULL_VECTOR);
 }
 
 stock float AngleNormalize(float angle)
@@ -408,7 +403,6 @@ stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
 	m_moveVel[client][0] = cos * newmove[0] - sin * newmove[1];
 	m_moveVel[client][1] = sin * newmove[0] + cos * newmove[1];
 	
-	NormalizeVector(m_moveVel[client], m_moveVel[client]);
 	ScaleVector(m_moveVel[client], 500.0);
 
 	if (checkStuck && GetEntityFlags(client) & FL_ONGROUND)
@@ -440,12 +434,7 @@ stock void MoveToWaypoint(int client, float flGoal[3], float flDest[3])
 	GetClientAbsOrigin(client, flPos);
 
 	if (flPos[0] == flGoal[0] && flPos[1] == flGoal[1])
-	{
-		m_moveVel[client][0] = 0.0;
-		m_moveVel[client][1] = 0.0;
-		m_moveVel[client][2] = 0.0;
 		return;
-	}
 
 	float fAng[3];
 	GetClientEyeAngles(client, fAng);
@@ -461,12 +450,19 @@ stock void MoveToWaypoint(int client, float flGoal[3], float flDest[3])
 	m_moveVel[client][0] = cos * newmove[0] - sin * newmove[1];
 	m_moveVel[client][1] = sin * newmove[0] + cos * newmove[1];
 	
-	NormalizeVector(m_moveVel[client], m_moveVel[client]);
-	
 	float distance = GetVectorDistance(flPos, flDest, true);
 	float maxSpeed = GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
-	if (distance <= Squaredf(maxSpeed))
-		ScaleVector(m_moveVel[client], distance / (maxSpeed / 10.0));
+	if (distance <= Squared(2))
+	{
+		m_nextStuckCheck[client] = GetGameTime() + 5.0;
+		m_nextPathUpdate[client] = GetGameTime() + 5.0;
+	}
+	else if (distance <= Squaredf(maxSpeed))
+	{
+		m_nextStuckCheck[client] = GetGameTime() + 5.0;
+		m_nextPathUpdate[client] = GetGameTime() + 5.0;
+		ScaleVector(m_moveVel[client], distance / maxSpeed);
+	}
 	else
 		ScaleVector(m_moveVel[client], maxSpeed);
 }
@@ -582,6 +578,18 @@ public bool TraceEntityFilterStuff(int entity, int mask)
 	else if (StrContains(class, "tf_projectile_", false) != -1)
 		return false;
 	else if (StrContains(class, "obj_", false) != -1)
+		return false;
+	else if (StrContains(class, "tf_zombie", false) != -1)
+		return false;
+	else if (StrContains(class, "tank_boss", false) != -1)
+		return false;
+	else if (StrContains(class, "merasmus", false) != -1)
+		return false;
+	else if (StrContains(class, "eyeball_boss", false) != -1)
+		return false;
+	else if (StrContains(class, "headless_hatman", false) != -1)
+		return false;
+	else if (StrContains(class, "tf_robot_destruction_robot", false) != -1)
 		return false;
 	else if (StrEqual(class, "entity_revive_marker"))
 		return false;
@@ -1041,6 +1049,11 @@ stock float GetPercentInvisible(int client)
 	return GetEntDataFloat(client, offset);
 }
 
+stock void DisguiseAsEnemy(int client)
+{
+	TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), view_as<TFClassType>(GetRandomInt(1, 9)));
+}
+
 stock bool IsClientAimingToMe(int client, int target)
 {
 	if (ClientViews(target, client, 0.9))
@@ -1097,6 +1110,13 @@ stock int Min(int one, int two)
 stock int Abs(int value)
 {
    return value < 0 ? -value : value;
+}
+
+stock bool HasSapper(int entity)
+{
+	if (!HasEntProp(entity, Prop_Send, "m_bHasSapper"))
+		return false;
+	return GetEntProp(entity, Prop_Send, "m_bHasSapper");
 }
 
 stock bool ClientViews(int Viewer, int Target, float fMaxDistance = 0.0, float fThreshold = 0.75)

@@ -4,7 +4,7 @@ stock bool IsPathPossible(float start[3], float goal[3], float maxrange = 0.0, f
 {
 	if (m_hasWaypoints)
 	 	return true;
-	
+		
 	// no checks for now, just return true because we don't have a pathfinder yet, using it too much makes game run slow
 	if (pathdelayer > GetGameTime())
 		return true;
@@ -58,8 +58,7 @@ stock void FollowPath(int client, float targetposition[3])
 			if (m_nextStuckCheck[client] <= GetGameTime())
 			{
 				MoveTo(client, flGoPos);
-				if (pathdelayer < GetGameTime())
-					m_buttons[client] |= IN_JUMP;
+				CheckWalls(client);
 				if (m_nextStuckCheck[client] + 3.0 <= GetGameTime())
 				{
 					m_nextStuckCheck[client] = GetGameTime() + 5.0;
@@ -68,7 +67,11 @@ stock void FollowPath(int client, float targetposition[3])
 				}
 			}
 			else if (m_hasWaypoints && (m_paths[currentIndex].flags == _:WAYPOINT_SNIPER || m_paths[currentIndex].flags == _:WAYPOINT_DEFEND))
+			{
+				m_nextStuckCheck[client] = GetGameTime() + 5.0;
+				m_nextPathUpdate[client] = GetGameTime() + 5.0;
 				MoveToWaypoint(client, flGoPos, targetposition);
+			}
 			else
 				MoveTo(client, flGoPos, !m_hasWaypoints);
 			
@@ -78,13 +81,24 @@ stock void FollowPath(int client, float targetposition[3])
 			if (m_hasWaypoints)
 			{
 				float value = 10.0;
-				if (currentIndex != -1 && m_paths[currentIndex].radius > 0.0)
-					value = float(Squared(m_paths[currentIndex].radius)) / 32.0;
-				value += (GetConVarFloat(EBotFPS) * speed);
+				if (m_paths[currentIndex].flags == _:WAYPOINT_SNIPER || m_paths[currentIndex].flags == _:WAYPOINT_DEFEND)
+				{
+					if (currentIndex != -1 && m_paths[currentIndex].radius > 0.0)
+						value = float(Squared(m_paths[currentIndex].radius)) / 32.0;
+					else
+						value = 10.0;
+				}
+				else
+				{
+					if (currentIndex != -1 && m_paths[currentIndex].radius > 0.0)
+						value = float(Squared(m_paths[currentIndex].radius)) / 32.0;
+					value += (GetConVarFloat(EBotFPS) * speed);
+				}
 				float flNodeDist = GetVectorDistance(VectorAsFloat(m_paths[currentIndex].origin), flPos, true);
 				if (flNodeDist <= Squaredf(value))
 				{
 					m_nextStuckCheck[client] = GetGameTime() + 5.0;
+					m_nextPathUpdate[client] = GetGameTime() + 5.0;
 					m_currentWaypointIndex[client]--;
 					m_targetNode[client]--;
 					if (m_paths[currentIndex].flags == _:WAYPOINT_JUMP || m_paths[currentIndex].flags == _:WAYPOINT_DOUBLEJUMP)
@@ -138,8 +152,7 @@ stock void FindPath(int client, float targetposition2[3])
 {
 	if (pathdelayer > GetGameTime())
 		return;
-
-	pathdelayer = GetGameTime() + 0.1;
+	
 	DeletePathNodes(client);
 
 	if (m_hasWaypoints)
@@ -149,6 +162,8 @@ stock void FindPath(int client, float targetposition2[3])
 		return;
 	}
 	
+	pathdelayer = GetGameTime() + 0.1;
+
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);
 	
