@@ -1,5 +1,5 @@
 # TF2-EBOTS (NEW)
-Based on waypoints, requires navmesh https://github.com/KitRifty/sourcepawn-navmesh
+Works with waypoints, if no waypoint file found uses (and requires) navmesh https://github.com/KitRifty/sourcepawn-navmesh
 
 Works on
 1. CTF
