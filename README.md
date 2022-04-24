@@ -4,6 +4,7 @@ Based on waypoints, requires navmesh https://github.com/KitRifty/sourcepawn-navm
 Works on
 1. CTF
 2. CP
+3. KOTH
 
 Known Issues
 1. Medic ai is done but not activated some reason
