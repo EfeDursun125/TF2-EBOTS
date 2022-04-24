@@ -63,9 +63,10 @@ public void OnPluginStart()
 	HookEvent("teamplay_point_captured", PointCaptured, EventHookMode_Post);
 	EBotDebug = CreateConVar("ebot_debug", "0", "");
 	EBotFPS = CreateConVar("ebot_run_fps", "0.05", "0.033 = 29 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS | 0.2 = 5 FPS");
-	EBotMelee = CreateConVar("ebot_melee_range", "128", "");
+	EBotMelee = CreateConVar("ebot_melee_range", "90", "");
 	EBotSenseMin = CreateConVar("ebot_minimum_sense_chance", "10", "Minimum 10");
 	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Maximum 90");
+	EBotDifficulty = CreateConVar("ebot_difficulty", "2", "0 = Easiest | 1 = Easy | 2 = Normal | 3 = Hard | 4 = Expert");
 	m_eBotMedicFollowRange = CreateConVar("ebot_medic_follow_range", "300", "");
 	m_eBotDodgeRangeMin = CreateConVar("ebot_minimum_dodge_range", "512", "the range when enemy closer than a value, bot will start dodging enemies");
 	m_eBotDodgeRangeMax = CreateConVar("ebot_maximum_dodge_range", "1024", "the range when enemy closer than a value, bot will start dodging enemies");
@@ -87,7 +88,7 @@ public void OnMapStart()
 	currentActiveArea = 1;
 	healthpacks = 0;
 	ammopacks = 0;
-	pathdelayer = 0;
+	pathdelayer = 0.0;
 	for (int x = 0; x <= GetMaxEntities(); x++)
 	{
 		if (IsValidHealthPack(x))
@@ -111,7 +112,7 @@ public void OnMapStart()
 			}
 		}
 	}
-	
+
 	InitializeWaypoints();
 }
 
@@ -135,6 +136,15 @@ public void OnClientPutInServer(int client)
 	m_hasFriendsNear[client] = false;
 	m_lowAmmo[client] = false;
 	m_lowHealth[client] = false;
+	m_pathDelay[client] = 0.0;
+	DJTime[client] = 0.0;
+	m_attack2Timer[client] = 0.0;
+	m_attackTimer[client] = 0.0;
+	m_thinkTimer[client] = 0.0;
+	m_checkTimer[client] = 0.0;
+	m_fireTimer[client] = 0.0;
+	m_wasdTimer[client] = 0.0;
+	CurrentProcessTime[client] = 0.0;
 	
 	// check host entity
 	if (m_hasHostEntity == false)
@@ -392,6 +402,12 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 
 		if (m_thinkTimer[client] < GetGameTime())
 		{
+			if (CurrentProcess[client] != PRO_ATTACK)
+			{
+				m_moveVel[client][0] = 0.0;
+				m_moveVel[client][1] = 0.0;
+				m_moveVel[client][2] = 0.0;
+			}
 			CheckSlowThink(client);
 			ThinkAI(client);
 			m_thinkTimer[client] = GetGameTime() + GetConVarFloat(EBotFPS);
@@ -426,9 +442,46 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_lowHealth[client] = false;
 		m_knownSpy[client] = -1;
 		m_goalIndex[client] = -1;
-		SetProcess(client, PRO_DEFAULT, true, 99999.0, "", true);
+		if (TF2_GetPlayerClass(client) == TFClass_Spy)
+			SetProcess(client, PRO_SPYLURK, 99999.0, "", true);
+		else
+			SetProcess(client, PRO_DEFAULT, 99999.0, "", true);
 		SelectObjective(client);
 		DeletePathNodes(client);
+		if (m_hasRouteWaypoints)
+		{
+			int index = -1;
+			ArrayList RouteWaypoints = new ArrayList();
+			for (int i = 0; i < m_waypointNumber; i++)
+			{
+				// blocked waypoint
+   				if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+					continue;
+
+				if (m_lastFailedWaypoint[client] == i)
+					continue;
+
+				if (m_paths[i].flags != _:WAYPOINT_ROUTE)
+					continue;
+
+    			// not for our team
+				int cteam = GetClientTeam(client);
+ 				if (cteam == 3 && m_paths[i].team == 2)
+    				continue;
+				
+   				if (cteam == 2 && m_paths[i].team == 3)
+        			continue;
+
+				RouteWaypoints.Push(i);
+			}
+
+			if (RouteWaypoints.Length > 0)
+				index = RouteWaypoints.Get(GetRandomInt(0, RouteWaypoints.Length - 1));
+			delete RouteWaypoints;
+
+			if (index != -1)
+				AStarFindPath(-1, index, client);
+		}
 	}
 }
 
@@ -437,16 +490,28 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	int target = GetClientOfUserId(GetEventInt(event, "attacker"));
-	
-	if (IsFakeClient(client) && IsValidClient(target))
+
+	if (!m_hasEntitiesNear[client] && IsValidEntity(target))
 	{
-		m_lookAt[client] = GetEyePosition(target);
-		m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.5, 5.0);
+		m_lookAt[client] = GetCenter(target);
+		m_nearestEntity[client] = target;
+		m_hasEntitiesNear[client] = true;
+	}
+	
+	if (IsFakeClient(client) && target != -1)
+	{
+		if (!m_hasEnemiesNear[client] || !IsPlayerAlive(m_nearestEnemy[client]))
+		{
+			m_lookAt[client] = GetEyePosition(target);
+			m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.5, 5.0);
+			m_nearestEnemy[client] = target;
+			m_hasEnemiesNear[client] = true;
+		}
 		if (TF2_GetPlayerClass(client) == TFClass_Spy && GetRandomInt(1, GetMaxHealth(client)) > GetClientHealth(client))
 			m_buttons[client] |= IN_ATTACK2;
 	}
 	
-	if (TF2_GetPlayerClass(client) == TFClass_Spy && IsValidClient(target))
+	if (TF2_GetPlayerClass(client) == TFClass_Spy && target != -1)
 	{
 		if (ChanceOf(m_eBotSenseChance[target]) && IsFakeClient(target))
 			m_knownSpy[target] = client;
