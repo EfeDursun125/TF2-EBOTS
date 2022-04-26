@@ -172,7 +172,7 @@ stock void LookAround(int client)
 		if (IsFakeClient(friend))
 			m_lookAt[client] = m_lookAt[friend];
 		else
-			m_lookAt[client] = GetEyePosition(friend);
+			GetAimOrigin(friend, m_lookAt[client]);
 		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
 	}
 	else if (m_isSlowThink[client] && ChanceOf(m_eBotSenseChance[client])) // no any friends near, who's footsteps is this or fire sounds?
@@ -270,7 +270,7 @@ stock void LookAround(int client)
 		m_searchTime[client] = GetGameTime() + 0.2;
 	}
 	
-	if (IsVisible(GetEyePosition(client), SelectRandom) && GetVectorDistance(GetOrigin(client), SelectRandom, true) > Squared(256))
+	if (IsVisible(GetEyePosition(client), SelectRandom) && GetVectorDistance(GetOrigin(client), SelectRandom, true) > Squared(384))
 	{
 		if (m_pauseTime[client] < GetGameTime())
 		{
