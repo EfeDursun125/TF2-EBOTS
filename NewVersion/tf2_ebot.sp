@@ -71,7 +71,7 @@ public void OnPluginStart()
 	EBotSenseMin = CreateConVar("ebot_minimum_sense_chance", "10", "Minimum 10");
 	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Maximum 90");
 	EBotDifficulty = CreateConVar("ebot_difficulty", "2", "0 = Easiest | 1 = Easy | 2 = Normal | 3 = Hard | 4 = Expert");
-	m_eBotMedicFollowRange = CreateConVar("ebot_medic_follow_range", "200", "");
+	m_eBotMedicFollowRange = CreateConVar("ebot_medic_follow_range", "150", "");
 	m_eBotDodgeRangeMin = CreateConVar("ebot_minimum_dodge_range", "512", "the range when enemy closer than a value, bot will start dodging enemies");
 	m_eBotDodgeRangeMax = CreateConVar("ebot_maximum_dodge_range", "1024", "the range when enemy closer than a value, bot will start dodging enemies");
 	m_eBotDodgeRangeChance = CreateConVar("ebot_dodge_change_range_chance", "10", "the chance for change dodge range when attack process ends (1-100)");
