@@ -193,9 +193,9 @@ stock void SelectBestCombatWeapon(int client)
 		}
 		else if(TF2_GetPlayerClass(client) == TFClass_Pyro)
 		{
-			if (clip0 > 0 && distance <= Squared(384))
+			if (distance <= Squared(350))
 				EquipWeaponSlot(client, 0);
-			else if (clip1 > 0)
+			else
 				EquipWeaponSlot(client, 1);
 		}
 		else if(TF2_GetPlayerClass(client) == TFClass_Soldier)

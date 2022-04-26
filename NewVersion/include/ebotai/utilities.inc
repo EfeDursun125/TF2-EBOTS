@@ -14,7 +14,6 @@ float m_bluFlagCapPoint[3];
 
 int m_targetNode[MAXPLAYERS + 1];
 int m_currentWaypointIndex[MAXPLAYERS + 1];
-float m_nextPathUpdate[MAXPLAYERS + 1];
 float m_nextStuckCheck[MAXPLAYERS + 1];
 ArrayList m_positions[MAXPLAYERS + 1];
 ArrayList m_pathIndex[MAXPLAYERS + 1];
@@ -59,7 +58,13 @@ int m_eBotDodgeRange[MAXPLAYERS + 1];
 
 int m_knownSpy[MAXPLAYERS + 1];
 int m_maxSticky[MAXPLAYERS + 1];
-int m_knownSentry[MAXPLAYERS + 1] = -1;
+int m_knownSentry[MAXPLAYERS + 1];
+int m_healTarget[MAXPLAYERS + 1];
+
+bool WantsBuildSentryGun[MAXPLAYERS + 1];
+bool WantsBuildDispenser[MAXPLAYERS + 1];
+bool WantsBuildTeleporterEnter[MAXPLAYERS + 1];
+bool WantsBuildTeleporterExit[MAXPLAYERS + 1];
 
 Handle EBotDebug;
 Handle EBotFPS;
@@ -253,7 +258,7 @@ stock void EquipWeaponSlot(int client, int slot)
 	if (IsWeaponSlotActive(client, slot))
 		return;
 	int iWeapon = GetPlayerWeaponSlot(client, slot);
-	if(IsValidEntity(iWeapon))
+	if (IsValidEntity(iWeapon))
 		EquipWeapon(client, iWeapon);
 }
 
@@ -268,7 +273,7 @@ stock void EquipWeapon(int client, int weapon)
 float g_flNextCommand[MAXPLAYERS + 1];
 stock bool FakeClientCommandThrottled(int client, const char[] command)
 {
-	if(g_flNextCommand[client] > GetGameTime())
+	if (g_flNextCommand[client] > GetGameTime())
 		return false;
 	FakeClientCommand(client, command);
 	g_flNextCommand[client] = GetGameTime() + 0.4;
@@ -453,14 +458,10 @@ stock void MoveToWaypoint(int client, float flGoal[3], float flDest[3])
 	float distance = GetVectorDistance(flPos, flDest, true);
 	float maxSpeed = GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
 	if (distance <= Squared(2))
-	{
 		m_nextStuckCheck[client] = GetGameTime() + 5.0;
-		m_nextPathUpdate[client] = GetGameTime() + 5.0;
-	}
 	else if (distance <= Squaredf(maxSpeed))
 	{
 		m_nextStuckCheck[client] = GetGameTime() + 5.0;
-		m_nextPathUpdate[client] = GetGameTime() + 5.0;
 		ScaleVector(m_moveVel[client], distance / maxSpeed);
 	}
 	else
@@ -517,7 +518,7 @@ stock void BackstabMove(int client, int target, bool moveForward = true)
 	GetClientEyeAngles(target, flTargetAng);
 	float iAngleDiff = AngleDiff(flBotAng[1], flTargetAng[1]);
 	
-	if (moveForward && GetClientAimTarget(target) > 0)
+	if (moveForward && GetClientAimTarget(target) == client)
 		m_moveVel[client][0] = -500.0;
 	else if (moveForward)
 		m_moveVel[client][0] = 500.0;
@@ -634,6 +635,11 @@ stock int GetActiveWeaponSlot(int client)
 	return -1;
 }
 
+stock int GetActiveWeapon(int client)
+{
+	return GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
+}
+
 stock int GetMetal(int client)
 {
 	return GetEntProp(client, Prop_Data, "m_iAmmo", 4, 3);
@@ -684,7 +690,20 @@ stock bool IsMoving(int client)
 {
 	float buffer[3];
 	GetEntPropVector(client, Prop_Data, "m_vecAbsVelocity", buffer);
-	return (GetVectorLength(buffer) > 10.0);
+	return (GetVectorLength(buffer, true) > GetEntPropFloat(client, Prop_Data, "m_flMaxspeed"));
+}
+
+stock bool IsMetalLow(int client)
+{
+	if (WantsBuildSentryGun[client])
+		return GetMetal(client) <= 130.0;
+	else if (WantsBuildDispenser[client])
+		return GetMetal(client) <= 100.0;
+	else if (WantsBuildTeleporterEnter[client] || WantsBuildTeleporterExit[client])
+		return GetMetal(client) <= 50.0;
+	else if (GetMetal(client) <= 0.0)
+		return true;
+	return false;
 }
 
 stock bool IsResupply(int entity, int team)
@@ -758,7 +777,7 @@ stock bool CheckWall(int client)
 	flPos[2] += 18.0;
 	
 	// Perform a wall check to see if we are near any obstacles we should try jump over
-	Handle TraceRay = TR_TraceHullFilterEx(flPos, flPos, flMins, flMaxs, MASK_PLAYERSOLID, ExcludeFilter, client);
+	Handle TraceRay = TR_TraceHullFilterEx(flPos, flPos, flMins, flMaxs, MASK_PLAYERSOLID, StuckFilter, client);
 	bool bHit = TR_DidHit(TraceRay);
 	
 	delete TraceRay;
@@ -790,6 +809,27 @@ public bool ExcludeFilter(int entity, int contentsMask, any iExclude)
 	return !(entity == iExclude);
 }
 
+public bool StuckFilter(int entity, int contentsMask, any iExclude)
+{
+	char class[64];
+	GetEntityClassname(entity, class, sizeof(class));
+	if (StrEqual(class, "player"))
+	{
+		if (GetClientTeam(entity) == GetClientTeam(iExclude))
+			return false;
+	}
+	else if (StrEqual(class, "entity_medigun_shield"))
+	{
+		if (GetEntProp(entity, Prop_Send, "m_iTeamNum") == GetClientTeam(iExclude))
+			return false;
+	}
+	else if (StrEqual(class, "func_respawnroomvisualizer"))
+		return false;
+	else if (StrEqual(class, "entity_revive_marker"))
+		return false;
+	return !(entity == iExclude);
+}
+
 stock int GetPlayerStickyCount(int client)
 {
 	int StickyCount = 0;
@@ -812,6 +852,30 @@ stock int GetPlayerStickyCount(int client)
 	return StickyCount;
 }
 
+stock int GetNearestPayload(int client, int team)
+{
+	int NearestPayload = -1;
+	float distance = -1.0; 
+	float nearestDistance = -1.0;
+	int iPayload = -1;
+	while ((iPayload = FindEntityByClassname(iPayload, "mapobj_cart_dispenser")) != -1)
+	{
+		if (!IsValidEntity(iPayload))
+			continue;
+		
+		if (GetTeamNumber(iPayload) != team)
+			continue;
+		
+		distance = GetFastDistance(GetOrigin(client), GetOrigin(iPayload));
+		if (distance < nearestDistance || nearestDistance == -1.0)
+		{
+			NearestPayload = iPayload;
+			nearestDistance = distance;
+		}
+	}
+	return NearestPayload;
+}
+
 // check wall on right
 stock bool CheckWallRight(int client)
 {
@@ -826,7 +890,7 @@ stock bool CheckWallRight(int client)
 	clientTargetOrigin[1] = clientOrigin[1] + (fw[1] * 28.0) + (right[1] * 28.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
-	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, ExcludeFilter, client);
+	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
 	bool hit = TR_DidHit(tr);
 
 	if (GetConVarInt(EBotDebug) == 1)
@@ -853,7 +917,7 @@ stock bool CheckWallLeft(int client)
 	clientTargetOrigin[1] = clientOrigin[1] + (fw[1] * 28.0) - (right[1] * 28.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
-	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, ExcludeFilter, client);
+	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
 	bool hit = TR_DidHit(tr);
 
 	if (GetConVarInt(EBotDebug) == 1)
@@ -880,7 +944,7 @@ stock bool CheckWallRight2(int client)
 	clientTargetOrigin[1] = clientOrigin[1] - (fw[1] * 28.0) + (right[1] * 28.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
-	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, ExcludeFilter, client);
+	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
 	bool hit = TR_DidHit(tr);
 
 	if (GetConVarInt(EBotDebug) == 1)
@@ -907,7 +971,7 @@ stock bool CheckWallLeft2(int client)
 	clientTargetOrigin[1] = clientOrigin[1] - (fw[1] * 28.0) - (right[1] * 28.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
-	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, ExcludeFilter, client);
+	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
 	bool hit = TR_DidHit(tr);
 
 	if (GetConVarInt(EBotDebug) == 1)
@@ -1119,7 +1183,7 @@ stock bool HasSapper(int entity)
 	return GetEntProp(entity, Prop_Send, "m_bHasSapper");
 }
 
-stock bool ClientViews(int Viewer, int Target, float fMaxDistance = 0.0, float fThreshold = 0.75)
+stock bool ClientViews(int Viewer, int Target, float fThreshold = 0.70)
 {
     float fViewPos[3];   GetClientEyePosition(Viewer, fViewPos);
     float fViewAng[3];   GetClientEyeAngles(Viewer, fViewAng);
@@ -1134,11 +1198,6 @@ stock bool ClientViews(int Viewer, int Target, float fMaxDistance = 0.0, float f
     fDistance[0] = fTargetPos[0] - fViewPos[0];
     fDistance[1] = fTargetPos[1] - fViewPos[1];
     fDistance[2] = 0.0;
-    if (fMaxDistance != 0.0)
-    {
-        if ((Squaredf(fDistance[0]) + Squaredf(fDistance[1])) >= Squaredf(fMaxDistance))
-            return false;
-    }
 
     NormalizeVector(fDistance, fTargetDir);
     if (GetVectorDotProduct(fViewDir, fTargetDir) < fThreshold)
@@ -1147,7 +1206,7 @@ stock bool ClientViews(int Viewer, int Target, float fMaxDistance = 0.0, float f
     return true;
 }
 
-stock bool ClientViewsOrigin(int Viewer, float fTargetPos[3], float fMaxDistance=0.0, float fThreshold=0.70)
+stock bool ClientViewsOrigin(int Viewer, float fTargetPos[3], float fThreshold=0.70)
 {
     float fViewPos[3];   GetClientEyePosition(Viewer, fViewPos);
     float fViewAng[3];   GetClientEyeAngles(Viewer, fViewAng);
@@ -1161,11 +1220,6 @@ stock bool ClientViewsOrigin(int Viewer, float fTargetPos[3], float fMaxDistance
     fDistance[0] = fTargetPos[0] - fViewPos[0];
     fDistance[1] = fTargetPos[1] - fViewPos[1];
     fDistance[2] = 0.0;
-    if (fMaxDistance != 0.0)
-    {
-        if ((Squaredf(fDistance[0]) + Squaredf(fDistance[1])) >= Squaredf(fMaxDistance))
-            return false;
-    }
 
     NormalizeVector(fDistance, fTargetDir);
     if (GetVectorDotProduct(fViewDir, fTargetDir) < fThreshold)

@@ -8,15 +8,20 @@ int nearestIndex = -1;
 int savedIndex = -1;
 bool showWaypoints = false;
 float waypointDrawTime = 0.0;
-float nextDrawTime = 0.5;
+float nextDrawTime = 0.1;
 
-bool m_hasHealthWaypoints;
-bool m_hasAmmoWaypoints;
-bool m_hasSniperWaypoints;
-bool m_hasRouteWaypoints;
+bool m_hasHealthWaypoints = false;
+bool m_hasAmmoWaypoints = false;
+bool m_hasSniperWaypoints = false;
+bool m_hasRouteWaypoints = false;
+bool m_hasSentryWaypoints = false;
+bool m_hasTeleporterEnterWaypoints = false;
+bool m_hasTeleporterExitWaypoints = false;
 
-float m_pathDelay[MAXPLAYERS + 1];
-int m_lastFailedWaypoint[MAXPLAYERS + 1];
+float m_pathDelay[MAXPLAYERS + 1] = 0.0;
+int m_lastFailedWaypoint[MAXPLAYERS + 1] = -1;
+
+char m_aboutTheWaypoint[192] = "";
 
 enum WaypointFlag
 {
@@ -187,6 +192,9 @@ stock void DrawWaypoints()
         float distance = GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(m_hostEntity), true);
         if (distance > Squared(range))
             continue;
+        
+        if (distance > Squared(75) && !ClientViewsOrigin(m_hostEntity, VectorAsFloat(m_paths[i].origin), 0.6))
+            continue;
 
         // check the distance
         if (distance < nearestDistance)
@@ -263,11 +271,35 @@ stock void DrawWaypoints()
             color[1] = 124;
             color[2] = 122;
         }
-       else if (m_paths[i].flags == _:WAYPOINT_ROUTE)
+        else if (m_paths[i].flags == _:WAYPOINT_ROUTE)
         {
             color[0] = 70;
             color[1] = 70;
             color[2] = 70;
+        }
+        else if (m_paths[i].flags == _:WAYPOINT_SENTRY)
+        {
+            color[0] = 163;
+            color[1] = 155;
+            color[2] = 198;
+        }
+        else if (m_paths[i].flags == _:WAYPOINT_TELEPORTERENTER)
+        {
+            color[0] = 127;
+            color[1] = 131;
+            color[2] = 168;
+        }
+        else if (m_paths[i].flags == _:WAYPOINT_TELEPORTEREXIT)
+        {
+            color[0] = 131;
+            color[1] = 127;
+            color[2] = 168;
+        }
+        else if (m_paths[i].flags == _:WAYPOINT_DEMOMANCAMP)
+        {
+            color[0] = 125;
+            color[1] = 47;
+            color[2] = 142;
         }
         else if (m_paths[i].team == 2)
         {
@@ -293,7 +325,7 @@ stock void DrawWaypoints()
     if (nearestIndex != -1 && GetVectorDistance(GetEyePosition(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(range) && IsVisibleWaypoint(VectorAsInt(GetEyePosition(m_hostEntity)), m_paths[nearestIndex].origin))
     {
         // draw the camplines
-        if (m_paths[nearestIndex].flags == _:WAYPOINT_SNIPER || m_paths[nearestIndex].flags == _:WAYPOINT_DEFEND)
+        if (m_paths[nearestIndex].flags == _:WAYPOINT_SNIPER || m_paths[nearestIndex].flags == _:WAYPOINT_DEFEND || m_paths[nearestIndex].flags == _:WAYPOINT_SENTRY || m_paths[nearestIndex].flags == _:WAYPOINT_DEMOMANCAMP || m_paths[nearestIndex].flags == _:WAYPOINT_TELEPORTERENTER || m_paths[nearestIndex].flags == _:WAYPOINT_TELEPORTEREXIT)
         {
             int height = 72;
             if (m_paths[nearestIndex].flags == _:WAYPOINT_CROUCH)
@@ -707,7 +739,7 @@ stock int CostNormal(int current, int parent, int client)
         return 65355;
     
     // litte randomness
-	return GetWaypointDistance(current, parent) + GetRandomInt(client, 128);
+	return GetWaypointDistance(current, parent) + GetRandomInt(client, 256);
 }
 
 // A* Pathfinding
@@ -716,7 +748,7 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client)
 	if (destIndex == -1)
 		return;
 	
-    if (m_pathDelay[client] >= GetGameTime())
+    if (m_pathDelay[client] > GetGameTime())
         return;
     
 	if (srcIndex <= 0)
@@ -956,9 +988,10 @@ stock void WaypointLoad()
     if (fp == null)
     {
         if (NavMesh_Exists())
-            PrintHintTextToAll("No waypoint file found\nNavmesh file will be used instead");
+            m_aboutTheWaypoint = "No waypoint file found\nNavmesh file will be used";
         else
-            PrintHintTextToAll("No waypoint file found\nNo navmesh file found\nBots will not move");
+            m_aboutTheWaypoint = "No waypoint file found\nNo navmesh file found\nBots will not move";
+        CreateTimer(15.0, PrintHudTextOnStart);
         return;
     }
 
@@ -969,19 +1002,22 @@ stock void WaypointLoad()
 
     if (m_waypointNumber <= 0)
     {
-        PrintHintTextToAll("Broken waypoint file\nThis waypoint file will be ignored");
+        m_aboutTheWaypoint = "Broken waypoint file\nThis waypoint file will be ignored";
         fp.Close();
+        CreateTimer(15.0, PrintHudTextOnStart);
         return;
     }
 
     if (header.fileVersion > WaypointVersion)
     {
-        PrintHintTextToAll("Waypoint version is too high\nPlease update your ebot!\nThis waypoint file will be ignored %s", header.fileVersion);
+        Format(m_aboutTheWaypoint, sizeof(m_aboutTheWaypoint), "Waypoint version is too high\nPlease update your ebot!\nThis waypoint file will be ignored %s", header.fileVersion);
         fp.Close();
+        CreateTimer(15.0, PrintHudTextOnStart);
         return;
     }
 
-    PrintHintTextToAll("Waypoint file by %s\n%d waypoints loaded", header.author, m_waypointNumber);
+    Format(m_aboutTheWaypoint, sizeof(m_aboutTheWaypoint), "Waypoint file by %s\n%d waypoints loaded", header.author, m_waypointNumber);
+    CreateTimer(15.0, PrintHudTextOnStart);
     
     // read the all waypoint data
     for (int i = 0; i < m_waypointNumber; i++)
@@ -999,6 +1035,9 @@ stock void InitTypes()
     m_hasAmmoWaypoints = false;
     m_hasSniperWaypoints = false;
     m_hasRouteWaypoints = false;
+    m_hasSentryWaypoints = false;
+    m_hasTeleporterEnterWaypoints = false;
+    m_hasTeleporterExitWaypoints = false;
 
     for (int i = 0; i < m_waypointNumber; i++)
     {
@@ -1015,11 +1054,23 @@ stock void InitTypes()
             m_hasSniperWaypoints = true;
         else if (m_paths[i].flags == _:WAYPOINT_ROUTE)
             m_hasRouteWaypoints = true;
+        else if (m_paths[i].flags == _:WAYPOINT_SENTRY)
+            m_hasSentryWaypoints = true;
+        else if (m_paths[i].flags == _:WAYPOINT_TELEPORTERENTER)
+            m_hasTeleporterEnterWaypoints = true;
+        else if (m_paths[i].flags == _:WAYPOINT_TELEPORTEREXIT)
+            m_hasTeleporterExitWaypoints = true;
     }
 }
 
 stock void WaypointSave()
 {
+    if (m_waypointNumber <= 0)
+    {
+        PrintHintTextToAll("No waypoints to save");
+        return;
+    }
+
     char waypointAuthor[32] = "unknown";
     if (IsValidClient(m_hostEntity))
         GetClientName(m_hostEntity, waypointAuthor, sizeof(waypointAuthor));
@@ -1030,7 +1081,7 @@ stock void WaypointSave()
     char filepath[PLATFORM_MAX_PATH];
     BuildPath(Path_SM, filepath, sizeof(filepath), "ebotWaypoints/%s.ewp", currentMap);
     
-    // remember original waypoint author
+    // remember the original waypoint author
     File rf = OpenFile(filepath, "rb");
     if (rf != null)
     {

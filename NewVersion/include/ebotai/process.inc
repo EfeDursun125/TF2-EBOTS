@@ -12,8 +12,10 @@ enum
 	PRO_FLEE,
 	PRO_DEFEND,
 	PRO_HIDE,
+	PRO_ENGINEERIDLE,
 	PRO_BUILDDISPENSER,
-	PRO_BUILDTELEPORTER,
+	PRO_BUILDTELEPORTERENTER,
+	PRO_BUILDTELEPORTEREXIT,
 	PRO_BUILDSENTRY
 }
 
@@ -59,6 +61,12 @@ public void StartProcess(int client, int process)
 			DefendStart(client);
 		case PRO_HEAL:
 			HealStart(client);
+		case PRO_ENGINEERIDLE:
+			EngineerIdleStart(client);
+		case PRO_BUILDSENTRY:
+			BuildSentryStart(client);
+		case PRO_BUILDDISPENSER:
+			BuildDispenserStart(client);
 	}
 }
 
@@ -86,6 +94,12 @@ public void EndProcess(int client, int process)
 			DefendEnd(client);
 		case PRO_HEAL:
 			HealEnd(client);
+		case PRO_ENGINEERIDLE:
+			EngineerIdleEnd(client);
+		case PRO_BUILDSENTRY:
+			BuildSentryEnd(client);
+		case PRO_BUILDDISPENSER:
+			BuildDispenserEnd(client);
 	}
 }
 
@@ -119,6 +133,12 @@ public void UpdateProcess(int client)
 			DefendUpdate(client);
 		case PRO_HEAL:
 			HealUpdate(client);
+		case PRO_ENGINEERIDLE:
+			EngineerIdleUpdate(client);
+		case PRO_BUILDSENTRY:
+			BuildSentryUpdate(client);
+		case PRO_BUILDDISPENSER:
+			BuildDispenserUpdate(client);
 	}
 }
 
@@ -162,6 +182,12 @@ public bool IsReadyForTheProcess(int client, int process)
 			return DefendRequirements(client);
 		case PRO_HEAL:
 			return HealRequirements(client);
+		case PRO_ENGINEERIDLE:
+			return EngineerIdleRequirements(client);
+		case PRO_BUILDSENTRY:
+			return BuildSentryRequirements(client);
+		case PRO_BUILDDISPENSER:
+			return BuildDispenserRequirements(client);
 	}
 
 	return true;
@@ -190,6 +216,12 @@ stock char GetProcessName(int process)
 			string = "DEFEND";
 		case PRO_HEAL:
 			string = "HEAL";
+		case PRO_ENGINEERIDLE:
+			string = "ENGINEER_IDLE";
+		case PRO_BUILDSENTRY:
+			string = "BUILD_SENTRY";
+		case PRO_BUILDDISPENSER:
+			string = "BUILD_DISPENSER";
 	}
 	return string;
 }

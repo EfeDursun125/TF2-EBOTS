@@ -6,6 +6,7 @@ public void FindFriendsAndEnemiens(int client)
 	m_friendsNearCount[client] = 0;
 	m_hasEnemiesNear[client] = false;
 	m_hasFriendsNear[client] = false;
+	float medicdist = 99999999.0;
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -31,37 +32,40 @@ public void FindFriendsAndEnemiens(int client)
 				if (TF2_IsPlayerInCondition(i, TFCond_Cloaked))
 					continue;
 		
-				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && TF2_IsPlayerInCondition(i, TFCond_Overhealed))
+				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && GetClientHealth(i) >= GetMaxHealth(i))
 					continue;
 		
-				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsFakeClient(i) && IsWeaponSlotActive(i, 2) && TF2_IsPlayerInCondition(i, TFCond_Overhealed))
+				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsWeaponSlotActive(i, 2) && GetClientHealth(i) >= GetMaxHealth(i))
 					continue;
 		
-				if (TF2_GetPlayerClass(i) == TFClass_Medic && TF2_IsPlayerInCondition(i, TFCond_Overhealed))
+				if (TF2_GetPlayerClass(i) == TFClass_Medic && GetClientHealth(i) >= GetMaxHealth(i))
 					continue;
 		
-				if (TF2_IsPlayerInCondition(i, TFCond_Zoomed) && TF2_IsPlayerInCondition(i, TFCond_Overhealed))
+				if (TF2_GetPlayerClass(i) == TFClass_Sniper && GetClientHealth(i) >= GetMaxHealth(i))
 					continue;
 		
-				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsFakeClient(i) && IsWeaponSlotActive(i, 5))
+				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsWeaponSlotActive(i, 5) && GetClientHealth(i) >= GetMaxHealth(i))
 					continue;
 		
 				m_friendsNearCount[client]++;
-				float dist = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
-				if (dist < m_friendDistance[client])
+				m_friendDistance[client] = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
+				float realdist = m_friendDistance[client];
+				float edict_distance = realdist * GetClientHealth(i);
+				if (edict_distance < medicdist)
 				{
-					m_friendDistance[client] = dist;
+					medicdist = edict_distance;
 					m_nearestFriend[client] = i;
 				}
-				return;
 			}
-			
-			m_friendsNearCount[client]++;
-			float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
-			if (edict_distance < m_friendDistance[client])
+			else
 			{
-				m_friendDistance[client] = edict_distance;
-				m_nearestFriend[client] = i;
+				m_friendsNearCount[client]++;
+				float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
+				if (edict_distance < m_friendDistance[client])
+				{
+					m_friendDistance[client] = edict_distance;
+					m_nearestFriend[client] = i;
+				}
 			}
 		}
 		else

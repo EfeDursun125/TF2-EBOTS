@@ -1,6 +1,5 @@
 float m_checkTimer[MAXPLAYERS + 1];
-
-stock void CheckSlowThink(int client)
+public void CheckSlowThink(int client)
 {
 	if (m_checkTimer[client] < GetGameTime())
 	{
@@ -44,6 +43,7 @@ stock void CheckSlowThink(int client)
 				{
 					if (GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client), true) <= Squared(256))
 					{
+						EquipWeaponSlot(client, 0);
 						m_buttons[client] |= IN_ATTACK2;
 						m_lookAt[client] = GetOrigin(iProjectile);
 						m_pauseTime[client] = GetGameTime() + 2.0;
@@ -58,57 +58,37 @@ stock void CheckSlowThink(int client)
 				m_maxSticky[client] = true;
 			else
 				m_maxSticky[client] = false;
-
-			if (StrContains(currentMap, "ctdf_" , false) != -1)
+			
+			int iSticky = -1;
+			while ((iSticky = FindEntityByClassname(iSticky, "tf_projectile_pipe_remote")) != INVALID_ENT_REFERENCE)
 			{
-				int flag;
-				while ((flag = FindEntityByClassname(flag, "item_teamflag")) != INVALID_ENT_REFERENCE)
+				if (!IsValidEntity(iSticky))
+					continue;
+				
+				if (GetEntityThrower(iSticky) != client)
+					continue;
+				
+				for (int search = 1; search <= MaxClients; search++)
 				{
-					if (!IsValidEntity(flag))
+					if (search == client)
 						continue;
 					
-					if (GetClientTeam(client) != GetTeamNumber(flag))
+					if (!IsValidClient(search))
 						continue;
 					
-					if (GetEntProp(flag, Prop_Send, "m_nFlagStatus") != 1)
-						continue;
-
-					m_attack2Timer[client] = GetGameTime() + 0.2;
-				}
-			}
-			else
-			{
-				int iSticky = -1;
-				while ((iSticky = FindEntityByClassname(iSticky, "tf_projectile_pipe_remote")) != INVALID_ENT_REFERENCE)
-				{
-					if (!IsValidEntity(iSticky))
+					if (!IsPlayerAlive(search))
 						continue;
 					
-					if (GetEntityThrower(iSticky) != client)
+					if (TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
 						continue;
-					
-					for (int search = 1; search <= MaxClients; search++)
-					{
-						if (search == client)
-							continue;
 						
-						if (!IsValidClient(search))
-							continue;
+					if (GetClientTeam(client) == GetClientTeam(search))
+						continue;
 						
-						if (!IsPlayerAlive(search))
-							continue;
+					if (GetVectorDistance(GetOrigin(iSticky), GetOrigin(search), true) > Squared(80))
+						continue;
 						
-						if (TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
-							continue;
-						
-						if (GetClientTeam(client) == GetClientTeam(search))
-							continue;
-						
-						if (GetVectorDistance(GetOrigin(iSticky), GetOrigin(search), true) > Squared(80))
-							continue;
-						
-						m_buttons[client] |= IN_ATTACK2;
-					}
+					m_buttons[client] |= IN_ATTACK2;
 				}
 			}
 		}
@@ -142,8 +122,13 @@ stock void CheckSlowThink(int client)
 		if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Spy)
 			m_knownSpy[client] = m_nearestEnemy[client];
 		
-		if (TF2_GetPlayerClass(client) == TFClass_Spy && !TF2_IsPlayerInCondition(client, TFCond_Disguised) && !TF2_HasTheFlag(client))
-			DisguiseAsEnemy(client);
+		if (TF2_GetPlayerClass(client) == TFClass_Spy)
+		{
+			if (!TF2_IsPlayerInCondition(client, TFCond_Disguised) && !TF2_IsPlayerInCondition(client, TFCond_Disguising) && !TF2_HasTheFlag(client))
+				DisguiseAsEnemy(client);
+			if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) && !m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])
+				m_buttons[client] |= IN_ATTACK2;
+		}
 
 		m_checkTimer[client] = GetGameTime() + GetRandomFloat(0.95, 1.05);
 	}
@@ -152,14 +137,14 @@ stock void CheckSlowThink(int client)
 }
 
 // automaticly triggers the collect health pack process
-stock void CheckHealth(int client)
+public void CheckHealth(int client)
 {
 	if (!m_isSlowThink[client])
 		return;
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Spy && TF2_GetPlayerWeaponID(client, 2) == 356)
 	{
-		if(GetClientHealth(client) <= 50.0)
+		if (GetClientHealth(client) <= 50.0)
 			m_lowHealth[client] = true;
 		else
 			m_lowHealth[client] = false;
@@ -174,11 +159,11 @@ stock void CheckHealth(int client)
 }
 
 // automaticly triggers the collect health pack process
-stock void CheckAmmo(int client)
+public void CheckAmmo(int client)
 {
 	if (!m_isSlowThink[client])
 		return;
-	
+		
 	if (GetAmmo(client, 0) <= 3 || (TF2_GetPlayerClass(client) != TFClass_Spy && TF2_GetPlayerClass(client) != TFClass_Medic && GetAmmo(client, 1) <= 6))
 		m_lowAmmo[client] = true;
 	else
@@ -188,7 +173,7 @@ stock void CheckAmmo(int client)
 		SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack.");
 }
 
-stock void CheckWalls(int client)
+public void CheckWalls(int client)
 {
 	if (!m_hasEnemiesNear[client] && CheckWall(client))
 		m_buttons[client] |= IN_JUMP;

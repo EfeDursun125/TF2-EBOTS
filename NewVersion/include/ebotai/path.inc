@@ -18,7 +18,7 @@ stock bool IsPathPossible(float start[3], float goal[3], float maxrange = 0.0, f
 	return NavMesh_BuildPath(startArea, goalArea, goal, NavMeshFastestPathCost, _, closestArea, maxrange, maxstepsize);
 }
 
-stock void FollowPath(int client, float targetposition[3])
+public void FollowPath(int client, float targetposition[3])
 {
 	int currentIndex = -1;
 	if (m_positions[client] != null)
@@ -62,18 +62,16 @@ stock void FollowPath(int client, float targetposition[3])
 				if (m_nextStuckCheck[client] + 3.0 <= GetGameTime())
 				{
 					m_nextStuckCheck[client] = GetGameTime() + 5.0;
-					m_nextPathUpdate[client] = GetGameTime() + 5.0;
 					FindPath(client, targetposition);
 				}
 			}
 			else if (m_hasWaypoints && (m_paths[currentIndex].flags == _:WAYPOINT_SNIPER || m_paths[currentIndex].flags == _:WAYPOINT_DEFEND))
 			{
 				m_nextStuckCheck[client] = GetGameTime() + 5.0;
-				m_nextPathUpdate[client] = GetGameTime() + 5.0;
 				MoveToWaypoint(client, flGoPos, targetposition);
 			}
 			else
-				MoveTo(client, flGoPos, !m_hasWaypoints);
+				MoveTo(client, flGoPos, m_hasWaypoints ? m_hasEntitiesNear[client] : true);
 			
 			flGoPos[2] = flPos[2];
 
@@ -81,7 +79,7 @@ stock void FollowPath(int client, float targetposition[3])
 			if (m_hasWaypoints)
 			{
 				float value = 10.0;
-				if (m_paths[currentIndex].flags == _:WAYPOINT_SNIPER || m_paths[currentIndex].flags == _:WAYPOINT_DEFEND)
+				if (m_paths[currentIndex].flags == _:WAYPOINT_SNIPER || m_paths[currentIndex].flags == _:WAYPOINT_DEFEND || m_paths[currentIndex].flags == _:WAYPOINT_SENTRY)
 				{
 					if (currentIndex != -1 && m_paths[currentIndex].radius > 0.0)
 						value = float(Squared(m_paths[currentIndex].radius)) / 32.0;
@@ -91,14 +89,13 @@ stock void FollowPath(int client, float targetposition[3])
 				else
 				{
 					if (currentIndex != -1 && m_paths[currentIndex].radius > 0.0)
-						value = float(Squared(m_paths[currentIndex].radius)) / 32.0;
+						value = float(Squared(m_paths[currentIndex].radius)) / 48.0;
 					value += (GetConVarFloat(EBotFPS) * speed);
 				}
 				float flNodeDist = GetVectorDistance(VectorAsFloat(m_paths[currentIndex].origin), flPos, true);
 				if (flNodeDist <= Squaredf(value))
 				{
 					m_nextStuckCheck[client] = GetGameTime() + 5.0;
-					m_nextPathUpdate[client] = GetGameTime() + 5.0;
 					m_currentWaypointIndex[client]--;
 					m_targetNode[client]--;
 					if (m_paths[currentIndex].flags == _:WAYPOINT_JUMP || m_paths[currentIndex].flags == _:WAYPOINT_DOUBLEJUMP)
@@ -139,10 +136,10 @@ stock void FollowPath(int client, float targetposition[3])
 			}
 			m_pathAhead[client] = flToPos;
 		}
-		else if (m_nextPathUpdate[client] <= GetGameTime())
+		else
 			FindPath(client, targetposition);
 	}
-	else if (m_nextPathUpdate[client] <= GetGameTime())
+	else
 		FindPath(client, targetposition);
 	
 	return;
@@ -157,12 +154,13 @@ stock void FindPath(int client, float targetposition2[3])
 
 	if (m_hasWaypoints)
 	{
-		int destIndex = FindNearestWaypoint(targetposition2, 999999.0, client);
-		AStarFindPath(-1, destIndex, client);
+		int index = FindNearestWaypoint(targetposition2, 999999.0, client);
+		if (index != -1)
+			AStarFindPath(-1, index, client);
 		return;
 	}
 	
-	pathdelayer = GetGameTime() + 0.1;
+	pathdelayer = GetGameTime() + 0.25;
 
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);
@@ -223,8 +221,6 @@ stock void FindPath(int client, float targetposition2[3])
 		
 		m_targetNode[client] = m_positions[client].Length - 2;
 	}
-	
-	m_nextPathUpdate[client] = GetGameTime() + 1.0;
 }
 
 public int NavMeshFastestPathCost(CNavArea area, CNavArea from, CNavLadder ladder, any data)
@@ -260,7 +256,7 @@ public int NavMeshRandomizedPathCost(CNavArea area, CNavArea from, CNavLadder la
 		area.GetRandomPoint(flAreaCenter);
 		from.GetRandomPoint(flFromAreaCenter);
 		
-		iDist = RoundToFloor(GetVectorDistance(flAreaCenter, flFromAreaCenter));
+		iDist = RoundToFloor(GetFastDistance(flAreaCenter, flFromAreaCenter));
 	}
 	
 	int iCost = iDist + from.CostSoFar;
