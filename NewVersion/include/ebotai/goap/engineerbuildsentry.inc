@@ -24,7 +24,7 @@ public void BuildSentryUpdate(int client)
 	if (range <= Squared(300))
 	{
 		if (!IsWeaponSlotActive(client, 5) && !IsMoving(client))
-			FakeClientCommandThrottled(client, "build 2");
+			FakeClientCommandThrottled(client, "build 2 0");
 		lookupdate = false;
 		int index = m_goalIndex[client];
 		if (m_hasWaypoints && index != -1)

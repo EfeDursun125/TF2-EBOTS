@@ -21,10 +21,10 @@ public void BuildDispenserUpdate(int client)
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
-	LookUpdate(client);
+	LookAround(client);
 
 	if (!IsWeaponSlotActive(client, 5))
-		FakeClientCommandThrottled(client, "build 0");
+		FakeClientCommandThrottled(client, "build 0 0");
 	else
 		m_buttons[client] |= IN_ATTACK;
 	

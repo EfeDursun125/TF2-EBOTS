@@ -24,7 +24,7 @@ public void HealUpdate(int client)
 		CurrentProcessTime[client] = GetGameTime() + 10.0; // no timeout if we have friends nearby
 	}
 	
-	if (IsValidClient(m_healTarget[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(m_healTarget[client]), true) <= Squared(GetConVarInt(m_eBotMedicFollowRange)))
+	if (IsValidClient(m_healTarget[client]) && IsPlayerAlive(m_healTarget[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(m_healTarget[client]), true) <= Squared(GetConVarInt(m_eBotMedicFollowRange)))
 	{
 		if (IsWeaponSlotActive(client, 1))
 		{
@@ -45,7 +45,7 @@ public void HealUpdate(int client)
 	}
 	else
 	{
-		if (IsValidClient(m_healTarget[client]))
+		if (IsValidClient(m_healTarget[client]) && IsPlayerAlive(m_healTarget[client]))
 		{
 			m_lookAt[client] = GetEyePosition(m_healTarget[client]);
 			FollowPath(client, GetOrigin(m_healTarget[client]));
