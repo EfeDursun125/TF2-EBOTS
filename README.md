@@ -7,8 +7,7 @@ Works on
 3. KOTH
 
 Known Issues
-1. Medic ai is done but not activated some reason
-2. Spies can lock to dead targets
+1. For now: spies can't sap buildings & engineers can't build teleporters
 
 # OLD
 Requires PathFollower & tf2.pets gamedata
