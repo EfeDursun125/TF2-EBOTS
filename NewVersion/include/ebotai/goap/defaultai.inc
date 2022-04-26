@@ -5,6 +5,8 @@ public bool DefaultRequirements(int client)
 
 public void DefaultStart(int client)
 {
+	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+		SetProcess(client, PRO_ENGINEERIDLE, 9999.0, "", true);
 	if (TF2_GetPlayerClass(client) == TFClass_Spy)
 		SetProcess(client, PRO_SPYLURK, 9999.0, "", true);
 	SelectObjective(client);
@@ -29,9 +31,9 @@ public void DefaultUpdate(int client)
 	if (TF2_GetPlayerClass(client) == TFClass_Medic)
 	{
 		if (m_hasEnemiesNear[client] && m_hasFriendsNear[client] && m_friendDistance[client] <= m_enemyDistance[client])
-			SetProcess(client, PRO_HEAL, 6.0, "", true);
+			SetProcess(client, PRO_HEAL, 10.0, "", true);
 		else if (!m_hasEnemiesNear[client] && m_hasFriendsNear[client])
-			SetProcess(client, PRO_HEAL, 6.0, "", true);
+			SetProcess(client, PRO_HEAL, 10.0, "", true);
 	}
 
 	CheckHealth(client);
@@ -82,6 +84,8 @@ public void DefaultUpdate(int client)
 public void DefaultEnd(int client)
 {
 	if (TF2_GetPlayerClass(client) == TFClass_Spy)
+		return;
+	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 		return;
 	m_goalEntity[client] = -1;
 }
@@ -292,7 +296,6 @@ stock void ObjectiveMovement(int client)
 				m_moveVel[client][1] = 0.0;
 				m_moveVel[client][2] = 0.0;
 				m_nextStuckCheck[client] = GetGameTime() + 5.0;
-				m_nextPathUpdate[client] = GetGameTime() + 5.0;
 			}
 			else
 				FollowPath(client, m_goalPosition[client]);

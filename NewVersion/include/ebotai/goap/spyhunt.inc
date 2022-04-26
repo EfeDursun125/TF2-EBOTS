@@ -22,6 +22,11 @@ public void SpyHuntStart(int client)
 
 public void SpyHuntUpdate(int client)
 {
+	FindFriendsAndEnemiens(client);
+	FindEnemyEntities(client);
+	CheckHealth(client);
+	CheckAmmo(client);
+
 	if (!IsValidClient(m_goalEntity[client]) || !IsPlayerAlive(m_goalEntity[client]))
 	{
 		FinishCurrentProcess(client);
@@ -65,11 +70,6 @@ public void SpyHuntUpdate(int client)
 				FollowPath(client, GetOrigin(m_goalEntity[client]));
 		}
 	}
-
-	FindFriendsAndEnemiens(client);
-	FindEnemyEntities(client);
-	CheckHealth(client);
-	CheckAmmo(client);
 }
 
 public void SpyHuntEnd(int client)

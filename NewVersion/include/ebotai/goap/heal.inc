@@ -1,14 +1,16 @@
-stock bool HealRequirements(int client)
+public bool HealRequirements(int client)
 {
+	if (TF2_HasTheFlag(client))
+		return false;
 	return true;
 }
 
-stock void HealStart(int client)
+public void HealStart(int client)
 {
 	m_goalEntity[client] = -1;
 }
 
-stock void HealUpdate(int client)
+public void HealUpdate(int client)
 {
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
@@ -18,34 +20,41 @@ stock void HealUpdate(int client)
 	
 	if (m_hasFriendsNear[client])
 	{
-		CurrentProcessTime[client] = GetGameTime() + 6.0; // no timeout if we have friends nearby
-		if (m_friendDistance[client] <= Squared(GetConVarInt(m_eBotMedicFollowRange)))
+		m_healTarget[client] = m_nearestFriend[client];
+		CurrentProcessTime[client] = GetGameTime() + 10.0; // no timeout if we have friends nearby
+	}
+	
+	if (IsValidClient(m_healTarget[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(m_healTarget[client]), true) <= Squared(GetConVarInt(m_eBotMedicFollowRange)))
+	{
+		if (IsWeaponSlotActive(client, 1))
 		{
-			if (IsWeaponSlotActive(client, 1))
+			if (GetClientHealth(client) <= 60)
+				m_buttons[client] |= IN_ATTACK2;
+			m_lookAt[client] = GetEyePosition(m_healTarget[client]);
+			m_attackTimer[client] = GetGameTime() + 0.4;
+			if (m_isSlowThink[client] && IsValidClient(TF2_GetHealingTarget(client)) && TF2_GetHealingTarget(client) != m_healTarget[client])
 			{
-				if (GetClientHealth(client) <= 60)
-					m_buttons[client] |= IN_ATTACK2;
-				m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
-				if (TF2_GetHealingTarget(client) == m_nearestFriend[client])
-					m_attackTimer[client] = GetGameTime() + 0.4;
-				
-				if (m_hasEnemiesNear[client] && !ClientViews(client, m_nearestEnemy[client]))
-					BackstabMove(client, m_nearestFriend[client], false);
+				m_attackTimer[client] = 0.0;
+				BackstabMove(client, m_healTarget[client], false);
 			}
-			else
-				EquipWeaponSlot(client, 1);
+			if (m_hasEnemiesNear[client] && !ClientViews(client, m_nearestEnemy[client]))
+				BackstabMove(client, m_healTarget[client], false);
 		}
 		else
-		{
-			FollowPath(client, GetOrigin(m_nearestFriend[client]));
-			LookUpdate(client);
-		}
+			EquipWeaponSlot(client, 1);
 	}
 	else
-		LookUpdate(client);
+	{
+		if (IsValidClient(m_healTarget[client]))
+		{
+			m_lookAt[client] = GetEyePosition(m_healTarget[client]);
+			FollowPath(client, GetOrigin(m_healTarget[client]));
+		}
+	}
 }
 
-stock void HealEnd(int client)
+public void HealEnd(int client)
 {
 	m_goalEntity[client] = -1;
+	EquipWeaponSlot(client, 0);
 }

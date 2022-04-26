@@ -14,6 +14,16 @@ public void SpyLurkStart(int client)
 
 public void SpyLurkUpdate(int client)
 {
+	FindFriendsAndEnemiens(client);
+	FindEnemyEntities(client);
+	CheckHealth(client);
+	CheckAmmo(client);
+
+	if (m_hasEnemiesNear[client])
+		LookAtEnemiens(client);
+	else
+		LookAround(client);
+	
 	if (IsValidClient(m_goalEntity[client]) && IsPlayerAlive(m_goalEntity[client]))
 		FollowPath(client, GetOrigin(m_goalEntity[client]));
 	else if (IsValidEntity(m_goalEntity[client]))
@@ -46,16 +56,6 @@ public void SpyLurkUpdate(int client)
 			return;
 		}
 	}
-	
-	FindFriendsAndEnemiens(client);
-	FindEnemyEntities(client);
-	CheckHealth(client);
-	CheckAmmo(client);
-
-	if (m_hasEnemiesNear[client])
-		LookAtEnemiens(client);
-	else
-		LookAround(client);
 }
 
 public void SpyLurkEnd(int client)

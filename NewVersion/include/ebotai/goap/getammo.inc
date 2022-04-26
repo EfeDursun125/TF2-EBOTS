@@ -6,7 +6,7 @@ stock bool GetAmmoRequirements(int client)
 	if (pathdelayer >= GetGameTime())
 		return false;
 	
-	if (!m_lowHealth[client])
+	if (m_lowHealth[client])
 		return false;
 	
 	if (m_hasWaypoints && !m_hasAmmoWaypoints)
@@ -26,12 +26,23 @@ stock void GetAmmoStart(int client)
 
 stock void GetAmmoUpdate(int client)
 {
-	if (GetAmmo(client, 0) > 3 && GetAmmo(client, 1) > 6)
+	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
-		m_lowAmmo[client] = false;
-		FinishCurrentProcess(client, true);
+		if (!IsMetalLow(client))
+		{
+			m_lowAmmo[client] = false;
+			FinishCurrentProcess(client, true);
+		}
 	}
-	
+	else
+	{
+		if (GetAmmo(client, 0) > 3 && GetAmmo(client, 1) > 6)
+		{
+			m_lowAmmo[client] = false;
+			FinishCurrentProcess(client, true);
+		}
+	}
+
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
 	LookUpdate(client);
