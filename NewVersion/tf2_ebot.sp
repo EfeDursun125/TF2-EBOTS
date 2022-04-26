@@ -12,7 +12,7 @@ public Plugin myinfo =
 	name = "[TF2] E-BOT",
 	author = "EfeDursun125",
 	description = "",
-	version = "0.02",
+	version = "0.03",
 	url = "https://steamcommunity.com/id/EfeDursun91/"
 }
 
@@ -37,6 +37,9 @@ public Plugin myinfo =
 #include <ebotai/goap/spylurk>
 #include <ebotai/goap/spyhunt>
 #include <ebotai/goap/heal>
+#include <ebotai/goap/engineeridle>
+#include <ebotai/goap/engineerbuildsentry>
+#include <ebotai/goap/engineerbuilddispenser>
 
 // trigger on plugin start
 public void OnPluginStart()
@@ -61,13 +64,14 @@ public void OnPluginStart()
 	HookEvent("teamplay_point_startcapture", PointStartCapture, EventHookMode_Post);
 	HookEvent("teamplay_point_unlocked", PointUnlocked, EventHookMode_Post);
 	HookEvent("teamplay_point_captured", PointCaptured, EventHookMode_Post);
+	HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Post);
 	EBotDebug = CreateConVar("ebot_debug", "0", "");
 	EBotFPS = CreateConVar("ebot_run_fps", "0.05", "0.033 = 29 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS | 0.2 = 5 FPS");
-	EBotMelee = CreateConVar("ebot_melee_range", "90", "");
+	EBotMelee = CreateConVar("ebot_melee_range", "128", "");
 	EBotSenseMin = CreateConVar("ebot_minimum_sense_chance", "10", "Minimum 10");
 	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Maximum 90");
 	EBotDifficulty = CreateConVar("ebot_difficulty", "2", "0 = Easiest | 1 = Easy | 2 = Normal | 3 = Hard | 4 = Expert");
-	m_eBotMedicFollowRange = CreateConVar("ebot_medic_follow_range", "300", "");
+	m_eBotMedicFollowRange = CreateConVar("ebot_medic_follow_range", "200", "");
 	m_eBotDodgeRangeMin = CreateConVar("ebot_minimum_dodge_range", "512", "the range when enemy closer than a value, bot will start dodging enemies");
 	m_eBotDodgeRangeMax = CreateConVar("ebot_maximum_dodge_range", "1024", "the range when enemy closer than a value, bot will start dodging enemies");
 	m_eBotDodgeRangeChance = CreateConVar("ebot_dodge_change_range_chance", "10", "the chance for change dodge range when attack process ends (1-100)");
@@ -129,7 +133,6 @@ public void OnClientPutInServer(int client)
 	m_goalPosition[client] = NULL_VECTOR;
 	m_goalEntity[client] = -1;
 	m_nextStuckCheck[client] = GetGameTime() + 5.0;
-	m_nextPathUpdate[client] = GetGameTime() + GetRandomFloat(0.5, 1.0);
 	m_enemiesNearCount[client] = 0;
 	m_friendsNearCount[client] = 0;
 	m_hasEnemiesNear[client] = false;
@@ -181,7 +184,7 @@ public Action WaypointDelete(int client, int args)
 {
 	if (showWaypoints)
 	{
-		if (nearestIndex != -1 && GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+		if (nearestIndex != -1 && GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
 			DeleteWaypointIndex(nearestIndex);
 		else
 			PrintHintTextToAll("Move closer to waypoint");
@@ -202,7 +205,7 @@ public Action SaveWaypoint(int client, int args)
 
 public Action AddRadius(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
 	{
 		m_paths[nearestIndex].radius += 16;
 		if (m_paths[nearestIndex].radius > 128)
@@ -218,8 +221,16 @@ public Action SetFlag(int client, int args)
 {
 	char flag[32];
     GetCmdArgString(flag, sizeof(flag));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
 	{
+		int intflag = StringToInt(flag);
+		if (intflag == _:WAYPOINT_DEFEND || intflag == _:WAYPOINT_SENTRY || intflag == _:WAYPOINT_DEMOMANCAMP || intflag == _:WAYPOINT_SNIPER)
+		{
+			float origin[3];
+			GetAimOrigin(m_hostEntity, origin);
+			m_paths[nearestIndex].campStart = VectorAsInt(origin);
+			m_paths[nearestIndex].campEnd = VectorAsInt(origin);
+		}
 		m_paths[nearestIndex].flags = StringToInt(flag);
 		PrintHintTextToAll("Waypoint Flag Added: %d", StringToInt(flag));
 	}
@@ -232,7 +243,7 @@ public Action SetTeam(int client, int args)
 {
 	char team[32];
     GetCmdArgString(team, sizeof(team));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
 	{
 		m_paths[nearestIndex].team = StringToInt(team);
 		PrintHintTextToAll("Waypoint Team Changed: %d", view_as<TFTeam>(StringToInt(team)));
@@ -244,7 +255,7 @@ public Action SetTeam(int client, int args)
 
 public Action Select(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
 	{
 		savedIndex = nearestIndex;
 		PrintHintTextToAll("Waypoint selected %d", savedIndex);
@@ -258,7 +269,7 @@ public Action PathAdd(int client, int args)
 {
 	if (savedIndex == -1)
 		PrintHintTextToAll("Select a waypoint first");
-	else if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	else if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
 	{
 		AddPath(savedIndex, nearestIndex, GetVectorDistance(VectorAsFloat(m_paths[savedIndex].origin), VectorAsFloat(m_paths[nearestIndex].origin)));
 		savedIndex = -1;
@@ -272,7 +283,7 @@ public Action PathDelete(int client, int args)
 {
 	if (savedIndex == -1)
 		PrintHintTextToAll("Select a waypoint first");
-	else if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	else if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
 	{
 		DeletePath(savedIndex, nearestIndex);
 		savedIndex = -1;
@@ -286,7 +297,7 @@ public Action SetArea(int client, int args)
 {
 	char area[32];
     GetCmdArgString(area, sizeof(area));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
 	{
 		m_paths[nearestIndex].activeArea = StringToInt(area);
 		PrintHintTextToAll("Waypoint Area Set: %d", StringToInt(area));
@@ -298,7 +309,7 @@ public Action SetArea(int client, int args)
 
 public Action SetAim1(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
 	{
 		float origin[3];
 		GetAimOrigin(m_hostEntity, origin);
@@ -312,7 +323,7 @@ public Action SetAim1(int client, int args)
 
 public Action SetAim2(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
 	{
 		float origin[3];
 		GetAimOrigin(m_hostEntity, origin);
@@ -324,6 +335,7 @@ public Action SetAim2(int client, int args)
 	return Plugin_Handled;
 }
 
+float hudtext = 0.0;
 public void OnGameFrame()
 {
 	DrawWaypoints();
@@ -332,6 +344,28 @@ public void OnGameFrame()
 	{
 		if (!IsValidClient(m_hostEntity))
 			FindHostEntity();
+		
+		if (hudtext < GetGameTime())
+		{
+			int bot = GetEntPropEnt(m_hostEntity, Prop_Send, "m_hObserverTarget");
+			if (IsValidClient(bot) && IsFakeClient(bot))
+			{
+				SetHudTextParams(0.0, -1.0, 0.52, 255, 255, 255, 255, 2, 1.0, 0.0, 0.0);
+        		ShowHudText(m_hostEntity, -1, "Current Bot\nGoal Index: %d\nGoal Position: %d %d %d\nGoal Entity: %d\nEnemy Near: %s\nFriend Near: %s\nEntity Near: %s\nSense: %d\nCurrent Process: %s\nRemembered Process: %s", 
+				m_goalIndex[bot], 
+				RoundFloat(m_goalPosition[bot][0]), 
+				RoundFloat(m_goalPosition[bot][1]), 
+				RoundFloat(m_goalPosition[bot][2]), 
+				m_goalEntity[bot], 
+				m_hasEnemiesNear[bot] ? "Yes" : "No", 
+				m_hasFriendsNear[bot] ? "Yes" : "No", 
+				m_hasEntitiesNear[bot] ? "Yes" : "No", 
+				m_eBotSenseChance[bot], 
+				GetProcessName(CurrentProcess[bot]), 
+				GetProcessName(RememberedProcess[bot]));
+				hudtext = GetGameTime() + 0.5;
+			}
+		}
 	}
 
 	if (GetConVarFloat(EBotFPS) > 0.2)
@@ -433,7 +467,6 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		delete m_positions[client];
 		m_positions[client] = new ArrayList(3);
 		m_nextStuckCheck[client] = GetGameTime() + 5.0;
-		m_nextPathUpdate[client] = GetGameTime() + GetRandomFloat(0.5, 1.0);
 		m_enemiesNearCount[client] = 0;
 		m_friendsNearCount[client] = 0;
 		m_hasEnemiesNear[client] = false;
@@ -442,7 +475,10 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_lowHealth[client] = false;
 		m_knownSpy[client] = -1;
 		m_goalIndex[client] = -1;
-		if (TF2_GetPlayerClass(client) == TFClass_Spy)
+		m_goalEntity[client] = -1
+		if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+			SetProcess(client, PRO_ENGINEERIDLE, 99999.0, "", true);
+		else if (TF2_GetPlayerClass(client) == TFClass_Spy)
 			SetProcess(client, PRO_SPYLURK, 99999.0, "", true);
 		else
 			SetProcess(client, PRO_DEFAULT, 99999.0, "", true);
@@ -529,6 +565,13 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 	}
 }
 
+public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
+{
+	currentActiveArea = 1;
+	if (GetConVarInt(EBotDebug) == 1)
+		PrintHintTextToAll("Active area: %d", currentActiveArea);
+}
+
 public Action PointStartCapture(Handle event, char[] name, bool dontBroadcast)
 {
 	int currentArea = GetEventInt(event, "cp");
@@ -567,4 +610,9 @@ public Action PointCaptured(Handle event, char[] name, bool dontBroadcast)
 		currentActiveArea = 1;
 	if (GetConVarInt(EBotDebug) == 1)
 		PrintHintTextToAll("Active area: %d", currentActiveArea);
+}
+
+public Action PrintHudTextOnStart(Handle timer)
+{
+    PrintHintTextToAll("%s", m_aboutTheWaypoint);
 }
