@@ -66,7 +66,7 @@ public void EngineerIdleUpdate(int client)
 
 	if (SentryGun[client] != -1 && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squared(128))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
@@ -83,7 +83,7 @@ public void EngineerIdleUpdate(int client)
 	}
 	else if (Dispenser[client] != -1 && (!DispenserIsMaxLevel[client] || !DispenserHealthIsFull[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squared(128))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
@@ -100,7 +100,7 @@ public void EngineerIdleUpdate(int client)
 	}
 	else if (TeleporterEnter[client] != -1 && (!TeleporterEnterHealthIsFull[client] || !TeleporterEnterIsMaxLevel[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) <= Squared(128))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(TeleporterEnter[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
@@ -117,7 +117,7 @@ public void EngineerIdleUpdate(int client)
 	}
 	else if (WantsMoveDispenser[client] && Dispenser[client] != -1)
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squared(128))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
 		{
 			MoveTo(client, GetOrigin(Dispenser[client]));
 			m_lookAt[client] = GetCenter(Dispenser[client]);
@@ -133,7 +133,7 @@ public void EngineerIdleUpdate(int client)
 	}
 	else if (SentryGun[client] != -1)
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squared(128))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
 			if (WantsMoveSentryGun[client])
 			{
