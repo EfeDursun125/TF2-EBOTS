@@ -290,7 +290,7 @@ stock void GetBonePosition(int iEntity, int iBone, float origin[3], float angles
 	SDKCall(g_hGetBonePosition, iEntity, iBone, origin, angles);
 }
 
-stock int FindNearestEnemy(int client, float flMaxDistance = 999999.0)
+stock int FindNearestEnemy(int client, float flMaxDistance = 9999999999.0)
 {
 	float flBestDistance = Squaredf(flMaxDistance);
 	int iBestTarget = -1;
@@ -308,7 +308,7 @@ stock int FindNearestEnemy(int client, float flMaxDistance = 999999.0)
 		if (GetClientTeam(i) == GetClientTeam(client))
 			continue;
 		
-		float flDistance = flMaxDistance == 999999.0 ? GetFastDistance(GetOrigin(client), GetOrigin(i)) : GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
+		float flDistance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
 		if (flDistance < flBestDistance)
 		{
 			flBestDistance = flDistance;
@@ -852,6 +852,28 @@ stock int GetPlayerStickyCount(int client)
 	return StickyCount;
 }
 
+stock int GetBluControlPointCount()
+{
+	int count = 0;
+	for (int x = 0; x <= GetMaxEntities(); x++)
+	{
+		if (!IsValidEntity(x))
+			continue;
+		
+		if (!HasEntProp(x, Prop_Send, "m_iTeamNum"))
+			continue;
+		
+		if (GetTeamNumber(x) != 3)
+			continue
+		
+		char ClassName[32];
+		GetEdictClassname(x, ClassName, 32);
+		if (StrEqual(ClassName, "team_control_point", false))
+			count++;
+	}
+	return count;
+}
+
 stock int GetNearestPayload(int client, int team)
 {
 	int NearestPayload = -1;
@@ -883,7 +905,7 @@ stock bool CheckWallRight(int client)
 	EyeVectors(client, fw, right);
 
 	float clientOrigin[3];
-	GetClientEyePosition(client, clientOrigin);
+	clientOrigin = GetCenter(client);
 
 	float clientTargetOrigin[3];
 	clientTargetOrigin[0] = clientOrigin[0] + (fw[0] * 28.0) + (right[0] * 28.0);
@@ -910,7 +932,7 @@ stock bool CheckWallLeft(int client)
 	EyeVectors(client, fw, right);
 
 	float clientOrigin[3];
-	GetClientEyePosition(client, clientOrigin);
+	clientOrigin = GetCenter(client);
 
 	float clientTargetOrigin[3];
 	clientTargetOrigin[0] = clientOrigin[0] + (fw[0] * 28.0) - (right[0] * 28.0);
@@ -937,7 +959,7 @@ stock bool CheckWallRight2(int client)
 	EyeVectors(client, fw, right);
 
 	float clientOrigin[3];
-	GetClientEyePosition(client, clientOrigin);
+	clientOrigin = GetCenter(client);
 
 	float clientTargetOrigin[3];
 	clientTargetOrigin[0] = clientOrigin[0] - (fw[0] * 28.0) + (right[0] * 28.0);
@@ -964,7 +986,7 @@ stock bool CheckWallLeft2(int client)
 	EyeVectors(client, fw, right);
 
 	float clientOrigin[3];
-	GetClientEyePosition(client, clientOrigin);
+	clientOrigin = GetCenter(client);
 
 	float clientTargetOrigin[3];
 	clientTargetOrigin[0] = clientOrigin[0] - (fw[0] * 28.0) - (right[0] * 28.0);
