@@ -89,7 +89,7 @@ public void OnMapStart()
 	ServerCommand("sv_tags ebot");
 	AddServerTag("ebot");
 
-	currentActiveArea = 1;
+	currentActiveArea = GetBluControlPointCount() + 1;
 	healthpacks = 0;
 	ammopacks = 0;
 	pathdelayer = 0.0;
@@ -567,7 +567,7 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 
 public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 {
-	currentActiveArea = 1;
+	currentActiveArea = GetBluControlPointCount() + 1;
 	if (GetConVarInt(EBotDebug) == 1)
 		PrintHintTextToAll("Active area: %d", currentActiveArea);
 }
