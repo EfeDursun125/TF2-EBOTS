@@ -40,6 +40,8 @@ public Plugin myinfo =
 #include <ebotai/goap/engineeridle>
 #include <ebotai/goap/engineerbuildsentry>
 #include <ebotai/goap/engineerbuilddispenser>
+#include <ebotai/goap/engineerbuildteleenter>
+#include <ebotai/goap/engineerbuildteleexit>
 
 // trigger on plugin start
 public void OnPluginStart()
@@ -58,23 +60,40 @@ public void OnPluginStart()
 	RegConsoleCmd("ebot_waypoint_set_area", SetArea);
 	RegConsoleCmd("ebot_waypoint_set_aim_start", SetAim1);
 	RegConsoleCmd("ebot_waypoint_set_aim_end", SetAim2);
-	CreateDirectory("addons/sourcemod/ebotWaypoints", 3);
+	RegConsoleCmd("ebot_addbot", AddEBot);
+	RegConsoleCmd("ebot_kickbot", KickEBot);
+	CreateDirectory("addons/sourcemod/ebot", 3);
 	HookEvent("player_hurt", BotHurt, EventHookMode_Post);
 	HookEvent("player_spawn", BotSpawn, EventHookMode_Post);
+	HookEvent("player_death", BotDeath, EventHookMode_Post);
 	HookEvent("teamplay_point_startcapture", PointStartCapture, EventHookMode_Post);
 	HookEvent("teamplay_point_unlocked", PointUnlocked, EventHookMode_Post);
 	HookEvent("teamplay_point_captured", PointCaptured, EventHookMode_Post);
 	HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Post);
 	EBotDebug = CreateConVar("ebot_debug", "0", "");
-	EBotFPS = CreateConVar("ebot_run_fps", "0.05", "0.033 = 29 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS | 0.2 = 5 FPS");
+	EBotFPS = CreateConVar("ebot_run_fps", "0.05", "0.033 = 29 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS");
 	EBotMelee = CreateConVar("ebot_melee_range", "128", "");
 	EBotSenseMin = CreateConVar("ebot_minimum_sense_chance", "10", "Minimum 10");
 	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Maximum 90");
-	EBotDifficulty = CreateConVar("ebot_difficulty", "2", "0 = Easiest | 1 = Easy | 2 = Normal | 3 = Hard | 4 = Expert");
-	m_eBotMedicFollowRange = CreateConVar("ebot_medic_follow_range", "150", "");
+	EBotDifficulty = CreateConVar("ebot_difficulty", "2", "0 = Beginner | 1 = Easy | 2 = Normal | 3 = Hard | 4 = Expert");
+	EBotMedicFollowRange = CreateConVar("ebot_medic_follow_range", "150", "");
 	m_eBotDodgeRangeMin = CreateConVar("ebot_minimum_dodge_range", "512", "the range when enemy closer than a value, bot will start dodging enemies");
 	m_eBotDodgeRangeMax = CreateConVar("ebot_maximum_dodge_range", "1024", "the range when enemy closer than a value, bot will start dodging enemies");
 	m_eBotDodgeRangeChance = CreateConVar("ebot_dodge_change_range_chance", "10", "the chance for change dodge range when attack process ends (1-100)");
+	EBotQuota = CreateConVar("ebot_quota", "-1", "");
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsValidClient(i))
+			continue;
+
+		if (!IsFakeClient(i))
+			continue;
+		
+		if (StrContains(currentMap, "mvm_" , false) != -1 && GetClientTeam(i) != 2)
+			continue;
+			
+		isEBot[i] = true;
+	}
 }
 
 // trigger on map start
@@ -83,6 +102,7 @@ public void OnMapStart()
 	GetCurrentMap(currentMap, sizeof(currentMap));
 	SetConVarInt(FindConVar("nav_generate_fencetops"), 0);
 	SetConVarInt(FindConVar("mp_waitingforplayers_cancel"), 1);
+	SetConVarFloat(FindConVar("nb_update_frequency"), 0.05); // fix laggy skeletons & entities
 	InitGamedata();
 	m_laserIndex = PrecacheModel("materials/sprites/laserbeam.vmt");
 	m_beamIndex = PrecacheModel("materials/sprites/lgtning.vmt");
@@ -93,6 +113,8 @@ public void OnMapStart()
 	healthpacks = 0;
 	ammopacks = 0;
 	pathdelayer = 0.0;
+	BotCheckTimer = 0.0;
+
 	for (int x = 0; x <= GetMaxEntities(); x++)
 	{
 		if (IsValidHealthPack(x))
@@ -123,7 +145,11 @@ public void OnMapStart()
 // trigger on client put in the server
 public void OnClientPutInServer(int client)
 {
-	SetConVarInt(FindConVar("mp_waitingforplayers_cancel"), 1);
+	if (addBot && IsValidClient(client) && IsFakeClient(client))
+	{
+		addBot = false;
+		isEBot[client] = true;
+	}
 
 	// delete path positions
 	delete m_positions[client];
@@ -148,6 +174,11 @@ public void OnClientPutInServer(int client)
 	m_fireTimer[client] = 0.0;
 	m_wasdTimer[client] = 0.0;
 	CurrentProcessTime[client] = 0.0;
+	
+	if (GetConVarInt(EBotDifficulty) < 0 || GetConVarInt(EBotDifficulty) > 4)
+		m_difficulty[client] = GetRandomInt(0, 4);
+	else
+		m_difficulty[client] = GetConVarInt(EBotDifficulty);
 	
 	// check host entity
 	if (m_hasHostEntity == false)
@@ -184,7 +215,7 @@ public Action WaypointDelete(int client, int args)
 {
 	if (showWaypoints)
 	{
-		if (nearestIndex != -1 && GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
+		if (nearestIndex != -1 && GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
 			DeleteWaypointIndex(nearestIndex);
 		else
 			PrintHintTextToAll("Move closer to waypoint");
@@ -205,7 +236,7 @@ public Action SaveWaypoint(int client, int args)
 
 public Action AddRadius(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
 	{
 		m_paths[nearestIndex].radius += 16;
 		if (m_paths[nearestIndex].radius > 128)
@@ -221,10 +252,10 @@ public Action SetFlag(int client, int args)
 {
 	char flag[32];
     GetCmdArgString(flag, sizeof(flag));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
 	{
 		int intflag = StringToInt(flag);
-		if (intflag == _:WAYPOINT_DEFEND || intflag == _:WAYPOINT_SENTRY || intflag == _:WAYPOINT_DEMOMANCAMP || intflag == _:WAYPOINT_SNIPER)
+		if (intflag == _:WAYPOINT_DEFEND || intflag == _:WAYPOINT_SENTRY || intflag == _:WAYPOINT_DEMOMANCAMP || intflag == _:WAYPOINT_SNIPER || intflag == _:WAYPOINT_TELEPORTERENTER || intflag == _:WAYPOINT_TELEPORTEREXIT)
 		{
 			float origin[3];
 			GetAimOrigin(m_hostEntity, origin);
@@ -243,7 +274,7 @@ public Action SetTeam(int client, int args)
 {
 	char team[32];
     GetCmdArgString(team, sizeof(team));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
 	{
 		m_paths[nearestIndex].team = StringToInt(team);
 		PrintHintTextToAll("Waypoint Team Changed: %d", view_as<TFTeam>(StringToInt(team)));
@@ -255,7 +286,7 @@ public Action SetTeam(int client, int args)
 
 public Action Select(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
 	{
 		savedIndex = nearestIndex;
 		PrintHintTextToAll("Waypoint selected %d", savedIndex);
@@ -269,7 +300,7 @@ public Action PathAdd(int client, int args)
 {
 	if (savedIndex == -1)
 		PrintHintTextToAll("Select a waypoint first");
-	else if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
+	else if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
 	{
 		AddPath(savedIndex, nearestIndex, GetVectorDistance(VectorAsFloat(m_paths[savedIndex].origin), VectorAsFloat(m_paths[nearestIndex].origin)));
 		savedIndex = -1;
@@ -283,7 +314,7 @@ public Action PathDelete(int client, int args)
 {
 	if (savedIndex == -1)
 		PrintHintTextToAll("Select a waypoint first");
-	else if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
+	else if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
 	{
 		DeletePath(savedIndex, nearestIndex);
 		savedIndex = -1;
@@ -297,7 +328,7 @@ public Action SetArea(int client, int args)
 {
 	char area[32];
     GetCmdArgString(area, sizeof(area));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
 	{
 		m_paths[nearestIndex].activeArea = StringToInt(area);
 		PrintHintTextToAll("Waypoint Area Set: %d", StringToInt(area));
@@ -309,7 +340,7 @@ public Action SetArea(int client, int args)
 
 public Action SetAim1(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
 	{
 		float origin[3];
 		GetAimOrigin(m_hostEntity, origin);
@@ -323,7 +354,7 @@ public Action SetAim1(int client, int args)
 
 public Action SetAim2(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(75))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
 	{
 		float origin[3];
 		GetAimOrigin(m_hostEntity, origin);
@@ -335,9 +366,105 @@ public Action SetAim2(int client, int args)
 	return Plugin_Handled;
 }
 
+public Action AddEBot(int client, int args)
+{
+	AddEBotConsole();
+}
+
+public void AddEBotConsole()
+{
+	char filepath[PLATFORM_MAX_PATH];
+    BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/ebot_names.txt");
+    File fp = OpenFile(filepath, "r");
+
+	ArrayList BotNames = new ArrayList(ByteCountToCells(65));
+    if (fp != null)
+    {
+        while (!fp.EndOfFile())
+		{
+			char line[MAX_NAME_LENGTH];
+			fp.ReadLine(line, sizeof(line));
+			if (strlen(line) <= 2)
+				continue;
+			
+			if (StrContains(line, "//") != -1)
+				continue;
+			
+			TrimString(line);
+			if (NameAlreadyTakenByPlayer(line))
+				continue;
+			
+			BotNames.PushString(line);
+		}
+
+		fp.Close();
+    }
+
+	char ChosenName[MAX_NAME_LENGTH] = "";
+	if (BotNames.Length > 0)
+		BotNames.GetString(GetRandomInt(0, BotNames.Length - 1), ChosenName, sizeof(ChosenName));
+	else
+		Format(ChosenName, sizeof(ChosenName), "ebot %d", GetRandomInt(0, 9999));
+
+	ServerCommand("sv_cheats 1");
+	addBot = true;
+	ServerCommand("bot -name \"%s\"", ChosenName);
+	ServerCommand("sv_cheats 1");
+}
+
+public Action KickEBot(int client, int args)
+{
+	KickEBotConsole();
+	return Plugin_Handled;
+}
+
+public void KickEBotConsole()
+{
+	addBot = false;
+	int EBotTeam;
+	if (GetTeamClientCount(2) > GetTeamClientCount(3))
+		EBotTeam = 2;
+	else if (GetTeamClientCount(2) < GetTeamClientCount(3))
+		EBotTeam = 3;
+	else
+		EBotTeam = GetRandomInt(2, 3);
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsValidClient(i))
+			continue;
+		
+		if (!isEBot[i])
+			continue;
+		
+		if (GetClientTeam(i) != EBotTeam)
+			continue;
+		
+		KickClient(i);
+		break;
+	}
+}
+
 float hudtext = 0.0;
 public void OnGameFrame()
 {
+	if (GetConVarInt(EBotQuota) > -1)
+	{
+		if (BotCheckTimer < GetGameTime())
+		{
+			if (GetTotalPlayersCount() < GetConVarInt(EBotQuota))
+				AddEBotConsole();
+			else if (GetTotalPlayersCount() > GetConVarInt(EBotQuota))
+				KickEBotConsole();
+			else if ((GetPlayersCountRed() + 1) < GetPlayersCountBlu())
+				KickEBotConsole();
+			else if ((GetPlayersCountBlu() + 1) < GetPlayersCountRed())
+				KickEBotConsole();
+
+			BotCheckTimer = GetGameTime() + 1.0;
+		}
+	}
+
 	DrawWaypoints();
 
 	if (GetConVarInt(EBotDebug) == 1)
@@ -368,8 +495,8 @@ public void OnGameFrame()
 		}
 	}
 
-	if (GetConVarFloat(EBotFPS) > 0.2)
-		SetConVarFloat(EBotFPS, 0.2);
+	if (GetConVarFloat(EBotFPS) > 0.1)
+		SetConVarFloat(EBotFPS, 0.1);
 	
 	if (GetConVarFloat(EBotFPS) < 0.033)
 		SetConVarFloat(EBotFPS, 0.033);
@@ -383,9 +510,9 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 		return Plugin_Continue;
 		
 	// is client is bot? if not, we can't do anything
-	if (!IsFakeClient(client))
+	if (!IsEBot(client))
 		return Plugin_Continue;
-	
+
 	// trigger scout double jump
 	if (DJTime[client] <= GetGameTime())
 	{
@@ -409,13 +536,6 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 	// is client alive? if not, we can't do anything
 	if (IsPlayerAlive(client))
 	{
-		if (TF2_GetPlayerClass(client) == TFClass_Spy && IsWeaponSlotActive(client, 2))
-		{
-			int melee = GetPlayerWeaponSlot(client, TFWeaponSlot_Melee);
-			if (IsValidEntity(melee) && HasEntProp(melee, Prop_Send, "m_bReadyToBackstab") && GetEntProp(melee, Prop_Send, "m_bReadyToBackstab"))
-				buttons |= IN_ATTACK;
-		}
-
 		if (m_attackTimer[client] > GetGameTime())
 		{
 			// block attack button
@@ -446,10 +566,21 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			ThinkAI(client);
 			m_thinkTimer[client] = GetGameTime() + GetConVarFloat(EBotFPS);
 		}
-		
-		// aim to position
-		if (!m_isSlowThink[client])
-			LookAtPosition(client, m_lookAt[client], angles);
+		else
+		{
+			// aim to position
+			LookAtPosition(client, m_lookAt[client]);
+
+			int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
+			SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
+
+			if (TF2_GetPlayerClass(client) == TFClass_Spy && IsWeaponSlotActive(client, 2))
+			{
+				int melee = GetPlayerWeaponSlot(client, TFWeaponSlot_Melee);
+				if (IsValidEntity(melee) && HasEntProp(melee, Prop_Send, "m_bReadyToBackstab") && GetEntProp(melee, Prop_Send, "m_bReadyToBackstab"))
+					buttons |= IN_ATTACK;
+			}
+		}
 		
 		// move to position
 		vel = m_moveVel[client];
@@ -462,7 +593,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if (IsFakeClient(client))
+	if (IsEBot(client))
 	{
 		delete m_positions[client];
 		m_positions[client] = new ArrayList(3);
@@ -475,31 +606,35 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_lowHealth[client] = false;
 		m_knownSpy[client] = -1;
 		m_goalIndex[client] = -1;
-		m_goalEntity[client] = -1
+		m_goalEntity[client] = -1;
+		m_lastFailedWaypoint[client] = -1;
+		DeletePathNodes(client);
 		if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+		{
+			m_teleEnterTriggerBlock[client] = false;
+			m_teleExitTriggerBlock[client] = false;
 			SetProcess(client, PRO_ENGINEERIDLE, 99999.0, "", true);
+		}
 		else if (TF2_GetPlayerClass(client) == TFClass_Spy)
 			SetProcess(client, PRO_SPYLURK, 99999.0, "", true);
 		else
 			SetProcess(client, PRO_DEFAULT, 99999.0, "", true);
-		SelectObjective(client);
-		DeletePathNodes(client);
 		if (m_hasRouteWaypoints)
 		{
 			int index = -1;
 			ArrayList RouteWaypoints = new ArrayList();
 			for (int i = 0; i < m_waypointNumber; i++)
 			{
+				if (m_paths[i].flags != _:WAYPOINT_ROUTE)
+					continue;
+				
 				// blocked waypoint
    				if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
 					continue;
 
 				if (m_lastFailedWaypoint[client] == i)
 					continue;
-
-				if (m_paths[i].flags != _:WAYPOINT_ROUTE)
-					continue;
-
+				
     			// not for our team
 				int cteam = GetClientTeam(client);
  				if (cteam == 3 && m_paths[i].team == 2)
@@ -518,6 +653,29 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 			if (index != -1)
 				AStarFindPath(-1, index, client);
 		}
+		else if (StrContains(currentMap, "pl_" , false) != -1)
+		{
+			SelectObjective(client);
+			if (m_goalIndex[client] != -1)
+				AStarFindPath(-1, m_goalIndex[client], client);
+			else
+				FollowPath(client, m_goalPosition[client], -1, -1);
+		}
+	}
+}
+
+// trigger when bot spawns
+public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
+{
+	int client = GetClientOfUserId(GetEventInt(event, "attacker"));
+	if (IsEBot(client))
+	{
+		if (GetRandomInt(1, 3) == 1 && !m_lowHealth[client] && !m_hasEntitiesNear[client])
+		{
+			FindFriendsAndEnemiens(client);
+			if (!m_hasEnemiesNear[client] && !m_hasFriendsNear[client])
+				FakeClientCommand(client, "taunt");
+		}
 	}
 }
 
@@ -534,7 +692,7 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 		m_hasEntitiesNear[client] = true;
 	}
 	
-	if (IsFakeClient(client) && target != -1)
+	if (IsEBot(client) && IsValidClient(target))
 	{
 		if (!m_hasEnemiesNear[client] || !IsPlayerAlive(m_nearestEnemy[client]))
 		{
@@ -543,22 +701,23 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 			m_nearestEnemy[client] = target;
 			m_hasEnemiesNear[client] = true;
 		}
-		if (TF2_GetPlayerClass(client) == TFClass_Spy && GetRandomInt(1, GetMaxHealth(client)) > GetClientHealth(client))
-			m_buttons[client] |= IN_ATTACK2;
-	}
-	
-	if (TF2_GetPlayerClass(client) == TFClass_Spy && target != -1)
-	{
-		if (ChanceOf(m_eBotSenseChance[target]) && IsFakeClient(target))
-			m_knownSpy[target] = client;
-		else
+		
+		if (TF2_GetPlayerClass(client) == TFClass_Spy)
 		{
-			for (int search = 1; search <= MaxClients; search++)
+			if (GetRandomInt(1, GetMaxHealth(client)) > GetClientHealth(client))
+				m_buttons[client] |= IN_ATTACK2;
+			
+			if (ChanceOf(m_eBotSenseChance[target]) && IsEBot(target))
+				m_knownSpy[target] = client;
+			else
 			{
-				if (IsValidClient(search) && IsPlayerAlive(search) && search != client && GetClientTeam(client) != GetClientTeam(search))
+				for (int search = 1; search <= MaxClients; search++)
 				{
-					if (ChanceOf(m_eBotSenseChance[search]) && IsFakeClient(search))
-						m_knownSpy[search] = client;
+					if (IsValidClient(search) && IsPlayerAlive(search) && search != client && GetClientTeam(client) != GetClientTeam(search))
+					{
+						if (ChanceOf(m_eBotSenseChance[search]) && IsEBot(search))
+							m_knownSpy[search] = client;
+					}
 				}
 			}
 		}
@@ -610,6 +769,12 @@ public Action PointCaptured(Handle event, char[] name, bool dontBroadcast)
 		currentActiveArea = 1;
 	if (GetConVarInt(EBotDebug) == 1)
 		PrintHintTextToAll("Active area: %d", currentActiveArea);
+	for (int search = 1; search <= MaxClients; search++)
+	{
+		if (!IsValidClient(search))
+			continue;
+		DeletePathNodes(search);
+	}
 }
 
 public Action PrintHudTextOnStart(Handle timer)
