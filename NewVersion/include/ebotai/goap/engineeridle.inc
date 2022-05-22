@@ -34,21 +34,21 @@ public void EngineerIdleStart(int client)
 
 public void EngineerIdleUpdate(int client)
 {
+	if (WantsBuildTeleporterEnter[client] && GetRandomInt(1, 3) == 1)
+	{
+		SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
+		return;
+	}
+
 	if (WantsBuildSentryGun[client])
 	{
-		SetProcess(client, PRO_BUILDSENTRY, 60.0, "| process started -> trying to build sentry gun");
+		SetProcess(client, PRO_BUILDSENTRY, 20.0, "| process started -> trying to build sentry gun");
 		return;
 	}
 
-	if (WantsBuildDispenser[client] && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+	if (WantsBuildDispenser[client] && IsValidEntity(SentryGun[client]) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 	{
 		SetProcess(client, PRO_BUILDDISPENSER, 60.0, "| process started -> trying to build dispenser");
-		return;
-	}
-
-	/*if (WantsBuildTeleporter[client])
-	{
-		SetProcess(client, PRO_BUILDTELEPORTERENTER, 60.0, "| process started -> trying to build teleporter enter");
 		return;
 	}
 
@@ -56,7 +56,7 @@ public void EngineerIdleUpdate(int client)
 	{
 		SetProcess(client, PRO_BUILDTELEPORTEREXIT, 60.0, "| process started -> trying to build teleporter exit");
 		return;
-	}*/
+	}
 
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
@@ -64,7 +64,7 @@ public void EngineerIdleUpdate(int client)
 	
 	bool lookupdate = true;
 
-	if (SentryGun[client] != -1 && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
+	if (IsValidEntity(SentryGun[client]) && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
 	{
 		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
@@ -81,7 +81,7 @@ public void EngineerIdleUpdate(int client)
 		else
 			FollowPath(client, GetOrigin(SentryGun[client]));
 	}
-	else if (Dispenser[client] != -1 && (!DispenserIsMaxLevel[client] || !DispenserHealthIsFull[client]))
+	else if (IsValidEntity(Dispenser[client]) && (!DispenserIsMaxLevel[client] || !DispenserHealthIsFull[client]))
 	{
 		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
 		{
@@ -98,13 +98,16 @@ public void EngineerIdleUpdate(int client)
 		else
 			FollowPath(client, GetOrigin(Dispenser[client]));
 	}
-	else if (TeleporterEnter[client] != -1 && (!TeleporterEnterHealthIsFull[client] || !TeleporterEnterIsMaxLevel[client]))
+	else if (IsValidEntity(TeleporterEnter[client]) && (!TeleporterEnterHealthIsFull[client] || !TeleporterEnterIsMaxLevel[client]))
 	{
 		if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(TeleporterEnter[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
-				MoveTo(client, GetOrigin(TeleporterEnter[client]));
+				if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) < Squared(48))
+					MoveOut(client, GetOrigin(TeleporterEnter[client]));
+				else if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) > Squared(56))
+					MoveTo(client, GetOrigin(TeleporterEnter[client]));
 				m_lookAt[client] = GetCenter(TeleporterEnter[client]);
 				m_attackTimer[client] = GetGameTime() + 0.4;
 				lookupdate = false;
@@ -115,7 +118,7 @@ public void EngineerIdleUpdate(int client)
 		else
 			FollowPath(client, GetOrigin(TeleporterEnter[client]));
 	}
-	else if (WantsMoveDispenser[client] && Dispenser[client] != -1)
+	else if (WantsMoveDispenser[client] && IsValidEntity(Dispenser[client]))
 	{
 		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
 		{
@@ -131,7 +134,7 @@ public void EngineerIdleUpdate(int client)
 		else
 			FollowPath(client, GetOrigin(Dispenser[client]));
 	}
-	else if (SentryGun[client] != -1)
+	else if (IsValidEntity(SentryGun[client]))
 	{
 		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
@@ -190,19 +193,12 @@ public void CheckEngineerBuildings(int client)
 	if (m_isSlowThink[client])
 		return;
 	
-	if (!IsMoving(client) && IsWeaponSlotActive(client, 5)) // if we're stuck, sadly put building here
-		m_buttons[client] |= IN_ATTACK;
-	else if (!IsMoving(client) && WantsBuildSentryGun[client])
-		FakeClientCommandThrottled(client, "build 2 0");
-	else if (!IsMoving(client) && WantsBuildDispenser[client])
-		FakeClientCommandThrottled(client, "build 0 0");
-	
 	SentryGun[client] = TF2_GetObject(client, TFObject_Sentry, TFObjectMode_None);
 	Dispenser[client] = TF2_GetObject(client, TFObject_Dispenser, TFObjectMode_None);
 	TeleporterEnter[client] = TF2_GetObject(client, TFObject_Teleporter, TFObjectMode_Entrance);
 	TeleporterExit[client] = TF2_GetObject(client, TFObject_Teleporter, TFObjectMode_Exit);
 	
-	if (SentryGun[client] != -1)
+	if (IsValidEntity(SentryGun[client]))
 	{
 		WantsBuildSentryGun[client] = false;
 		int SentryLevel = GetEntProp(SentryGun[client], Prop_Send, "m_iUpgradeLevel");
@@ -234,7 +230,7 @@ public void CheckEngineerBuildings(int client)
 		WantsMoveSentryGun[client] = false;
 	}
 	
-	if (Dispenser[client] != -1)
+	if (IsValidEntity(Dispenser[client]))
 	{
 		WantsBuildDispenser[client] = false;
 		int DispenserLevel = GetEntProp(Dispenser[client], Prop_Send, "m_iUpgradeLevel");
@@ -263,7 +259,7 @@ public void CheckEngineerBuildings(int client)
 		}
 	}
 			
-	if (TeleporterEnter[client] != -1)
+	if (IsValidEntity(TeleporterEnter[client]))
 	{
 		WantsBuildTeleporterEnter[client] = false;
 		int TeleporterLevel = GetEntProp(TeleporterEnter[client], Prop_Send, "m_iUpgradeLevel");
@@ -280,12 +276,12 @@ public void CheckEngineerBuildings(int client)
 		else
 			TeleporterEnterHealthIsFull[client] = true;
 	}
-	else if (m_hasTeleporterEnterWaypoints && m_hasTeleporterExitWaypoints && !WantsBuildSentryGun[client] && SentryHealthIsFull[client] && SentryIsMaxLevel[client] && !WantsBuildDispenser[client] && DispenserHealthIsFull[client] && DispenserIsMaxLevel[client])
+	else if (m_hasTeleporterEnterWaypoints && m_hasTeleporterExitWaypoints)
 		WantsBuildTeleporterEnter[client] = true;
 	else
 		WantsBuildTeleporterEnter[client] = false;
 	
-	if (TeleporterExit[client] != -1)
+	if (IsValidEntity(TeleporterExit[client]))
 	{
 		WantsBuildTeleporterExit[client] = false;
 		int TeleporterLevel = GetEntProp(TeleporterExit[client], Prop_Send, "m_iUpgradeLevel");

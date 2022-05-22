@@ -1,6 +1,6 @@
 public bool SpyHuntRequirements(int client)
 {
-	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked) && IsVisible(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client])))
+	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 		return false;
 	
 	if (!TF2_IsPlayerInCondition(client, TFCond_Disguised))
@@ -18,6 +18,8 @@ public bool SpyHuntRequirements(int client)
 public void SpyHuntStart(int client)
 {
 	EquipWeaponSlot(client, 2);
+	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+		m_buttons[client] |= IN_ATTACK2;
 }
 
 public void SpyHuntUpdate(int client)
@@ -36,6 +38,9 @@ public void SpyHuntUpdate(int client)
 	SpyReactChecker(client);
 	SpyAimLogic(client);
 
+	if (!IsValidClient(m_goalEntity[client]))
+		return;
+	
 	float distance = GetVectorDistance(GetOrigin(client), GetOrigin(m_goalEntity[client]), true);
 	int range = Squared(256);
 	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) && distance <= range)

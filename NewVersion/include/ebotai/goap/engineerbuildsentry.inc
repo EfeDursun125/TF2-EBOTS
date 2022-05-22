@@ -28,12 +28,7 @@ public void BuildSentryUpdate(int client)
 		lookupdate = false;
 		int index = m_goalIndex[client];
 		if (m_hasWaypoints && index != -1)
-		{
-			if (GetRandomInt(1, 2) == 1)
-				m_lookAt[client] = VectorAsFloat(m_paths[index].campStart);
-			else
-				m_lookAt[client] = VectorAsFloat(m_paths[index].campEnd);
-		}
+			m_lookAt[client] = VectorAsFloat(m_paths[index].campStart);
 		else
 			m_lookAt[client] = sentrybuildarea;
 	}
@@ -43,8 +38,24 @@ public void BuildSentryUpdate(int client)
 	else
 		MoveToWaypoint(client, sentrybuildarea, sentrybuildarea);
 	
-	if (IsWeaponSlotActive(client, 5))
+	float SentryAngle[3];
+	SentryAngle = NULL_VECTOR;
+	if (IsWeaponSlotActive(client, 5) && !IsMoving(client) && range <= Squared(128))
 	{
+		if (m_hasWaypoints)
+		{
+			int index = m_goalIndex[client];
+			if (index != -1)
+				SentryAngle = VectorAsFloat(m_paths[index].campStart);
+			//else
+			//	index == m_currentWaypointIndex[client];
+			if (!IsNullVector(SentryAngle))
+			{
+				m_lookAt[client] = SentryAngle;
+				lookupdate = false;
+			}
+		}
+		
 		int objBeingBuilt = GetEntPropEnt(GetActiveWeapon(client), Prop_Send, "m_hObjectBeingBuilt");
 		if (!IsValidEntity(objBeingBuilt))
 			return;
@@ -52,7 +63,7 @@ public void BuildSentryUpdate(int client)
 		bool m_bPlacementOK = !!GetEntData(objBeingBuilt, FindSendPropInfo("CObjectSentrygun", "m_iKills") - 4);
 		m_buttons[client] |= IN_ATTACK;
 		
-		if (!m_bPlacementOK && m_isSlowThink[client] && GetRandomInt(1, 2) == 1)
+		if (!m_bPlacementOK && m_isSlowThink[client] && GetRandomInt(1, 5) == 1)
 			PickSentrySpot(client, sentrybuildarea);
 
 		return;
@@ -61,6 +72,12 @@ public void BuildSentryUpdate(int client)
 	int sentry = TF2_GetObject(client, TFObject_Sentry, TFObjectMode_None);
 	if (sentry != -1)
 	{
+		/*if (!IsNullVector(SentryAngle))
+		{
+  			SentryAngle[0] = sentrybuildarea[0] - SentryAngle[0];
+			SentryAngle[1] = sentrybuildarea[1] - SentryAngle[1];
+			TeleportEntity(sentry, NULL_VECTOR, SentryAngle, NULL_VECTOR);
+		}*/
 		FinishCurrentProcess(client);
 		EngineerMoveSentryTimer[client] = GetGameTime() + GetRandomFloat(90.0, 160.0);
 		WantsBuildSentryGun[client] = false;
@@ -85,16 +102,16 @@ public void PickSentrySpot(int client, float area[3])
 		ArrayList AllSentrySpots = new ArrayList();
 		for (int i = 0; i < m_waypointNumber; i++)
 		{
+			if (m_paths[i].flags != _:WAYPOINT_SENTRY)
+				continue;
+			
 			// blocked waypoint
    			if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
 				continue;
 			
 			if (m_lastFailedWaypoint[client] == i)
 				continue;
-
-			if (m_paths[i].flags != _:WAYPOINT_SENTRY)
-				continue;
-
+			
     		// not for our team
 			int cteam = GetClientTeam(client);
  			if (cteam == 3 && m_paths[i].team == 2)
@@ -136,6 +153,11 @@ public void PickSentrySpot(int client, float area[3])
 	}
 	else // do navmesh version
 	{
-		// damn, no waypoints, let's try to find a good spot
+		int search = GetRandomInt(1, MaxClients + 1);
+		if (IsValidClient(search) && GetClientTeam(client) != GetClientTeam(search))
+		{
+			area = GetOrigin(search);
+			return;
+		}
 	}
 }

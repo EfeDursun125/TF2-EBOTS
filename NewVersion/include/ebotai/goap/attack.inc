@@ -21,7 +21,7 @@ stock bool AttackRequirements(int client)
 	if (TF2_HasTheFlag(client))
 		return false;
 	
-	if (TF2_GetPlayerClass(client) == TFClass_Spy && (TF2_IsPlayerInCondition(client, TFCond_Disguised) || TF2_IsPlayerInCondition(client, TFCond_Cloaked)))
+	if (TF2_GetPlayerClass(client) == TFClass_Spy && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 		return false;
 	
 	return true;
@@ -37,14 +37,6 @@ stock void AttackUpdate(int client)
 {
 	if (m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]))
 		FinishCurrentProcess(client, true);
-	
-	if (TF2_IsPlayerInCondition(client, TFCond_CritOnWin) && m_hasEnemiesNear[client])
-	{
-		FollowPath(client, GetOrigin(m_nearestEnemy[client]));
-		FindFriendsAndEnemiens(client);
-		LookUpdate(client);
-		return;
-	}
 
 	if (TF2_GetPlayerClass(client) == TFClass_Spy && m_lowHealth[client] && !TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 		m_buttons[client] |= IN_ATTACK2;
@@ -75,7 +67,7 @@ stock void AttackUpdate(int client)
 		{
 			if (IsValidClient(m_goalEntity[client]))
 				FollowPath(client, GetOrigin(m_goalEntity[client]));
-			else if (IsPathPossible(GetOrigin(client), GetOrigin(m_nearestEnemy[client])))
+			else if (m_lastFailedEntity[client] != m_nearestEnemy[client])
 				m_goalEntity[client] = m_nearestEnemy[client];
 		}
 		else if (ClientViews(m_nearestEnemy[client], client))

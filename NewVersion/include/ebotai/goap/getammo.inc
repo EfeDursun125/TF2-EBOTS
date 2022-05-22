@@ -95,14 +95,14 @@ stock int FindAmmoWaypoint(int client)
 	ArrayList AllAmmoPacks = new ArrayList();
 	for (int i = 0; i < m_waypointNumber; i++)
 	{
-		// blocked waypoint
-		if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+		if (m_paths[i].flags != _:WAYPOINT_AMMO && m_paths[i].flags != _:WAYPOINT_RESUPPLY)
 			continue;
 		
 		if (m_lastFailedWaypoint[client] == i)
 			continue;
 		
-		if (m_paths[i].flags != _:WAYPOINT_AMMO && m_paths[i].flags != _:WAYPOINT_RESUPPLY)
+		// blocked waypoint
+		if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
 			continue;
 		
 		// not for our team
@@ -110,12 +110,15 @@ stock int FindAmmoWaypoint(int client)
       		continue;
 		
 		// only get safe ammo packs
-		float distance = GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(m_nearestEnemy[client]), true);
-		if (m_hasEnemiesNear[client] && distance <= Squared(768))
-			continue;
+		if (m_hasEnemiesNear[client])
+		{
+			float distance = GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(m_nearestEnemy[client]), true);
+			if (distance <= Squared(768))
+				continue;
 		
-		if (m_hasEnemiesNear[client] && distance <= GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client)))
-			continue;
+			if (distance <= GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client)))
+				continue;
+		}
 		
 		if (GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client), true) <= Squared(1024))
 			NearAmmoPacks.Push(i);
@@ -144,16 +147,16 @@ stock void FindNearestAmmoPack(int client)
 {
 	float distance = -1.0;
 	m_goalEntity[client] = -1;
-	for (int x = 0; x <= GetMaxEntities(); x++)
+	for (int x = 0; x <= GetEntityCount(); x++)
 	{
+		if (m_lastFailedEntity[client] == x)
+			continue;
+		
 		if (!IsValidAmmoPack(x))
 			continue;
 		
 		// only get safe ammo packs
 		if (m_hasEnemiesNear[client] && GetVectorDistance(GetOrigin(x), GetOrigin(m_nearestEnemy[client]), true) <= Squared(768))
-			continue;
-
-		if (!IsPathPossible(GetOrigin(client), GetOrigin(x)))
 			continue;
 		
 		float edict_distance = GetFastDistance(GetOrigin(client), GetOrigin(x));

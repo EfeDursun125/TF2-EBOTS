@@ -1,13 +1,17 @@
 public bool BuildDispenserRequirements(int client)
 {
-	if (GetMetal(client) < 100.0)
-		return false;
 	if (SentryGun[client] == -1)
 		return false;
+		
 	if (!SentryHealthIsFull[client])
 		return false;
+
+	if (GetMetal(client) < 100.0)
+		return false;
+
 	if (IsMoving(client))
 		return false;
+
 	return true;
 }
 

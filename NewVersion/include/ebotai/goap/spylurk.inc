@@ -18,6 +18,7 @@ public void SpyLurkUpdate(int client)
 	FindEnemyEntities(client);
 	CheckHealth(client);
 	CheckAmmo(client);
+	SelectBestCombatWeapon(client);
 
 	if (m_hasEnemiesNear[client])
 		LookAtEnemiens(client);
@@ -31,7 +32,7 @@ public void SpyLurkUpdate(int client)
 	else
 	{
 		int enemy = FindNearestEnemy(client);
-		if (IsValidClient(enemy) && IsPlayerAlive(enemy) && IsPathPossible(GetOrigin(client), GetOrigin(enemy)))
+		if (IsValidClient(enemy) && IsPlayerAlive(enemy) && m_lastFailedEntity[client] != enemy)
 		{
 			m_goalEntity[client] = enemy;
 			m_goalPosition[client] = GetOrigin(enemy);
