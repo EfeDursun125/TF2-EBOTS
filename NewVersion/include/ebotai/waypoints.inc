@@ -1,7 +1,7 @@
 // from https://github.com/EfeDursun125/CS-EBOT/blob/main/source/waypoint.cpp
 // higher version waypoints will be ignored due to updated waypoint system
 const int WaypointVersion = 1;
-const int MaxWaypoints = 2048;
+const int MaxWaypoints = 4096;
 const int MaxPathIndex = 8;
 
 int nearestIndex = -1;
@@ -505,21 +505,97 @@ stock bool IsConnected(int pointA, int pointB)
     return false;
 }
 
-stock bool IsWaypointReachable(int src[3], int destination[3])
+stock bool IsWaypointReachable(int start[3], int goal[3])
 {
     // cant connect to itself...
-    if (src[0] == destination[0] && src[1] == destination[1] && src[2] == destination[2])
+    if (start[0] == goal[0] && start[1] == goal[1] && start[2] == goal[2])
         return false;
+    
+    float src[3];
+    src = VectorAsFloat(start);
+    src[2] += 32.0;
+    float destination[3];
+    destination = VectorAsFloat(goal);
+    destination[2] += 32.0;
 
     // unable to reach with walking
-    if ((destination[2] - src[2]) > 72)
+    if ((destination[2] - src[2]) > 72.0)
         return false;
-    
+
+    float distance = GetVectorDistance(destination, src);
+
     // is the destination not close enough?
-    if (GetVectorDistance(VectorAsFloat(src), VectorAsFloat(destination)) > 300)
+    if (distance > 320)
         return false;
-    
-    return IsVisibleWaypoint(src, destination);
+
+    // if waypoint is visible from current position
+    if (IsVisible(src, destination))
+    {
+        // is dest node higher than src? (45 is max jump height)
+        if (destination[2] > src[2] + 44.0)
+        {
+            float sourceNew[3];
+            sourceNew = destination;
+            float destinationNew[3];
+            destinationNew = destination;
+            destinationNew[2] = destinationNew[2] - 50.0; // straight down 50 units
+
+            Handle tr = TR_TraceRayFilterEx(sourceNew, destinationNew, MASK_PLAYERSOLID, RayType_EndPoint, TraceEntityFilterStuff);
+            float fr = TR_GetFraction(tr);
+            CloseHandle(tr);
+
+            // check if we didn't hit anything, if not then it's in mid-air
+            if (fr >= 1.0)
+                return false; // can't reach this one
+        }
+
+        // check if distance to ground drops more than step height at points between source and destination...
+        float sub[3];
+        SubtractVectors(destination, src, sub);
+        float direction[3];
+        NormalizeVector(sub, direction); // 1 unit long
+        float check[3];
+        check = src;
+        float down[3];
+        down = src;
+
+        down[2] = down[2] - 1000.0; // straight down 1000 units
+
+        Handle tr = TR_TraceRayFilterEx(check, down, MASK_PLAYERSOLID, RayType_EndPoint, TraceEntityFilterStuff);
+
+        float lastHeight = TR_GetFraction(tr) * 1000.0; // height from ground
+        distance = GetVectorDistance(destination, check); // distance from goal
+
+        CloseHandle(tr);
+
+        while (distance > 10.0)
+        {
+            // move 10 units closer to the goal...
+            check[0] = check[0] + (direction[0] * 10.0);
+            check[1] = check[1] + (direction[1] * 10.0);
+            check[2] = check[2] + (direction[2] * 10.0);
+
+            down = check;
+            down[2] = down[2] - 1000.0; // straight down 1000 units
+
+            Handle tr2 = TR_TraceRayFilterEx(check, down, MASK_PLAYERSOLID, RayType_EndPoint, TraceEntityFilterStuff);
+
+            float height = TR_GetFraction(tr2) * 1000.0; // height from ground
+            
+            CloseHandle(tr2);
+
+            // is the current height greater than the step height?
+            if (height < lastHeight - 18.0)
+                return false; // can't get there without jumping...
+
+            lastHeight = height;
+            distance = GetVectorDistance(destination, check); // distance from goal
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 stock void WaypointAdd(int origin[3])
@@ -566,7 +642,6 @@ stock void WaypointAdd(int origin[3])
             AddPath(i, index, GetVectorDistance(VectorAsFloat(m_paths[i].origin), VectorAsFloat(m_paths[index].origin)));
     }
 
-    //CalculateWayzone(index); // calculate the wayzone of this waypoint for set the radius
     PrintHintTextToAll("Waypoint added to %d %d %d", m_paths[index].origin[0], m_paths[index].origin[1], m_paths[index].origin[2]);
 }
 
@@ -720,12 +795,8 @@ stock int CostNormal(int current, int parent, int client)
         return 65535;
     
     // not for our team
-    int cteam = GetClientTeam(client);
- 	if (cteam == 3 && m_paths[current].team == 2)
+ 	if (m_paths[current].team == GetEnemyTeam(GetClientTeam(client)))
     	return 65355;
-				
-   	if (cteam == 2 && m_paths[current].team == 3)
-        return 65355;
     
     // low health or don't want take any damage
     if (m_paths[current].flags == _:WAYPOINT_FALLDAMAGE && (m_lowHealth[client] || GetRandomInt(1, 3) == 1 || TF2_GetPlayerClass(client) == TFClass_Spy))
@@ -734,19 +805,27 @@ stock int CostNormal(int current, int parent, int client)
     if (m_hasEnemiesNear[client] && m_nearestEnemy[client] != -1 && GetVectorDistance(GetOrigin(client), VectorAsFloat(m_paths[current].origin), true) <= GetVectorDistance(GetOrigin(m_nearestEnemy[client]), VectorAsFloat(m_paths[current].origin), true))
         return 65355;
     
-    // they don't let us jump
-    if (m_hasEnemiesNear[client] && m_paths[current].flags == _:WAYPOINT_JUMP)
+    // they don't let us jump and heavy can't jump
+    if (m_paths[current].flags == _:WAYPOINT_JUMP && (m_hasEnemiesNear[client] || TF2_GetPlayerClass(client) == TFClass_Heavy))
         return 65355;
     
     // litte randomness
-	return GetWaypointDistance(current, parent) + GetRandomInt(client, 256);
+	return GetWaypointDistance(current, parent) + GetRandomInt(client, 512);
 }
 
 // A* Pathfinding
-stock void AStarFindPath(int srcIndex, int destIndex, int client)
+stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetposition[3] = NULL_VECTOR)
 {
 	if (destIndex == -1)
-		return;
+    {
+        if (GetConVarInt(EBotDebug) == 1)
+        {
+            char buffer[128];
+            GetClientName(client, buffer, sizeof(buffer));
+            PrintHintTextToAll("Destination is invalid\nBot: %s", buffer);
+        }
+        return;
+    }
 	
     if (m_pathDelay[client] > GetGameTime())
         return;
@@ -758,6 +837,7 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client)
 		return;
 	
     m_pathDelay[client] = GetGameTime() + 0.5;
+    DeletePathNodes(client);
 
     for (int i = 0; i < m_waypointNumber; i++)
     {
@@ -781,6 +861,14 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client)
         // is the current node the goal node?
         if (currentIndex == destIndex)
         {
+            if (!IsNullVector(targetposition))
+            {
+                m_positions[client].PushArray(targetposition, 3);
+                m_pathIndex[client].Push(destIndex);
+                m_positions[client].PushArray(targetposition, 3);
+                m_pathIndex[client].Push(destIndex);
+            }
+
             // build the complete path
             while (currentIndex != -1)
             {
@@ -801,6 +889,10 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client)
         {
             int self = m_paths[currentIndex].pathIndex[i];
             if (self == -1)
+                continue;
+            
+            // blocked waypoint
+            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
                 continue;
             
             if (m_paths[self].flags == _:WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
@@ -836,10 +928,11 @@ stock void AddToPath(int currentIndex, int client)
 {
     m_pathIndex[client].Push(currentIndex);
     float radius = float(m_paths[currentIndex].radius);
+
     if (radius > 0)
     {
         float origin2[3];
-        radius = radius / 1.5;
+        radius = radius / 1.28;
         origin2[0] = float(m_paths[currentIndex].origin[0]) + GetRandomFloat(-radius, radius);
         origin2[1] = float(m_paths[currentIndex].origin[1]) + GetRandomFloat(-radius, radius);
         origin2[2] = float(m_paths[currentIndex].origin[2]);
@@ -873,34 +966,31 @@ stock void AddToPath(int currentIndex, int client)
 			TE_SendToClient(m_hostEntity);
 		}
 	}
+
 	m_targetNode[client] = m_positions[client].Length - 2;
 	m_currentWaypointIndex[client] = m_pathIndex[client].Length - 2;
 }
-
-/*stock void CalculateWayzone(int index)
-{
-    for (int scanDistance = 8; scanDistance < 144; scanDistance += 8)
-    {
-        
-    }
-
-    if (path->radius < 0)
-        path->radius = 0;
-}*/
 
 // find the nearest node to that origin, and return the index to this node
 stock int FindNearestWaypoint(float origin[3], float maxDistance = 999999.0, int client = -1)
 {
     int index = -1;
-    maxDistance = maxDistance * maxDistance;
+    maxDistance *= maxDistance;
+
     for (int i = 0; i < m_waypointNumber; i++)
     {
-        if (m_lastFailedWaypoint[client] == i)
-            continue;
-        if (client != -1 && GetClientTeam(client) == 2 && m_paths[i].team == 3)
-            continue;
-        if (client != -1 && GetClientTeam(client) == 3 && m_paths[i].team == 2)
-            continue;
+        // blocked waypoint
+   		if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+			continue;
+
+        if (client > 0 && client <= MaxClients)
+        {
+            if (m_paths[i].team == 2 && GetClientTeam(client) == 3)
+                continue;
+            else if (m_paths[i].team == 3 && GetClientTeam(client) == 2)
+                continue;
+        }
+        
         float distance = GetVectorDistance(VectorAsFloat(m_paths[i].origin), origin, true);
         if (distance < maxDistance)
         {
@@ -908,6 +998,7 @@ stock int FindNearestWaypoint(float origin[3], float maxDistance = 999999.0, int
             maxDistance = distance;
         }
     }
+    
     return index;
 }
 
@@ -973,60 +1064,16 @@ stock bool IsWaypointUsed(int index)
         if (!IsPlayerAlive(i))
             continue;
 
-        if (m_goalIndex[i] == index || GetFastDistanceInt(VectorAsInt(GetOrigin(i)), m_paths[index].origin) <= 128)
+        if (m_goalIndex[i] == index || GetVectorDistance(GetOrigin(i), VectorAsFloat(m_paths[index].origin), true) <= Squared(64))
             return true;
     }
     return false;
 }
 
-stock void WaypointLoad()
+stock void SetGoalIndex(int client, int index)
 {
-    char filepath[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, filepath, sizeof(filepath), "ebotWaypoints/%s.ewp", currentMap);
-    File fp = OpenFile(filepath, "rb");
-
-    if (fp == null)
-    {
-        if (NavMesh_Exists())
-            m_aboutTheWaypoint = "No waypoint file found\nNavmesh file will be used";
-        else
-            m_aboutTheWaypoint = "No waypoint file found\nNo navmesh file found\nBots will not move";
-        CreateTimer(15.0, PrintHudTextOnStart);
-        return;
-    }
-
-    // read about the file and author
-    WaypointHeader header;
-    fp.Read(header, sizeof(header), 4);
-    m_waypointNumber = header.pointNumber;
-
-    if (m_waypointNumber <= 0)
-    {
-        m_aboutTheWaypoint = "Broken waypoint file\nThis waypoint file will be ignored";
-        fp.Close();
-        CreateTimer(15.0, PrintHudTextOnStart);
-        return;
-    }
-
-    if (header.fileVersion > WaypointVersion)
-    {
-        Format(m_aboutTheWaypoint, sizeof(m_aboutTheWaypoint), "Waypoint version is too high\nPlease update your ebot!\nThis waypoint file will be ignored %s", header.fileVersion);
-        fp.Close();
-        CreateTimer(15.0, PrintHudTextOnStart);
-        return;
-    }
-
-    Format(m_aboutTheWaypoint, sizeof(m_aboutTheWaypoint), "Waypoint file by %s\n%d waypoints loaded", header.author, m_waypointNumber);
-    CreateTimer(15.0, PrintHudTextOnStart);
-    
-    // read the all waypoint data
-    for (int i = 0; i < m_waypointNumber; i++)
-        fp.Read(m_paths[i], sizeof(Path), 4);
-    
-    fp.Close();
-    m_hasWaypoints = true;
-    InitTypes();
-    return;
+    if (index != -1)
+        m_goalIndex[client] = index;
 }
 
 stock void InitTypes()
@@ -1063,6 +1110,54 @@ stock void InitTypes()
     }
 }
 
+stock void WaypointLoad()
+{
+    char filepath[PLATFORM_MAX_PATH];
+    BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/waypoints/%s.ewp", currentMap);
+    File fp = OpenFile(filepath, "rb");
+
+    CreateTimer(15.0, PrintHudTextOnStart);
+
+    if (fp == null)
+    {
+        if (NavMesh_Exists())
+            m_aboutTheWaypoint = "No waypoint file found\nNavmesh file will be used";
+        else
+            m_aboutTheWaypoint = "No waypoint file found\nNo navmesh file found\nBots will not move";
+        return;
+    }
+
+    // read about the file and author
+    WaypointHeader header;
+    fp.Read(header, sizeof(header), 4);
+    m_waypointNumber = header.pointNumber;
+
+    if (m_waypointNumber <= 0)
+    {
+        m_aboutTheWaypoint = "Broken waypoint file\nThis waypoint file will be ignored";
+        fp.Close();
+        return;
+    }
+
+    if (header.fileVersion > WaypointVersion)
+    {
+        Format(m_aboutTheWaypoint, sizeof(m_aboutTheWaypoint), "Waypoint version is too high\nPlease update your ebot!\nThis waypoint file will be ignored %s", header.fileVersion);
+        fp.Close();
+        return;
+    }
+
+    Format(m_aboutTheWaypoint, sizeof(m_aboutTheWaypoint), "Waypoint file by %s\n%d waypoints loaded", header.author, m_waypointNumber);
+    
+    // read the all waypoint data
+    for (int i = 0; i < m_waypointNumber; i++)
+        fp.Read(m_paths[i], sizeof(Path), 4);
+    
+    fp.Close();
+    m_hasWaypoints = true;
+    InitTypes();
+    return;
+}
+
 stock void WaypointSave()
 {
     if (m_waypointNumber <= 0)
@@ -1079,7 +1174,7 @@ stock void WaypointSave()
     header.author = waypointAuthor;
 
     char filepath[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, filepath, sizeof(filepath), "ebotWaypoints/%s.ewp", currentMap);
+    BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/waypoints/%s.ewp", currentMap);
     
     // remember the original waypoint author
     File rf = OpenFile(filepath, "rb");

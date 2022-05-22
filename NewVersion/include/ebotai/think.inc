@@ -20,7 +20,7 @@ stock void LookUpdate(int client, bool lookaround = true)
 	{
 		float center[3];
 		center = GetCenter(m_nearestEntity[client]);
-		if (m_enemyDistance[client] < GetVectorDistance(GetOrigin(client), center))
+		if (m_enemyDistance[client] < GetVectorDistance(GetOrigin(client), center, true))
 			LookAtEnemiens(client);
 		else
 			m_lookAt[client] = center;

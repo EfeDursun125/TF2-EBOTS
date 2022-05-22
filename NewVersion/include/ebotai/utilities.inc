@@ -1,5 +1,6 @@
 char currentMap[PLATFORM_MAX_PATH];
 int currentActiveArea;
+float BotCheckTimer = 0.0;
 
 int healthpacks = -1;
 int ammopacks = -1;
@@ -23,7 +24,6 @@ int m_buttons[MAXPLAYERS + 1];
 float m_thinkTimer[MAXPLAYERS + 1];
 float m_lookAt[MAXPLAYERS + 1][3];
 float m_pathAhead[MAXPLAYERS + 1][3];
-float m_movePosition[MAXPLAYERS + 1][3];
 float m_moveVel[MAXPLAYERS + 1][3];
 
 int m_goalEntity[MAXPLAYERS + 1];	
@@ -58,7 +58,7 @@ int m_eBotDodgeRange[MAXPLAYERS + 1];
 
 int m_knownSpy[MAXPLAYERS + 1];
 int m_maxSticky[MAXPLAYERS + 1];
-int m_knownSentry[MAXPLAYERS + 1];
+//int m_knownSentry[MAXPLAYERS + 1]; remember me
 int m_healTarget[MAXPLAYERS + 1];
 
 bool WantsBuildSentryGun[MAXPLAYERS + 1];
@@ -66,23 +66,45 @@ bool WantsBuildDispenser[MAXPLAYERS + 1];
 bool WantsBuildTeleporterEnter[MAXPLAYERS + 1];
 bool WantsBuildTeleporterExit[MAXPLAYERS + 1];
 
+int m_lastFailedEntity[MAXPLAYERS + 1] = -1;
+int m_difficulty[MAXPLAYERS + 1];
+
+int m_redPayload = -1;
+int m_bluPayload = -1;
+
 Handle EBotDebug;
 Handle EBotFPS;
 Handle EBotMelee;
 Handle EBotSenseMax;
 Handle EBotSenseMin;
 Handle EBotDifficulty;
-Handle m_eBotMedicFollowRange;
+Handle EBotMedicFollowRange;
 Handle m_eBotDodgeRangeMin;
 Handle m_eBotDodgeRangeMax;
 Handle m_eBotDodgeRangeChance;
+Handle EBotQuota;
 
 Handle g_hLookupBone;
 Handle g_hGetBonePosition;
 
-#define	MASK_CUSTOM (CONTENTS_SOLID|CONTENTS_MOVEABLE|0x40|CONTENTS_MONSTER)
+bool addBot = false;
+bool isEBot[MAXPLAYERS + 1] = false;
 
-void InitGamedata()
+/*enum struct Vector
+{
+    float x;
+    float y;
+	float z;
+}*/
+
+stock bool IsEBot(int bot)
+{
+	return isEBot[bot];
+}
+
+#define	MASK_CUSTOM (CONTENTS_SOLID|CONTENTS_MOVEABLE|0x40|CONTENTS_MONSTER|CONTENTS_WINDOW|CONTENTS_DEBRIS)
+
+public void InitGamedata()
 {
 	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetSignature(SDKLibrary_Server, "\x55\x8B\xEC\x56\x8B\xF1\x80\xBE\x41\x03\x00\x00\x00\x75\x2A\x83\xBE\x6C\x04\x00\x00\x00\x75\x2A\xE8\x2A\x2A\x2A\x2A\x85\xC0\x74\x2A\x8B\xCE\xE8\x2A\x2A\x2A\x2A\x8B\x86\x6C\x04\x00\x00\x85\xC0\x74\x2A\x83\x38\x00\x74\x2A\xFF\x75\x08\x50\xE8\x2A\x2A\x2A\x2A\x83\xC4\x08\x5E", 68);
@@ -96,6 +118,21 @@ void InitGamedata()
 	PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef, _, VENCODE_FLAG_COPYBACK);
 	PrepSDKCall_AddParameter(SDKType_QAngle, SDKPass_ByRef, _, VENCODE_FLAG_COPYBACK);
 	if ((g_hGetBonePosition = EndPrepSDKCall()) == INVALID_HANDLE) SetFailState("Failed to create SDKCall for CBaseAnimating::GetBonePosition signature!");
+}
+
+stock void FindPayload()
+{
+	int iPayload = -1;
+	while ((iPayload = FindEntityByClassname(iPayload, "mapobj_cart_dispenser")) != -1)
+	{
+		if (!IsValidEntity(iPayload))
+			continue;
+		
+		if (GetTeamNumber(iPayload) == 2)
+			m_redPayload = iPayload;
+		else
+			m_bluPayload = iPayload;
+	}
 }
 
 // repeat all clients and get host entity
@@ -235,6 +272,11 @@ stock void EyeVectors(int client, float fw[3] = NULL_VECTOR, float right[3] = NU
 	GetAngleVectors(GetEyeAngles(client), fw, right, up);
 }
 
+stock void MakeVectors(float defaultangle[3] = NULL_VECTOR, float fw[3] = NULL_VECTOR, float right[3] = NULL_VECTOR, float up[3] = NULL_VECTOR)
+{
+	GetAngleVectors(defaultangle, fw, right, up);
+}
+
 stock float[] GetEyeAngles(int client)
 {
 	float vector[3];
@@ -318,17 +360,20 @@ stock int FindNearestEnemy(int client, float flMaxDistance = 9999999999.0)
 	return iBestTarget;
 }
 
-stock void LookAtPosition(int client, float flGoal[3], float angle[3])
+stock void LookAtPosition(int client, float flGoal[3])
 {
-	float aimspeed = 0.1;
-	if (GetConVarInt(EBotDifficulty) == 1)
-		aimspeed = 0.12;
-	else if (GetConVarInt(EBotDifficulty) == 2)
-		aimspeed = 0.14;
-	else if (GetConVarInt(EBotDifficulty) == 3)
-		aimspeed = 0.16;
-	else if (GetConVarInt(EBotDifficulty) == 4)
-		aimspeed = 0.18;
+	float aimspeed = 0.16;
+	if (StrContains(currentMap, "mvm_" , false) != -1)
+		aimspeed = 0.32;
+	else if (m_difficulty[client] == 1)
+		aimspeed = 0.19;
+	else if (m_difficulty[client] == 2)
+		aimspeed = 0.22;
+	else if (m_difficulty[client] == 3)
+		aimspeed = 0.25;
+	else if (m_difficulty[client] == 4)
+		aimspeed = 0.28;
+	aimspeed -= GetConVarFloat(EBotFPS); // balance the aimspeed
 
 	float flPos[3];
 	GetClientEyePosition(client, flPos);
@@ -344,8 +389,7 @@ stock void LookAtPosition(int client, float flGoal[3], float angle[3])
 	// ease the current direction to the target direction
 	flAng[0] += AngleNormalize(desired_dir[0] - flAng[0]) * aimspeed;
 	flAng[1] += AngleNormalize(desired_dir[1] - flAng[1]) * aimspeed;
-	
-	angle = flAng;
+
 	TeleportEntity(client, NULL_VECTOR, flAng, NULL_VECTOR);
 }
 
@@ -381,22 +425,12 @@ stock float ApproachAngle(float target, float value, float speed)
 
 stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
 {
-	m_movePosition[client] = flGoal;
-
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);
 
-	if (flPos[0] == flGoal[0] && flPos[1] == flGoal[1])
-	{
-		m_moveVel[client][0] = 0.0;
-		m_moveVel[client][1] = 0.0;
-		m_moveVel[client][2] = 0.0;
-		return;
-	}
-
 	float fAng[3];
 	GetClientEyeAngles(client, fAng);
-	
+
 	float newmove[3];
 	SubtractVectors(flGoal, flPos, newmove);
 	
@@ -407,8 +441,8 @@ stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
 	
 	m_moveVel[client][0] = cos * newmove[0] - sin * newmove[1];
 	m_moveVel[client][1] = sin * newmove[0] + cos * newmove[1];
-	
-	ScaleVector(m_moveVel[client], 500.0);
+
+	ScaleVector(m_moveVel[client], 450.0);
 
 	if (checkStuck && GetEntityFlags(client) & FL_ONGROUND)
 	{
@@ -433,8 +467,6 @@ stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
 
 stock void MoveToWaypoint(int client, float flGoal[3], float flDest[3])
 {
-	m_movePosition[client] = flGoal;
-
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);
 
@@ -470,8 +502,6 @@ stock void MoveToWaypoint(int client, float flGoal[3], float flDest[3])
 
 stock void MoveOut(int client, float flGoal[3], bool checkStuck = true)
 {
-	m_movePosition[client] = flGoal;
-
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);
 
@@ -540,9 +570,9 @@ stock bool IsValidClient(int client)
 	return true;
 }
 
-stock bool IsVisible(float start[3], float end[3])
+stock bool IsVisible(float start2[3], float end[3])
 {
-	Handle trace = TR_TraceRayFilterEx(start, end, MASK_CUSTOM, RayType_EndPoint, TraceEntityFilterStuff);
+	Handle trace = TR_TraceRayFilterEx(start2, end, MASK_CUSTOM, RayType_EndPoint, TraceEntityFilterStuff);
 	float flFraction = TR_GetFraction(trace);
 	delete trace;
 	if (flFraction >= 1.0) 
@@ -593,6 +623,8 @@ public bool TraceEntityFilterStuff(int entity, int mask)
 	else if (StrContains(class, "tf_robot_destruction_robot", false) != -1)
 		return false;
 	else if (StrEqual(class, "entity_revive_marker"))
+		return false;
+	else if (StrEqual(class, "mapobj_cart_dispenser"))
 		return false;
 	return entity > MaxClients;
 }
@@ -690,7 +722,7 @@ stock bool IsMoving(int client)
 {
 	float buffer[3];
 	GetEntPropVector(client, Prop_Data, "m_vecAbsVelocity", buffer);
-	return (GetVectorLength(buffer, true) > GetEntPropFloat(client, Prop_Data, "m_flMaxspeed"));
+	return GetVectorLength(buffer, true) > GetEntPropFloat(client, Prop_Send, "m_flMaxspeed");
 }
 
 stock bool IsMetalLow(int client)
@@ -908,8 +940,8 @@ stock bool CheckWallRight(int client)
 	clientOrigin = GetCenter(client);
 
 	float clientTargetOrigin[3];
-	clientTargetOrigin[0] = clientOrigin[0] + (fw[0] * 28.0) + (right[0] * 28.0);
-	clientTargetOrigin[1] = clientOrigin[1] + (fw[1] * 28.0) + (right[1] * 28.0);
+	clientTargetOrigin[0] = clientOrigin[0] + (fw[0] * 32.0) + (right[0] * 32.0);
+	clientTargetOrigin[1] = clientOrigin[1] + (fw[1] * 32.0) + (right[1] * 32.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
 	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
@@ -935,8 +967,8 @@ stock bool CheckWallLeft(int client)
 	clientOrigin = GetCenter(client);
 
 	float clientTargetOrigin[3];
-	clientTargetOrigin[0] = clientOrigin[0] + (fw[0] * 28.0) - (right[0] * 28.0);
-	clientTargetOrigin[1] = clientOrigin[1] + (fw[1] * 28.0) - (right[1] * 28.0);
+	clientTargetOrigin[0] = clientOrigin[0] + (fw[0] * 32.0) - (right[0] * 32.0);
+	clientTargetOrigin[1] = clientOrigin[1] + (fw[1] * 32.0) - (right[1] * 32.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
 	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
@@ -962,8 +994,8 @@ stock bool CheckWallRight2(int client)
 	clientOrigin = GetCenter(client);
 
 	float clientTargetOrigin[3];
-	clientTargetOrigin[0] = clientOrigin[0] - (fw[0] * 28.0) + (right[0] * 28.0);
-	clientTargetOrigin[1] = clientOrigin[1] - (fw[1] * 28.0) + (right[1] * 28.0);
+	clientTargetOrigin[0] = clientOrigin[0] - (fw[0] * 32.0) + (right[0] * 32.0);
+	clientTargetOrigin[1] = clientOrigin[1] - (fw[1] * 32.0) + (right[1] * 32.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
 	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
@@ -989,8 +1021,8 @@ stock bool CheckWallLeft2(int client)
 	clientOrigin = GetCenter(client);
 
 	float clientTargetOrigin[3];
-	clientTargetOrigin[0] = clientOrigin[0] - (fw[0] * 28.0) - (right[0] * 28.0);
-	clientTargetOrigin[1] = clientOrigin[1] - (fw[1] * 28.0) - (right[1] * 28.0);
+	clientTargetOrigin[0] = clientOrigin[0] - (fw[0] * 32.0) - (right[0] * 32.0);
+	clientTargetOrigin[1] = clientOrigin[1] - (fw[1] * 32.0) - (right[1] * 32.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
 	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
@@ -1040,6 +1072,17 @@ public bool RocketFilter(int entity, int mask)
 	if (StrEqual(class, "func_respawnroomvisualizer"))
 		return false;
 	else if (StrContains(class, "tf_projectile_", false) != -1)
+		return false;
+	else if (StrEqual(class, "entity_revive_marker"))
+		return false;
+	return entity > MaxClients;
+}
+
+public bool WayzoneFilter(int entity, int mask)
+{
+	char class[64];
+	GetEntityClassname(entity, class, sizeof(class));
+	if (StrContains(class, "tf_projectile_", false) != -1)
 		return false;
 	else if (StrEqual(class, "entity_revive_marker"))
 		return false;
@@ -1248,6 +1291,22 @@ stock bool ClientViewsOrigin(int Viewer, float fTargetPos[3], float fThreshold=0
 		return false;
     
     return true;
+}
+
+stock bool NameAlreadyTakenByPlayer(const char[] name)
+{
+	char buffer[MAX_NAME_LENGTH];
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsValidClient(i))
+			continue;
+		
+		GetClientName(i, buffer, sizeof(buffer));
+		if (StrEqual(name, buffer))
+			return true;
+	}
+	
+	return false;
 }
 
 stock bool AttackToSpy(int client)

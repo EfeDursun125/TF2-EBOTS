@@ -1,4 +1,4 @@
-float m_checkTimer[MAXPLAYERS + 1];
+float m_checkTimer[MAXPLAYERS + 1] = 0.0;
 public void CheckSlowThink(int client)
 {
 	if (m_checkTimer[client] < GetGameTime())
@@ -21,6 +21,14 @@ public void CheckSlowThink(int client)
 			m_eBotSenseChance[client] = GetRandomInt(GetConVarInt(EBotSenseMin), GetConVarInt(EBotSenseMax));
 		}
 
+		if (m_difficulty[client] < 0 || m_difficulty[client] > 4)
+		{
+			if (GetConVarInt(EBotDifficulty) < 0 || GetConVarInt(EBotDifficulty) > 4)
+				m_difficulty[client] = GetRandomInt(0, 4);
+			else
+				m_difficulty[client] = GetConVarInt(EBotDifficulty);
+		}
+
 		if (m_eBotDodgeRange[client] <= 0)
 		{
 			if (GetConVarInt(m_eBotDodgeRangeMin) > GetConVarInt(m_eBotDodgeRangeMax))
@@ -28,7 +36,7 @@ public void CheckSlowThink(int client)
 			m_eBotDodgeRange[client] = GetRandomInt(GetConVarInt(m_eBotDodgeRangeMin), GetConVarInt(m_eBotDodgeRangeMax));
 		}
 
-		if (TF2_GetPlayerClass(client) == TFClass_Sniper && !m_hasEnemiesNear[client])
+		if (TF2_GetPlayerClass(client) == TFClass_Sniper && !m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])
 		{
 			if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && IsMoving(client))
 				m_buttons[client] |= IN_ATTACK2;

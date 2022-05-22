@@ -165,7 +165,10 @@ stock void LookAround(int client)
 {
 	if (m_pauseTime[client] >= GetGameTime())
 		return;
-	
+
+	float ClientEye[3];
+	GetClientEyePosition(client, ClientEye);
+
 	if (m_hasFriendsNear[client] && IsAttacking(m_nearestFriend[client]))
 	{
 		int friend = m_nearestFriend[client];
@@ -191,7 +194,7 @@ stock void LookAround(int client)
 			if (search == client)
 				continue;
 			
-			if (!IsMoving(search) && !IsAttacking(search))
+			if (!IsAttacking(search) && !IsMoving(search))
 				continue;
 			
 			if (GetVectorDistance(GetOrigin(client), GetOrigin(search), true) > Squared(768))
@@ -205,8 +208,8 @@ stock void LookAround(int client)
 				int index = FindNearestWaypoint(GetEyePosition(search), 999999.0, client);
 				if (index != -1)
 				{
-					PlayerArea[0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-					PlayerArea[1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
+					PlayerArea[0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius)) + ((PlayerArea[0] - ClientEye[0]) * 1024.0);
+					PlayerArea[1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius)) + ((PlayerArea[1] - ClientEye[1]) * 1024.0);
 					PlayerArea[2] = float(m_paths[index].origin[2]);
 				}
 			}
@@ -214,17 +217,23 @@ stock void LookAround(int client)
 			{
 				CNavArea area = NavMesh_GetNearestArea(GetEyePosition(search), true, 768.0, false, false);
 				if (area != INVALID_NAV_AREA)
+				{
 					area.GetRandomPoint(PlayerArea);
+					float fw[3];
+					EyeVectors(client, fw);
+					PlayerArea[0] += (fw[0] * 1024.0);
+					PlayerArea[1] += (fw[0] * 1024.0);
+				}
 			}
 
-			if (TF2_GetPlayerClass(client) == TFClass_Heavy && IsWeaponSlotActive(client, 0))
+			if (m_difficulty[client] > 0 && TF2_GetPlayerClass(client) == TFClass_Heavy && IsWeaponSlotActive(client, 0))
 			{
 				if (IsValidEntity(GetPlayerWeaponSlot(client, TFWeaponSlot_Primary)))
 				{
-					if(m_lowHealth[client])
+					if (m_lowHealth[client] || m_lowAmmo[client] || m_difficulty[client] == 1)
 						m_attack2Timer[client] = GetGameTime() + 2.0;
 					else
-						m_attack2Timer[client] = GetGameTime() + 4.0;
+						m_attack2Timer[client] = GetGameTime() + m_difficulty[client] + 1.0;
 				}
 				else
 					m_attack2Timer[client] = 0.0;
@@ -246,8 +255,8 @@ stock void LookAround(int client)
 	{
 		GetClientEyePosition(client, BestLookPos);
 		
-		BestLookPos[0] += GetRandomFloat(-768.0, 768.0);
-		BestLookPos[1] += GetRandomFloat(-768.0, 768.0);
+		BestLookPos[0] += GetRandomFloat(-1024.0, 1024.0);
+		BestLookPos[1] += GetRandomFloat(-1024.0, 1024.0);
 		BestLookPos[2] += GetRandomFloat(-256.0, 256.0);
 		
 		if (m_hasWaypoints)
@@ -270,12 +279,12 @@ stock void LookAround(int client)
 		m_searchTime[client] = GetGameTime() + 0.2;
 	}
 	
-	if (IsVisible(GetEyePosition(client), SelectRandom) && GetVectorDistance(GetOrigin(client), SelectRandom, true) > Squared(384))
+	if (IsVisible(GetEyePosition(client), SelectRandom) && GetVectorDistance(GetOrigin(client), SelectRandom, true) > Squared(512))
 	{
 		if (m_pauseTime[client] < GetGameTime())
 		{
-			m_lookAt[client][0] = SelectRandom[0];
-			m_lookAt[client][1] = SelectRandom[1];
+			m_lookAt[client][0] = SelectRandom[0] + ((SelectRandom[0] - ClientEye[0]) * 1024.0);
+			m_lookAt[client][1] = SelectRandom[1] + ((SelectRandom[1] - ClientEye[1]) * 1024.0);
 			m_lookAt[client][2] = SelectRandom[2] + GetHeight(client);
 			m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.25);
 		}
@@ -287,8 +296,8 @@ stock void LookAround(int client)
 			int index = FindNearestWaypoint(m_pathAhead[client], 999999.0, client);
 			if (index != -1)
 			{
-				m_lookAt[client][0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-				m_lookAt[client][1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
+				m_lookAt[client][0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius)) + ((m_pathAhead[client][0] - ClientEye[0]) * 1024.0);
+				m_lookAt[client][1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius)) + ((m_pathAhead[client][1] - ClientEye[1]) * 1024.0);
 				m_lookAt[client][2] = float(m_paths[index].origin[2]) + GetHeight(client);
 			}
 		}
@@ -297,7 +306,11 @@ stock void LookAround(int client)
 			CNavArea area = NavMesh_GetNearestArea(m_pathAhead[client], true, 512.0, false, false);
 			if (area != INVALID_NAV_AREA)
 			{
+				float fw[3];
+				EyeVectors(client, fw);
 				area.GetRandomPoint(m_lookAt[client]);
+				m_lookAt[client][0] += fw[0] * 1024.0;
+				m_lookAt[client][1] += fw[0] * 1024.0;
 				m_lookAt[client][2] += GetHeight(client);
 			}
 		}

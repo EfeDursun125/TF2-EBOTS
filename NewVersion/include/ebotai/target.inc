@@ -70,14 +70,65 @@ public void FindFriendsAndEnemiens(int client)
 		}
 		else
 		{
-			if (!ClientViews(client, i) && !IsAttacking(i) && TF2_GetPlayerClass(client) != TFClass_Medic && !TF2_IsPlayerInCondition(client, TFCond_Zoomed) && !TF2_IsPlayerInCondition(client, TFCond_Disguised) && !TF2_IsPlayerInCondition(client, TFCond_Taunting))
-				continue;
+			float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
+			if (TF2_HasTheFlag(i))
+			{
+				m_enemiesNearCount[client] = 1;
+				m_enemyDistance[client] = edict_distance;
+				m_nearestEnemy[client] = i;
+				m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
+				m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
+				if (m_hasEnemiesNear[client])
+					m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+				return;
+			}
+			
+			if (edict_distance > Squared(80))
+			{
+				if (!ClientViews(client, i) && !IsAttacking(i) && !TF2_IsPlayerInCondition(client, TFCond_Disguised))
+					continue;
+				if (TF2_GetPlayerClass(i) == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
+					continue;
+			}
 
-			if (TF2_GetPlayerClass(i) == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
-				continue;
+			if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && edict_distance > Squared(256))
+			{
+				if (m_difficulty[client] >= 1 && TF2_GetPlayerClass(i) == TFClass_Sniper)
+				{
+					m_enemiesNearCount[client] = 1;
+					m_enemyDistance[client] = edict_distance;
+					m_nearestEnemy[client] = i;
+					m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
+					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
+					if (m_hasEnemiesNear[client])
+						m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+					return;
+				}
+				else if (m_difficulty[client] >= 2 && !IsMoving(i))
+				{
+					m_enemiesNearCount[client] = 1;
+					m_enemyDistance[client] = edict_distance;
+					m_nearestEnemy[client] = i;
+					m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
+					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
+					if (m_hasEnemiesNear[client])
+						m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+					return;
+				}
+				else if (m_difficulty[client] >= 3 && !IsClientAimingToMe(client, i))
+				{
+					m_enemiesNearCount[client] = 1;
+					m_enemyDistance[client] = edict_distance;
+					m_nearestEnemy[client] = i;
+					m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
+					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
+					if (m_hasEnemiesNear[client])
+						m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+					return;
+				}
+			}
 			
 			m_enemiesNearCount[client]++;
-			float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
 			if (edict_distance < m_enemyDistance[client])
 			{
 				m_enemyDistance[client] = edict_distance;
@@ -107,6 +158,11 @@ public void FindEnemyEntities(int client)
 		
 		if (i <= MaxClients)
 			continue;
+		
+		char class[64];
+		GetEntityClassname(i, class, sizeof(class));
+		if (StrContains(class, "obj_", false) == -1 && !StrEqual(class, "tf_zombie", false) && !StrEqual(class, "tank_boss", false) && !StrEqual(class, "merasmus", false) && !StrEqual(class, "eyeball_boss", false) && !StrEqual(class, "headless_hatman", false) && !StrEqual(class, "tf_robot_destruction_robot", false))
+			continue;
 
 		if (!HasEntProp(i, Prop_Data, "m_iHealth"))
 			continue;
@@ -126,9 +182,7 @@ public void FindEnemyEntities(int client)
 		if (!HasEntProp(i, Prop_Data, "m_takedamage"))
 			continue;
 		
-		char class[64];
-		GetEntityClassname(i, class, sizeof(class));
-		if (StrContains(class, "obj_", false) == -1 && !StrEqual(class, "tf_zombie", false) && !StrEqual(class, "tank_boss", false) && !StrEqual(class, "merasmus", false) && !StrEqual(class, "eyeball_boss", false) && !StrEqual(class, "headless_hatman", false) && !StrEqual(class, "tf_robot_destruction_robot", false))
+		if (GetEntProp(i, Prop_Data, "m_takedamage") != 2)
 			continue;
 		
 		float eyeposition[3];

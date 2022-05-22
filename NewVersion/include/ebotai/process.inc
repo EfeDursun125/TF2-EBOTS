@@ -67,6 +67,10 @@ public void StartProcess(int client, int process)
 			BuildSentryStart(client);
 		case PRO_BUILDDISPENSER:
 			BuildDispenserStart(client);
+		case PRO_BUILDTELEPORTERENTER:
+			BuildTeleEnterStart(client);
+		case PRO_BUILDTELEPORTEREXIT:
+			BuildTeleExitStart(client);
 	}
 }
 
@@ -100,6 +104,10 @@ public void EndProcess(int client, int process)
 			BuildSentryEnd(client);
 		case PRO_BUILDDISPENSER:
 			BuildDispenserEnd(client);
+		case PRO_BUILDTELEPORTERENTER:
+			BuildTeleEnterEnd(client);
+		case PRO_BUILDTELEPORTEREXIT:
+			BuildTeleExitEnd(client);
 	}
 }
 
@@ -139,6 +147,10 @@ public void UpdateProcess(int client)
 			BuildSentryUpdate(client);
 		case PRO_BUILDDISPENSER:
 			BuildDispenserUpdate(client);
+		case PRO_BUILDTELEPORTERENTER:
+			BuildTeleEnterUpdate(client);
+		case PRO_BUILDTELEPORTEREXIT:
+			BuildTeleExitUpdate(client);
 	}
 }
 
@@ -188,6 +200,10 @@ public bool IsReadyForTheProcess(int client, int process)
 			return BuildSentryRequirements(client);
 		case PRO_BUILDDISPENSER:
 			return BuildDispenserRequirements(client);
+		case PRO_BUILDTELEPORTERENTER:
+			return BuildTeleEnterRequirements(client);
+		case PRO_BUILDTELEPORTEREXIT:
+			return BuildTeleExitRequirements(client);
 	}
 
 	return true;
@@ -222,6 +238,10 @@ stock char GetProcessName(int process)
 			string = "BUILD_SENTRY";
 		case PRO_BUILDDISPENSER:
 			string = "BUILD_DISPENSER";
+		case PRO_BUILDTELEPORTERENTER:
+			string = "BUILD_TELE_ENTER";
+		case PRO_BUILDTELEPORTEREXIT:
+			string = "BUILD_TELE_EXIT";
 	}
 	return string;
 }
