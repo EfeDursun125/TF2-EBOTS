@@ -8,6 +8,7 @@ Works on
 
 Known Issues
 1. For now: spies can't sap buildings & engineers can't build teleporters
+2. Bots sometimes stop moving...
 
 # OLD
 Requires PathFollower & tf2.pets gamedata
