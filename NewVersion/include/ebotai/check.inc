@@ -4,6 +4,11 @@ public void CheckSlowThink(int client)
 	if (m_checkTimer[client] < GetGameTime())
 	{
 		m_isSlowThink[client] = true;
+
+		m_primaryID[client] = TF2_GetPlayerWeaponID(client, 0);
+		m_secondaryID[client] = TF2_GetPlayerWeaponID(client, 1);
+		m_meleeID[client] = TF2_GetPlayerWeaponID(client, 2);
+
 		if (!m_hasWaypoints)
 			CheckWalls(client);
 
@@ -134,8 +139,12 @@ public void CheckSlowThink(int client)
 		{
 			if (!TF2_IsPlayerInCondition(client, TFCond_Disguised) && !TF2_IsPlayerInCondition(client, TFCond_Disguising) && !TF2_HasTheFlag(client))
 				DisguiseAsEnemy(client);
+
 			if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) && !m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])
 				m_buttons[client] |= IN_ATTACK2;
+
+			if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]) && HasEntProp(m_nearestEntity[client], Prop_Send, "m_bHasSapper")) // remember sappable things
+				m_knownSentry[client] = m_nearestEntity[client];
 		}
 
 		m_checkTimer[client] = GetGameTime() + GetRandomFloat(0.95, 1.05);
@@ -144,26 +153,61 @@ public void CheckSlowThink(int client)
 		m_isSlowThink[client] = false;
 }
 
+// automaticly triggers the hiding process
+public void CheckHideFromDanger(int client)
+{
+	if (!m_hasWaypoints)
+		return;
+	
+	if (!m_hasEnemiesNear[client])
+		return;
+	
+	if (!m_isSlowThink[client])
+		return;
+	
+	if (TF2_GetPlayerClass(client) == TFClass_Sniper)
+		return;
+	
+	bool musthide = false;
+
+	if (m_enemiesNearCount[client] > m_friendsNearCount[client] + 2)
+		musthide = true;
+	
+	if (TF2_GetPlayerClass(client) == TFClass_Spy && m_meleeID[client] == 356)
+	{
+		if (GetClientHealth(client) <= 55.0)
+			musthide = true;
+	}
+	else if (GetClientHealth(client) <= (GetMaxHealth(client) / 1.4))
+		musthide = true;
+	
+	if (musthide)
+		SetProcess(client, PRO_HIDE, 60.0, "| process started -> hiding from danger", false, false);
+}
+
 // automaticly triggers the collect health pack process
 public void CheckHealth(int client)
 {
 	if (!m_isSlowThink[client])
 		return;
 	
-	if (TF2_GetPlayerClass(client) == TFClass_Spy && TF2_GetPlayerWeaponID(client, 2) == 356)
+	if (m_hasWaypoints && m_hasEnemiesNear[client])
+		return;
+	
+	if (TF2_GetPlayerClass(client) == TFClass_Spy && m_meleeID[client] == 356)
 	{
-		if (GetClientHealth(client) <= 50.0)
+		if (GetClientHealth(client) < 55.0)
 			m_lowHealth[client] = true;
 		else
 			m_lowHealth[client] = false;
 	}
-	else if (GetClientHealth(client) <= (GetMaxHealth(client) / 1.4))
+	else if (GetClientHealth(client) < (GetMaxHealth(client) / 1.4))
 		m_lowHealth[client] = true;
 	else
 		m_lowHealth[client] = false;
 	
 	if (m_lowHealth[client])
-		SetProcess(client, PRO_GETHEALTH, 90.0, "| process started -> need health pack.");
+		SetProcess(client, PRO_GETHEALTH, 90.0, "| process started -> need health pack");
 }
 
 // automaticly triggers the collect health pack process
@@ -178,7 +222,7 @@ public void CheckAmmo(int client)
 		m_lowAmmo[client] = false;
 	
 	if (m_lowAmmo[client])
-		SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack.");
+		SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack");
 }
 
 public void CheckWalls(int client)

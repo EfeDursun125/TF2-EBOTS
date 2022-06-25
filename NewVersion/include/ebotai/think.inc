@@ -20,13 +20,20 @@ stock void LookUpdate(int client, bool lookaround = true)
 	{
 		float center[3];
 		center = GetCenter(m_nearestEntity[client]);
+
 		if (m_enemyDistance[client] < GetVectorDistance(GetOrigin(client), center, true))
 			LookAtEnemiens(client);
 		else
 			m_lookAt[client] = center;
-		AutoAttack(client);
-		SelectBestCombatWeapon(client);
+
+		if (CurrentProcess[client] != PRO_SPYSAP)
+		{
+			AutoAttack(client);
+			SelectBestCombatWeapon(client);
+		}
+		
 		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+
 		return;
 	}
 	else if (m_hasEnemiesNear[client])
@@ -35,14 +42,21 @@ stock void LookUpdate(int client, bool lookaround = true)
 		AutoAttack(client);
 		SelectBestCombatWeapon(client);
 		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+
 		return;
 	}
 	else if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
 	{
 		m_lookAt[client] = GetCenter(m_nearestEntity[client]);
-		AutoAttack(client);
-		SelectBestCombatWeapon(client);
+
+		if (CurrentProcess[client] != PRO_SPYSAP)
+		{
+			AutoAttack(client);
+			SelectBestCombatWeapon(client);
+		}
+		
 		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+
 		return;
 	}
 

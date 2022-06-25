@@ -19,6 +19,9 @@ public void FindFriendsAndEnemiens(int client)
 		if (i == client)
 			continue;
 		
+		if (TF2_IsPlayerInCondition(i, TFCond_HalloweenGhostMode))
+			continue;
+		
 		if (GetEntProp(i, Prop_Data, "m_takedamage") != 2)
 			continue;
 		
@@ -51,6 +54,7 @@ public void FindFriendsAndEnemiens(int client)
 				m_friendDistance[client] = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
 				float realdist = m_friendDistance[client];
 				float edict_distance = realdist * GetClientHealth(i);
+
 				if (edict_distance < medicdist)
 				{
 					medicdist = edict_distance;
@@ -61,6 +65,7 @@ public void FindFriendsAndEnemiens(int client)
 			{
 				m_friendsNearCount[client]++;
 				float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
+
 				if (edict_distance < m_friendDistance[client])
 				{
 					m_friendDistance[client] = edict_distance;
@@ -78,8 +83,10 @@ public void FindFriendsAndEnemiens(int client)
 				m_nearestEnemy[client] = i;
 				m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
 				m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
+
 				if (m_hasEnemiesNear[client])
 					m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+				
 				return;
 			}
 			
@@ -87,6 +94,7 @@ public void FindFriendsAndEnemiens(int client)
 			{
 				if (!ClientViews(client, i) && !IsAttacking(i) && !TF2_IsPlayerInCondition(client, TFCond_Disguised))
 					continue;
+				
 				if (TF2_GetPlayerClass(i) == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
 					continue;
 			}
@@ -100,8 +108,10 @@ public void FindFriendsAndEnemiens(int client)
 					m_nearestEnemy[client] = i;
 					m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
 					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
+
 					if (m_hasEnemiesNear[client])
 						m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+					
 					return;
 				}
 				else if (m_difficulty[client] >= 2 && !IsMoving(i))
@@ -111,8 +121,10 @@ public void FindFriendsAndEnemiens(int client)
 					m_nearestEnemy[client] = i;
 					m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
 					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
+
 					if (m_hasEnemiesNear[client])
 						m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+					
 					return;
 				}
 				else if (m_difficulty[client] >= 3 && !IsClientAimingToMe(client, i))
@@ -122,8 +134,10 @@ public void FindFriendsAndEnemiens(int client)
 					m_nearestEnemy[client] = i;
 					m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
 					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
+
 					if (m_hasEnemiesNear[client])
 						m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+					
 					return;
 				}
 			}
@@ -139,8 +153,12 @@ public void FindFriendsAndEnemiens(int client)
 	
 	m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
 	m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
+
 	if (m_hasEnemiesNear[client])
+	{
+		m_lastEnemy[client] = m_nearestEnemy[client];
 		m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+	}
 }
 
 public void FindEnemyEntities(int client)
@@ -151,6 +169,7 @@ public void FindEnemyEntities(int client)
 	m_hasEntitiesNear[client] = false;
 	int m_hasEntitiesNearCount = 0;
 	float nearestDistance = -1.0;
+	
 	for (int i = 1; i <= GetEntityCount(); i++)
 	{
 		if (!IsValidEntity(i))
@@ -163,26 +182,14 @@ public void FindEnemyEntities(int client)
 		GetEntityClassname(i, class, sizeof(class));
 		if (StrContains(class, "obj_", false) == -1 && !StrEqual(class, "tf_zombie", false) && !StrEqual(class, "tank_boss", false) && !StrEqual(class, "merasmus", false) && !StrEqual(class, "eyeball_boss", false) && !StrEqual(class, "headless_hatman", false) && !StrEqual(class, "tf_robot_destruction_robot", false))
 			continue;
-
-		if (!HasEntProp(i, Prop_Data, "m_iHealth"))
-			continue;
 		
 		if (GetEntProp(i, Prop_Data, "m_iHealth") <= 0)
-			continue;
-		
-		if (!HasEntProp(i, Prop_Data, "m_iTeamNum"))
 			continue;
 		
 		if (GetTeamNumber(i) == GetClientTeam(client))
 			continue;
 
 		if (HasEntProp(i, Prop_Send, "m_bHasSapper") && GetEntProp(i, Prop_Send, "m_bHasSapper") != 0)
-			continue;
-		
-		if (!HasEntProp(i, Prop_Data, "m_takedamage"))
-			continue;
-		
-		if (GetEntProp(i, Prop_Data, "m_takedamage") != 2)
 			continue;
 		
 		float eyeposition[3];

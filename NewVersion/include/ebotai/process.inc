@@ -1,37 +1,20 @@
-enum
-{
-    PRO_DEFAULT = 0,
-	PRO_IDLE,
-	PRO_ATTACK,
-	PRO_HUNTENEMY,
-	PRO_HEAL,
-	PRO_SPYLURK,
-	PRO_SPYHUNT,
-	PRO_GETAMMO,
-	PRO_GETHEALTH,
-	PRO_FLEE,
-	PRO_DEFEND,
-	PRO_HIDE,
-	PRO_ENGINEERIDLE,
-	PRO_BUILDDISPENSER,
-	PRO_BUILDTELEPORTERENTER,
-	PRO_BUILDTELEPORTEREXIT,
-	PRO_BUILDSENTRY
-}
-
-int CurrentProcess[MAXPLAYERS + 1] = PRO_DEFAULT;
 int RememberedProcess[MAXPLAYERS + 1] = PRO_DEFAULT;
 float CurrentProcessTime[MAXPLAYERS + 1] = 9999.0;
 float RememberedProcessTime[MAXPLAYERS + 1] = 0.0;
 
-stock void SetProcess(int client, int process, float time = 9999.0, const char[] debugnote = "clear", bool ignoredebug = false)
+stock void SetProcess(int client, int process, float time = 9999.0, const char[] debugnote = "clear", bool ignoredebug = false, bool remember = true)
 {
 	if (IsReadyForTheProcess(client, process) && CurrentProcess[client] != process)
 	{
 		if (!ignoredebug)
 			PrintToServer("%N has got a new process from %s to %s %s", client, GetProcessName(CurrentProcess[client]), GetProcessName(process), debugnote);
-		RememberedProcess[client] = CurrentProcess[client];
-		RememberedProcessTime[client] = CurrentProcessTime[client];
+
+		if (remember && CurrentProcess[client] != PRO_HIDE)
+		{
+			RememberedProcess[client] = CurrentProcess[client];
+			RememberedProcessTime[client] = CurrentProcessTime[client];
+		}
+
 		EndProcess(client, CurrentProcess[client]);
 		CurrentProcess[client] = process;
 		StartProcess(client, process);
@@ -57,6 +40,8 @@ public void StartProcess(int client, int process)
 			SpyLurkStart(client);
 		case PRO_SPYHUNT:
 			SpyHuntStart(client);
+		case PRO_SPYSAP:
+			SpySapStart(client);
 		case PRO_DEFEND:
 			DefendStart(client);
 		case PRO_HEAL:
@@ -71,6 +56,8 @@ public void StartProcess(int client, int process)
 			BuildTeleEnterStart(client);
 		case PRO_BUILDTELEPORTEREXIT:
 			BuildTeleExitStart(client);
+		case PRO_HIDE:
+			HideStart(client);
 	}
 }
 
@@ -94,6 +81,8 @@ public void EndProcess(int client, int process)
 			SpyLurkEnd(client);
 		case PRO_SPYHUNT:
 			SpyHuntEnd(client);
+		case PRO_SPYSAP:
+			SpySapEnd(client);
 		case PRO_DEFEND:
 			DefendEnd(client);
 		case PRO_HEAL:
@@ -108,12 +97,14 @@ public void EndProcess(int client, int process)
 			BuildTeleEnterEnd(client);
 		case PRO_BUILDTELEPORTEREXIT:
 			BuildTeleExitEnd(client);
+		case PRO_HIDE:
+			HideEnd(client);
 	}
 }
 
 public void UpdateProcess(int client)
 {
-	if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcessTime[client] < GetGameTime())
+	if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcessTime[client] < GetGameTime() && CurrentProcess[client] != PRO_SPYLURK && CurrentProcess[client] != PRO_SPYHUNT)
 	{
 		PrintToServer("%N is cancelled %s process -> timed out.", client, GetProcessName(CurrentProcess[client]));
 		EndProcess(client, CurrentProcess[client]);
@@ -137,6 +128,8 @@ public void UpdateProcess(int client)
 			SpyLurkUpdate(client);
 		case PRO_SPYHUNT:
 			SpyHuntUpdate(client);
+		case PRO_SPYSAP:
+			SpySapUpdate(client);
 		case PRO_DEFEND:
 			DefendUpdate(client);
 		case PRO_HEAL:
@@ -151,7 +144,12 @@ public void UpdateProcess(int client)
 			BuildTeleEnterUpdate(client);
 		case PRO_BUILDTELEPORTEREXIT:
 			BuildTeleExitUpdate(client);
+		case PRO_HIDE:
+			HideUpdate(client);
 	}
+
+	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+		SetProcess(client, PRO_HIDE, 60.0, "", true);
 }
 
 stock void FinishCurrentProcess(int client, bool nodbg = false, const char[] debugnote = "finished by the system")
@@ -160,13 +158,16 @@ stock void FinishCurrentProcess(int client, bool nodbg = false, const char[] deb
 	{
 		if (nodbg && CurrentProcess[client] != PRO_ATTACK)
 			PrintToServer("%N is cancelled %s process -> %s", client, GetProcessName(CurrentProcess[client]), debugnote);
+
 		EndProcess(client, CurrentProcess[client]);
+
 		if (RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime())
 		{
 			StartProcess(client, RememberedProcess[client]);
 			CurrentProcess[client] = RememberedProcess[client];
 			return;
 		}
+
 		StartProcess(client, PRO_DEFAULT);
 		CurrentProcess[client] = PRO_DEFAULT;
 	}
@@ -190,6 +191,8 @@ public bool IsReadyForTheProcess(int client, int process)
 			return SpyLurkRequirements(client);
 		case PRO_SPYHUNT:
 			return SpyHuntRequirements(client);
+		case PRO_SPYSAP:
+			return SpySapRequirements(client);
 		case PRO_DEFEND:
 			return DefendRequirements(client);
 		case PRO_HEAL:
@@ -204,6 +207,8 @@ public bool IsReadyForTheProcess(int client, int process)
 			return BuildTeleEnterRequirements(client);
 		case PRO_BUILDTELEPORTEREXIT:
 			return BuildTeleExitRequirements(client);
+		case PRO_HIDE:
+			return HideRequirements(client);
 	}
 
 	return true;
@@ -228,6 +233,8 @@ stock char GetProcessName(int process)
 			string = "SPY_LURK";
 		case PRO_SPYHUNT:
 			string = "SPY_HUNT";
+		case PRO_SPYSAP:
+			string = "SPY_SAP";
 		case PRO_DEFEND:
 			string = "DEFEND";
 		case PRO_HEAL:
@@ -242,6 +249,8 @@ stock char GetProcessName(int process)
 			string = "BUILD_TELE_ENTER";
 		case PRO_BUILDTELEPORTEREXIT:
 			string = "BUILD_TELE_EXIT";
+		case PRO_HIDE:
+			string = "HIDE";
 	}
 	return string;
 }

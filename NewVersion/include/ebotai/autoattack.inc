@@ -1,5 +1,3 @@
-float m_fireTimer[MAXPLAYERS + 1];
-
 stock void Attack(int client)
 {
 	if (TF2_GetPlayerClass(client) == TFClass_DemoMan && IsWeaponSlotActive(client, 0) && TF2_GetPlayerWeaponID(client, 0) == 996)
@@ -32,12 +30,22 @@ stock void AutoAttack(int client)
 	{
 		if (IsWeaponSlotActive(client, 0))
 		{
-			if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && m_isSlowThink[client] && GetRandomInt(-1, m_difficulty[client]) >= 0)
-				m_buttons[client] |= IN_ATTACK;
-			if (m_difficulty[client] > 0 && m_lowHealth[client])
-				return;
-			if (!TF2_IsPlayerInCondition(client, TFCond_Zoomed))
-				m_buttons[client] |= IN_ATTACK2;
+			if (m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092 || m_primaryID[client] == 1098)
+			{
+				if (m_attackTimer[client] < GetGameTime())
+					m_attackTimer[client] = GetGameTime() + GetRandomFloat(1.25, 2.25);
+			}
+			else
+			{
+				if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && m_isSlowThink[client] && GetRandomInt(-1, m_difficulty[client]) >= 0)
+					m_buttons[client] |= IN_ATTACK;
+
+				if (m_difficulty[client] > 0 && m_lowHealth[client])
+					return;
+
+				if (!TF2_IsPlayerInCondition(client, TFCond_Zoomed))
+					m_buttons[client] |= IN_ATTACK2;
+			}
 			return;
 		}
 	}
@@ -79,12 +87,10 @@ stock void AutoAttack(int client)
 	
 	if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
 	{
-		if (IsWeaponSlotActive(client, 0) && TF2_GetPlayerWeaponID(client, 0) == 996)
+		if (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 996)
 		{
-			if (m_fireTimer[client] < GetGameTime())
-				m_fireTimer[client] = GetGameTime() + 0.1;
-			else if (m_fireTimer[client] > GetGameTime())
-				m_buttons[client] |= IN_ATTACK;
+			if (m_attackTimer[client] < GetGameTime())
+				m_attackTimer[client] = GetGameTime() + 0.125; // 8 stickies in 1 second
 		}
 		else
 			m_attackTimer[client] = GetGameTime() + 0.4;
@@ -93,7 +99,7 @@ stock void AutoAttack(int client)
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Soldier)
 	{
-		if (IsWeaponSlotActive(client, 0) && TF2_GetPlayerWeaponID(client, 0) == 730)
+		if (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 730)
 		{
 			if (GetEntProp(GetPlayerWeaponSlot(client, 0), Prop_Send, "m_iClip1") < 3)
 				m_attackTimer[client] = GetGameTime() + 0.4;
@@ -164,6 +170,9 @@ stock bool IsReadyForAttack(int client) // 1 core cpu killer...
 
 stock void SelectBestCombatWeapon(int client)
 {
+	if (!m_isSlowThink[client])
+		return;
+		
 	float distance = GetVectorDistance(GetOrigin(client), m_lookAt[client], true);
 	float meleerange = Squaredf(GetConVarFloat(EBotMelee));
 	
@@ -179,14 +188,21 @@ stock void SelectBestCombatWeapon(int client)
 	{
 		if (TF2_GetPlayerClass(client) == TFClass_Sniper)
 		{
-			if (distance <= Squared(512))
+			if (m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092 || m_primaryID[client] == 1098)
+			{
+				if (m_attackTimer[client] < GetGameTime() && distance <= Squared(512))
+					EquipWeaponSlot(client, 1);
+				else
+					EquipWeaponSlot(client, 0);
+			}
+			else if (distance <= Squared(512))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
 		}
 		else if(TF2_GetPlayerClass(client) == TFClass_Heavy)
 		{
-			if (distance <= Squared(256))
+			if (distance <= Squared(256) || (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags == WAYPOINT_JUMP))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
