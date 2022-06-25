@@ -18,12 +18,15 @@ stock bool AttackRequirements(int client)
 	if (IsWeaponSlotActive(client, 2))
 		return false;
 	
+	if (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags == WAYPOINT_NOSTRAFE)
+		return false;
+	
 	if (TF2_HasTheFlag(client))
 		return false;
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Spy && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 		return false;
-	
+		
 	return true;
 }
 
@@ -57,6 +60,7 @@ stock void AttackUpdate(int client)
 	if (TF2_GetPlayerClass(client) == TFClass_Spy && (TF2_IsPlayerInCondition(client, TFCond_Disguised) || TF2_IsPlayerInCondition(client, TFCond_Cloaked)))
 		FinishCurrentProcess(client, true);
 	
+	CheckHideFromDanger(client);
 	CheckHealth(client);
 	CheckAmmo(client);
 	LookUpdate(client);

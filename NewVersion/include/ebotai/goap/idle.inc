@@ -20,6 +20,8 @@ stock void IdleUpdate(int client)
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
 	LookUpdate(client, false);
+	if (m_hasEnemiesNear[client])
+		SetProcess(client, PRO_HIDE, 60.0, "| process started -> hiding from danger", false, false);
 }
 
 stock void IdleEnd(int client)

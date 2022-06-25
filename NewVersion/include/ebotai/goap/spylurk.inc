@@ -14,6 +14,24 @@ public void SpyLurkStart(int client)
 
 public void SpyLurkUpdate(int client)
 {
+	CurrentProcessTime[client] = GetGameTime() + 9999.0; // no timeout
+	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+	{
+		SetProcess(client, PRO_HIDE, 60.0, "", true);
+		return;
+	}
+	
+	if (IsValidEntity(m_knownSentry[client]))
+	{
+		if (HasEntProp(m_nearestEntity[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_knownSentry[client], Prop_Send, "m_bHasSapper") == 0)
+		{
+			SetProcess(client, PRO_SPYSAP, GetRandomFloat(40.0, 80.0), "| process started -> try to sap buildings");
+			return;
+		}
+		else
+			m_knownSentry[client] = -1;
+	}
+
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
 	CheckHealth(client);
@@ -41,7 +59,7 @@ public void SpyLurkUpdate(int client)
 			SelectObjective(client);
 	}
 	
-	if (m_hasEnemiesNear[client])
+	if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(m_nearestEnemy[client]) != TFClass_Spy)
 	{
 		float distance = GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true);
 		int range = Squared(256);
@@ -50,7 +68,9 @@ public void SpyLurkUpdate(int client)
 			BackstabMove(client, m_nearestEnemy[client]);
 			return;
 		}
+
 		m_goalEntity[client] = m_nearestEnemy[client];
+
 		if (IsValidClient(m_goalEntity[client]) && IsPlayerAlive(m_goalEntity[client]))
 		{
 			SetProcess(client, PRO_SPYHUNT, GetRandomFloat(10.0, 20.0), "| process started -> try to hunt down enemies");

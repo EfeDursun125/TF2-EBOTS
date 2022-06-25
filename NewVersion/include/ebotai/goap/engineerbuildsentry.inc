@@ -14,18 +14,17 @@ public void BuildSentryStart(int client)
 
 public void BuildSentryUpdate(int client)
 {
-	bool lookupdate = true;
-
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
+	LookUpdate(client);
 	
 	float range = GetVectorDistance(GetOrigin(client), sentrybuildarea, true);
 	if (range <= Squared(300))
 	{
 		if (!IsWeaponSlotActive(client, 5) && !IsMoving(client))
 			FakeClientCommandThrottled(client, "build 2 0");
-		lookupdate = false;
+
 		int index = m_goalIndex[client];
 		if (m_hasWaypoints && index != -1)
 			m_lookAt[client] = VectorAsFloat(m_paths[index].campStart);
@@ -49,22 +48,23 @@ public void BuildSentryUpdate(int client)
 				SentryAngle = VectorAsFloat(m_paths[index].campStart);
 			//else
 			//	index == m_currentWaypointIndex[client];
+
 			if (!IsNullVector(SentryAngle))
-			{
 				m_lookAt[client] = SentryAngle;
-				lookupdate = false;
-			}
 		}
+
+		m_buttons[client] |= IN_ATTACK;
 		
 		int objBeingBuilt = GetEntPropEnt(GetActiveWeapon(client), Prop_Send, "m_hObjectBeingBuilt");
 		if (!IsValidEntity(objBeingBuilt))
 			return;
 		
 		bool m_bPlacementOK = !!GetEntData(objBeingBuilt, FindSendPropInfo("CObjectSentrygun", "m_iKills") - 4);
-		m_buttons[client] |= IN_ATTACK;
-		
 		if (!m_bPlacementOK && m_isSlowThink[client] && GetRandomInt(1, 5) == 1)
+		{
 			PickSentrySpot(client, sentrybuildarea);
+			EquipWeaponSlot(client, 0);
+		}
 
 		return;
 	}
@@ -83,9 +83,6 @@ public void BuildSentryUpdate(int client)
 		WantsBuildSentryGun[client] = false;
 		WantsMoveSentryGun[client] = false;
 	}
-	
-	if (lookupdate)
-		LookUpdate(client);
 }
 
 public void BuildSentryEnd(int client)

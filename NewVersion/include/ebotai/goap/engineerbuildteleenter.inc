@@ -23,19 +23,23 @@ public void BuildTeleEnterStart(int client)
 
 public void BuildTeleEnterUpdate(int client)
 {
-	bool lookupdate = true;
-
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
+	LookUpdate(client);
 	
 	float range = GetVectorDistance(GetOrigin(client), teleenterbuildarea, true);
 	if (range <= Squared(300))
 	{
 		if (!IsWeaponSlotActive(client, 5) && !IsMoving(client))
+		{
 			FakeClientCommandThrottled(client, "build 1 0");
+			m_buttons[client] |= IN_ATTACK;
+		}
+		
 		float position[3];
 		position = NULL_VECTOR;
+
 		if (m_hasWaypoints)
 		{
 			int index = m_goalIndex[client];
@@ -51,10 +55,7 @@ public void BuildTeleEnterUpdate(int client)
 			position = teleenterbuildarea;
 		
 		if (!IsNullVector(position))
-		{
 			m_lookAt[client] = position;
-			lookupdate = false;
-		}
 	}
 
 	if (range > Squared(70))
@@ -64,11 +65,12 @@ public void BuildTeleEnterUpdate(int client)
 	
 	if (IsWeaponSlotActive(client, 5))
 	{
+		if (!IsMoving(client))
+			m_buttons[client] |= IN_ATTACK;
+
 		int objBeingBuilt = GetEntPropEnt(GetActiveWeapon(client), Prop_Send, "m_hObjectBeingBuilt");
 		if (!IsValidEntity(objBeingBuilt))
 			return;
-		
-		m_buttons[client] |= IN_ATTACK;
 		
 		if (m_isSlowThink[client] && GetRandomInt(1, 10) == 1)
 			PickTeleEnterSpot(client, teleenterbuildarea);
@@ -82,9 +84,6 @@ public void BuildTeleEnterUpdate(int client)
 		FinishCurrentProcess(client);
 		WantsBuildTeleporterEnter[client] = false;
 	}
-	
-	if (lookupdate)
-		LookUpdate(client);
 }
 
 public void BuildTeleEnterEnd(int client)

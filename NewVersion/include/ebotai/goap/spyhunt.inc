@@ -6,7 +6,7 @@ public bool SpyHuntRequirements(int client)
 	if (!TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		return false;
 	
-	if (!IsValidClient(m_goalEntity[client]) || !IsPlayerAlive(m_goalEntity[client]))
+	if (!IsValidClient(m_goalEntity[client]) || !IsPlayerAlive(m_goalEntity[client]) || TF2_GetPlayerClass(m_goalEntity[client]) == TFClass_Spy)
 		return false;
 	
 	if (TF2_HasTheFlag(client))
@@ -18,12 +18,18 @@ public bool SpyHuntRequirements(int client)
 public void SpyHuntStart(int client)
 {
 	EquipWeaponSlot(client, 2);
-	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+	if (!m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 		m_buttons[client] |= IN_ATTACK2;
 }
 
 public void SpyHuntUpdate(int client)
 {
+	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+	{
+		SetProcess(client, PRO_HIDE, 60.0, "", true);
+		return;
+	}
+	
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
 	CheckHealth(client);
@@ -45,7 +51,7 @@ public void SpyHuntUpdate(int client)
 	int range = Squared(256);
 	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) && distance <= range)
 	{
-		BackstabMove(client, m_goalEntity[client]);
+		BackstabMove(client, m_goalEntity[client], false);
 		return;
 	}
 	else
@@ -88,30 +94,45 @@ public void SpyReactChecker(int client)
 	if (m_hasEnemiesNear[client])
 	{
 		if (m_lowHealth[client] && !TF2_IsPlayerInCondition(client, TFCond_Disguised) && !TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+		{
 			m_buttons[client] |= IN_ATTACK2;
+			SetProcess(client, PRO_HIDE, 60.0, "", true);
+		}
 		
-		if (IsClientAimingToMe(client, m_nearestEnemy[client]) && IsAttacking(m_nearestEnemy[client]) && !TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+		if (IsClientAimingToMe(client, m_nearestEnemy[client]) && IsAttacking(m_nearestEnemy[client]) && !IsWeaponSlotActive(m_nearestEnemy[client], 2) && !TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 		{
 			if (!m_lowHealth[client] && GetClientHealth(m_nearestEnemy[client]) <= 175.0) // maybe i can kill him?
 			{
 				EquipWeaponSlot(client, 0);
-				SetProcess(client, PRO_ATTACK, 180.0, "", true);
+				if (m_enemiesNearCount[client] > m_friendsNearCount[client])
+					SetProcess(client, PRO_HIDE, 60.0, "", true);
+				else
+					SetProcess(client, PRO_ATTACK, 180.0, "", true);
 			}
-			else // maybe not.
+			else // maybe not
+			{
 				m_buttons[client] |= IN_ATTACK2;
+				SetProcess(client, PRO_HIDE, 60.0, "", true);
+			}
 		}
 	}
 	
 	if (m_hasEntitiesNear[client])
 	{
 		if (!TF2_IsPlayerInCondition(client, TFCond_Cloaked) && !TF2_IsPlayerInCondition(client, TFCond_Disguised))
+		{
 			m_buttons[client] |= IN_ATTACK2;
+			SetProcess(client, PRO_HIDE, 60.0, "", true);
+		}
 	}
 	
 	if (!m_hasEnemiesNear[client] && (!m_hasEntitiesNear[client]) && TF2_IsPlayerInCondition(client, TFCond_Disguised))
 	{
 		if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) && TF2_IsPlayerInCondition(client, TFCond_Disguised))
+		{
 			m_buttons[client] |= IN_ATTACK2;
+			SetProcess(client, PRO_HIDE, 60.0, "", true);
+		}
 	}
 	
 	if (IsWeaponSlotActive(client, 5) && !m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])

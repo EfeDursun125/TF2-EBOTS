@@ -23,18 +23,17 @@ public void BuildTeleExitStart(int client)
 
 public void BuildTeleExitUpdate(int client)
 {
-	bool lookupdate = true;
-
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
+	LookUpdate(client);
 	
 	float range = GetVectorDistance(GetOrigin(client), teleexitbuildarea, true);
 	if (range <= Squared(300))
 	{
 		if (!IsWeaponSlotActive(client, 5) && !IsMoving(client))
 			FakeClientCommandThrottled(client, "build 1 1");
-		lookupdate = false;
+			
 		int index = m_goalIndex[client];
 		if (m_hasWaypoints && index != -1)
 		{
@@ -54,11 +53,12 @@ public void BuildTeleExitUpdate(int client)
 	
 	if (IsWeaponSlotActive(client, 5))
 	{
+		if (!IsMoving(client))
+			m_buttons[client] |= IN_ATTACK;
+		
 		int objBeingBuilt = GetEntPropEnt(GetActiveWeapon(client), Prop_Send, "m_hObjectBeingBuilt");
 		if (!IsValidEntity(objBeingBuilt))
 			return;
-		
-		m_buttons[client] |= IN_ATTACK;
 		
 		if (m_isSlowThink[client] && GetRandomInt(1, 10) == 1)
 			PickTeleExitSpot(client, teleexitbuildarea);
@@ -72,9 +72,6 @@ public void BuildTeleExitUpdate(int client)
 		FinishCurrentProcess(client);
 		WantsBuildTeleporterExit[client] = false;
 	}
-	
-	if (lookupdate)
-		LookUpdate(client);
 }
 
 public void BuildTeleExitEnd(int client)

@@ -12,6 +12,12 @@ stock bool GetHealthRequirements(int client)
 	if (m_hasWaypoints && !m_hasHealthWaypoints)
 		return false;
 	
+	if (CurrentProcess[client] == PRO_HIDE)
+		return false;
+	
+	if (m_hasEnemiesNear[client])
+		return false;
+
 	if (TF2_HasTheFlag(client))
 		return false;
 	
@@ -32,7 +38,8 @@ stock void GetHealthUpdate(int client)
 		FinishCurrentProcess(client, true);
 		return;
 	}
-	
+
+	CheckHideFromDanger(client);	
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
 	LookUpdate(client);

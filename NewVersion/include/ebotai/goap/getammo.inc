@@ -12,6 +12,9 @@ stock bool GetAmmoRequirements(int client)
 	if (m_hasWaypoints && !m_hasAmmoWaypoints)
 		return false;
 	
+	if (CurrentProcess[client] == PRO_HIDE)
+		return false;
+
 	if (TF2_HasTheFlag(client))
 		return false;
 	
@@ -43,6 +46,7 @@ stock void GetAmmoUpdate(int client)
 		}
 	}
 
+	CheckHideFromDanger(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
 	LookUpdate(client);

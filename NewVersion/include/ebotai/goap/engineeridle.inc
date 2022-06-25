@@ -22,8 +22,6 @@ bool WantsMoveDispenser[MAXPLAYERS + 1];
 
 public bool EngineerIdleRequirements(int client)
 {
-	if (TF2_HasTheFlag(client))
-		return false;
 	return true;
 }
 
@@ -34,6 +32,12 @@ public void EngineerIdleStart(int client)
 
 public void EngineerIdleUpdate(int client)
 {
+	if (TF2_HasTheFlag(client))
+	{
+		CurrentProcess[client] = PRO_DEFAULT;
+		return;
+	}
+	
 	if (WantsBuildTeleporterEnter[client] && GetRandomInt(1, 3) == 1)
 	{
 		SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
@@ -58,11 +62,11 @@ public void EngineerIdleUpdate(int client)
 		return;
 	}
 
+	CheckHideFromDanger(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
 	CheckEngineerBuildings(client);
-	
-	bool lookupdate = true;
+	LookUpdate(client);
 
 	if (IsValidEntity(SentryGun[client]) && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
 	{
@@ -73,7 +77,6 @@ public void EngineerIdleUpdate(int client)
 				MoveTo(client, GetOrigin(SentryGun[client]));
 				m_lookAt[client] = GetCenter(SentryGun[client]);
 				m_attackTimer[client] = GetGameTime() + 0.4;
-				lookupdate = false;
 			}
 			else
 				EquipWeaponSlot(client, 2);
@@ -90,7 +93,6 @@ public void EngineerIdleUpdate(int client)
 				MoveTo(client, GetOrigin(Dispenser[client]));
 				m_lookAt[client] = GetCenter(Dispenser[client]);
 				m_attackTimer[client] = GetGameTime() + 0.4;
-				lookupdate = false;
 			}
 			else
 				EquipWeaponSlot(client, 2);
@@ -108,9 +110,9 @@ public void EngineerIdleUpdate(int client)
 					MoveOut(client, GetOrigin(TeleporterEnter[client]));
 				else if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) > Squared(56))
 					MoveTo(client, GetOrigin(TeleporterEnter[client]));
+				
 				m_lookAt[client] = GetCenter(TeleporterEnter[client]);
 				m_attackTimer[client] = GetGameTime() + 0.4;
-				lookupdate = false;
 			}
 			else
 				EquipWeaponSlot(client, 2);
@@ -125,6 +127,7 @@ public void EngineerIdleUpdate(int client)
 			MoveTo(client, GetOrigin(Dispenser[client]));
 			m_lookAt[client] = GetCenter(Dispenser[client]);
 			m_buttons[client] |= IN_ATTACK2;
+
 			if (GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
 			{
 				SetProcess(client, PRO_BUILDDISPENSER, 60.0, "| process started -> wants to move dispenser");
@@ -143,6 +146,7 @@ public void EngineerIdleUpdate(int client)
 				MoveTo(client, GetOrigin(SentryGun[client]));
 				m_lookAt[client] = GetCenter(SentryGun[client]);
 				m_buttons[client] |= IN_ATTACK2;
+
 				if (GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
 				{
 					SetProcess(client, PRO_BUILDSENTRY, 60.0, "| process started -> wants to move sentry gun");
@@ -156,7 +160,6 @@ public void EngineerIdleUpdate(int client)
 					MoveTo(client, GetOrigin(SentryGun[client]));
 					m_lookAt[client] = GetCenter(SentryGun[client]);
 					m_attackTimer[client] = GetGameTime() + 0.4;
-					lookupdate = false;
 				}
 				else
 					EquipWeaponSlot(client, 2);
@@ -178,9 +181,6 @@ public void EngineerIdleUpdate(int client)
 		RememberedProcess[client] = PRO_ENGINEERIDLE;
 		SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack.");
 	}
-	
-	if (lookupdate)
-		LookUpdate(client);
 }
 
 public void EngineerIdleEnd(int client)

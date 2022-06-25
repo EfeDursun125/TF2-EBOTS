@@ -25,7 +25,7 @@ public void BuildDispenserUpdate(int client)
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
-	LookAround(client);
+	LookUpdate(client);
 
 	if (!IsWeaponSlotActive(client, 5))
 		FakeClientCommandThrottled(client, "build 0 0");
