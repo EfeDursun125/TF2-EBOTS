@@ -428,7 +428,10 @@ public void SelectObjective(int client)
 		}
 	}
 	else if (m_hasWaypoints)
-		m_goalPosition[client] = VectorAsFloat(m_paths[GetRandomInt(1, m_waypointNumber - 1)].origin);
+	{
+		m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
+		m_goalPosition[client] = VectorAsFloat(m_paths[m_goalIndex[client]].origin);
+	}
 	else
 		m_goalEntity[client] = FindNearestEnemy(client);
 }
@@ -545,7 +548,11 @@ stock void ObjectiveMovement(int client)
 			FollowPath(client, m_goalPosition[client]);
 	}
 	else if (m_hasWaypoints)
-		FollowPath(client, m_goalPosition[client]);
+	{
+		FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
+		if (m_isSlowThink[client])
+			SelectObjective(client);
+	}
 	else
 	{
 		m_goalPosition[client] = GetOrigin(m_goalEntity[client]);
