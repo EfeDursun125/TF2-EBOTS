@@ -74,22 +74,22 @@ public void OnPluginStart()
 	HookEvent("teamplay_point_captured", PointCaptured, EventHookMode_Post);
 	HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Post);
 	//HookEvent("teamplay_waiting_ends", PlayAnimation, EventHookMode_Post);
-	EBotDebug = CreateConVar("ebot_debug", "0", "");
-	EBotFPS = CreateConVar("ebot_run_fps", "0.1", "0.033 = 29 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS");
-	EBotMelee = CreateConVar("ebot_melee_range", "128", "");
-	EBotSenseMin = CreateConVar("ebot_minimum_sense_chance", "10", "Minimum 10");
-	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Maximum 90");
-	EBotDifficulty = CreateConVar("ebot_difficulty", "2", "0 = Beginner | 1 = Easy | 2 = Normal | 3 = Hard | 4 = Expert");
-	EBotMedicFollowRange = CreateConVar("ebot_medic_follow_range", "150", "");
-	EBotChangeClassChance = CreateConVar("ebot_change_class_chance", "35", "");
-	EBotDeadChat = CreateConVar("ebot_dead_chat_chance", "30", "");
-	m_eBotDodgeRangeMin = CreateConVar("ebot_minimum_dodge_range", "512", "the range when enemy closer than a value, bot will start dodging enemies");
-	m_eBotDodgeRangeMax = CreateConVar("ebot_maximum_dodge_range", "1024", "the range when enemy closer than a value, bot will start dodging enemies");
-	m_eBotDodgeRangeChance = CreateConVar("ebot_dodge_change_range_chance", "10", "the chance for change dodge range when attack process ends (1-100)");
-	EBotQuota = CreateConVar("ebot_quota", "-1", "");
-	EBotAutoWaypoint = CreateConVar("ebot_waypoint_auto", "0", "");
-	EBotRadius = CreateConVar("ebot_waypoint_default_radius", "0", "");
-	EBotDistance = CreateConVar("ebot_waypoint_auto_distance", "250.0", "");
+	EBotDebug = CreateConVar("ebot_debug", "0", "", FCVAR_NONE);
+	EBotFPS = CreateConVar("ebot_run_fps", "0.1", "0.033 = 29 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS", FCVAR_NONE);
+	EBotMelee = CreateConVar("ebot_melee_range", "128", "", FCVAR_NONE);
+	EBotSenseMin = CreateConVar("ebot_minimum_sense_chance", "10", "Minimum 10", FCVAR_NONE);
+	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Maximum 90", FCVAR_NONE);
+	EBotDifficulty = CreateConVar("ebot_difficulty", "2", "0 = Beginner | 1 = Easy | 2 = Normal | 3 = Hard | 4 = Expert", FCVAR_NONE);
+	EBotMedicFollowRange = CreateConVar("ebot_medic_follow_range", "150", "", FCVAR_NONE);
+	EBotChangeClassChance = CreateConVar("ebot_change_class_chance", "35", "", FCVAR_NONE);
+	EBotDeadChat = CreateConVar("ebot_dead_chat_chance", "30", "", FCVAR_NONE);
+	m_eBotDodgeRangeMin = CreateConVar("ebot_minimum_dodge_range", "512", "the range when enemy closer than a value, bot will start dodging enemies", FCVAR_NONE);
+	m_eBotDodgeRangeMax = CreateConVar("ebot_maximum_dodge_range", "1024", "the range when enemy closer than a value, bot will start dodging enemies", FCVAR_NONE);
+	m_eBotDodgeRangeChance = CreateConVar("ebot_dodge_change_range_chance", "10", "the chance for change dodge range when attack process ends (1-100)", FCVAR_NONE);
+	EBotQuota = CreateConVar("ebot_quota", "-1", "", FCVAR_NONE);
+	EBotAutoWaypoint = CreateConVar("ebot_waypoint_auto", "0", "", FCVAR_NONE);
+	EBotRadius = CreateConVar("ebot_waypoint_default_radius", "0", "", FCVAR_NONE);
+	EBotDistance = CreateConVar("ebot_waypoint_auto_distance", "250.0", "", FCVAR_NONE);
 
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -646,13 +646,13 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if (IsEBot(client))
+	if (IsValidClient(client) && IsEBot(client))
 	{
 		int changeclass = GetRandomInt(1, 100);
 		if (changeclass <= GetConVarInt(EBotChangeClassChance))
 		{
 			TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1, 9)));
-			if (IsValidClient(client) && IsPlayerAlive(client))
+			if (IsPlayerAlive(client))
 				TF2_RespawnPlayer(client);
 		}
 		
@@ -735,7 +735,7 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 	int victim = GetClientOfUserId(GetEventInt(event, "userid"));
 	int client = GetClientOfUserId(GetEventInt(event, "attacker"));
 	
-	if (IsEBot(client))
+	if (IsValidClient(client) && IsEBot(client))
 	{
 		if (GetRandomInt(1, 3) == 1 && !m_lowHealth[client] && !m_hasEntitiesNear[client])
 		{
@@ -745,7 +745,7 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 		}
 	}
 
-	if (IsEBot(victim))
+	if (IsValidClient(client) && IsEBot(victim))
 		EBotDeathChat(victim);
 	
 	return Plugin_Handled;
@@ -757,6 +757,9 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	int target = GetClientOfUserId(GetEventInt(event, "attacker"));
 
+	if (!IsValidClient(client))
+		return Plugin_Handled;
+	
 	if (!m_hasEntitiesNear[client] && IsValidEntity(target))
 	{
 		m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.5, 5.0);
