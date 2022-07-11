@@ -1,4 +1,5 @@
-float m_checkTimer[MAXPLAYERS + 1] = 0.0;
+float m_checkTimer[MAXPLAYERS + 1];
+
 public void CheckSlowThink(int client)
 {
 	if (m_checkTimer[client] < GetGameTime())

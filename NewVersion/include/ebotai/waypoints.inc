@@ -18,8 +18,8 @@ bool m_hasSentryWaypoints = false;
 bool m_hasTeleporterEnterWaypoints = false;
 bool m_hasTeleporterExitWaypoints = false;
 
-float m_pathDelay[MAXPLAYERS + 1] = 0.0;
-int m_lastFailedWaypoint[MAXPLAYERS + 1] = -1;
+float m_pathDelay[MAXPLAYERS + 1];
+int m_lastFailedWaypoint[MAXPLAYERS + 1];
 
 char m_aboutTheWaypoint[192] = "";
 
@@ -71,8 +71,8 @@ enum struct Path
 	int radius;
     int team;
 
-    int distance[MaxPathIndex];
-    int pathIndex[MaxPathIndex];
+    int distance[8];
+    int pathIndex[8];
 
     int origin[3];
 	int campStart[3];
@@ -724,7 +724,7 @@ stock void WaypointAdd(int origin[3])
     PrintHintTextToAll("Waypoint added to %d %d %d", m_paths[index].origin[0], m_paths[index].origin[1], m_paths[index].origin[2]);
 }
 
-stock void CalculateWayzone(int index)
+/*stock void CalculateWayzone(int index)
 {
     float start[3];
     float direction[3];
@@ -806,7 +806,7 @@ stock void CalculateWayzone(int index)
 
     if (path->radius < 0.0f)
         path->radius = 0.0f;
-}
+}*/
 
 stock void AddPath(int srcIndex, int destIndex, float distance)
 {
@@ -1399,7 +1399,7 @@ stock void AddToPath(int currentIndex, int client)
 stock int FindNearestWaypoint(float origin[3], float maxDistance = 999999.0, int client = -1)
 {
     int index = -1;
-    maxDistance *= maxDistance;
+    float squaredDist = maxDistance * maxDistance;
 
     for (int i = 0; i < m_waypointNumber; i++)
     {
@@ -1416,10 +1416,10 @@ stock int FindNearestWaypoint(float origin[3], float maxDistance = 999999.0, int
         }
         
         float distance = GetVectorDistance(VectorAsFloat(m_paths[i].origin), origin, true);
-        if (distance < maxDistance)
+        if (distance < squaredDist)
         {
             index = i;
-            maxDistance = distance;
+            squaredDist = distance;
         }
     }
     
@@ -1624,7 +1624,7 @@ stock void WaypointSave()
     PrintHintTextToAll("%d waypoints saved sucsessfully!", m_waypointNumber);
 }
 
-stock void Analyze()
+/*stock void Analyze()
 {
     if (m_analyzeWaypoints == false)
         return;
@@ -1763,4 +1763,4 @@ stock void Analyze()
             }
         }
     }
-}
+}*/

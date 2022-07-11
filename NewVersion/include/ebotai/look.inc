@@ -37,27 +37,20 @@ stock void LookAtEnemiens(int client)
 		}
 		else
 		{
-			float clientEyes[3];
-			clientEyes = GetEyePosition(client);
-			float enemyEyes[3];
-			enemyEyes = GetEyePosition(m_nearestEnemy[client]);
-			float distance = GetVectorDistance(clientEyes, enemyEyes);
-			float v = 910.0;
-			float v2 = v * v;
-			float v4 = v2 * v2;
-			float g = -800.0;
-			float x = distance;
-			float x2 = x * x;
-			float y = enemyEyes[2] - clientEyes[2];
-			float angle = ArcTangent2(v2 + sqrt(v4 - g * (g * x2 + (2 * y) * v2)), g * x);
-
-			float vca = v * Cosine(angle);
-			float vsa = v * Sine(angle);
-
-			float distance2 = (vca / g) * (vsa + sqrt(vsa * vsa + (2 * g * clientEyes[2])));
-			BestAimPosition[2] += FloatAbs(distance - distance2);
+			if (m_enemyDistance[client] <= Squaredf(500.0))
+				BestAimPosition[2] -= 15.0;
+			else if (m_enemyDistance[client] <= Squaredf(750.0))
+				BestAimPosition[2] += 50.0;
+			else if (m_enemyDistance[client] <= Squaredf(1000.0))
+				BestAimPosition[2] += 100.0;
+			else if	(m_enemyDistance[client] <= Squaredf(1250.0))
+				BestAimPosition[2] += 150.0;
+			else if	(m_enemyDistance[client] <= Squaredf(1500.0))
+				BestAimPosition[2] += 200.0;
+			else if	(m_enemyDistance[client] > Squaredf(1500.0))
+				BestAimPosition[2] += 250.0;
 			
-			if (IsVisible(clientEyes, BestAimPosition))
+			if (IsVisible(GetEyePosition(client), BestAimPosition))
 				m_lookAt[client] = BestAimPosition;
 			else
 				m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);

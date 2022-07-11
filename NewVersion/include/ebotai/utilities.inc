@@ -19,7 +19,7 @@ enum
 	PRO_HIDE
 }
 
-int CurrentProcess[MAXPLAYERS + 1] = PRO_DEFAULT;
+int CurrentProcess[MAXPLAYERS + 1];
 
 char currentMap[PLATFORM_MAX_PATH];
 int currentActiveArea;
@@ -94,8 +94,10 @@ bool WantsBuildSentryGun[MAXPLAYERS + 1];
 bool WantsBuildDispenser[MAXPLAYERS + 1];
 bool WantsBuildTeleporterEnter[MAXPLAYERS + 1];
 bool WantsBuildTeleporterExit[MAXPLAYERS + 1];
+bool m_enterFail[MAXPLAYERS + 1];
+bool m_exitFail[MAXPLAYERS + 1];
 
-int m_lastFailedEntity[MAXPLAYERS + 1] = -1;
+int m_lastFailedEntity[MAXPLAYERS + 1];
 int m_difficulty[MAXPLAYERS + 1];
 
 int m_redPayload = -1;
@@ -122,8 +124,7 @@ Handle g_hLookupBone;
 Handle g_hGetBonePosition;
 Handle g_hSnapEyeAngles;
 
-bool addBot = false;
-bool isEBot[MAXPLAYERS + 1] = false;
+//bool isAFK[MAXPLAYERS + 1];
 
 Handle gH_RestartTimer = null;
 int gI_RestartTimerIteration = 0;
@@ -140,33 +141,6 @@ enum tfclassnames
 	sniper = 8,
 	spy = 9
 };
-
-stock char GetRandomClassName()
-{
-	classNum = GetRandomInt(1, 9);
-	switch (classNum)
-	{
-	case 1:
-		return "scout";
-	case 2:
-		return "soldier";
-	case 3:
-		return "pyro";
-	case 4:
-		return "demoman";
-	case 5:
-		return "heavy";
-	case 6:
-		return "engineer";
-	case 7:
-		return "medic";
-	case 8:
-		return "sniper";
-	case 9:
-		return "spy";
-	}
-	return "";
-}
 
 stock bool IsEBot(int bot)
 {
@@ -371,7 +345,7 @@ stock float[] GetEyeAngles(int client)
 	return vector;
 }
 
-stock float GetCenter(int entity)
+stock float[] GetCenter(int entity)
 {
 	if (!HasEntProp(entity, Prop_Send, "m_vecMaxs"))
 	{
@@ -418,12 +392,15 @@ stock bool FakeClientCommandThrottled(int client, const char[] command)
 
 stock int LookupBone(int iEntity, const char[] szName)
 {
-	return SDKCall(g_hLookupBone, iEntity, szName);
+	if (g_hLookupBone != null)
+		return SDKCall(g_hLookupBone, iEntity, szName);
+	return -1;
 }
 
 stock void GetBonePosition(int iEntity, int iBone, float origin[3], float angles[3])
 {
-	SDKCall(g_hGetBonePosition, iEntity, iBone, origin, angles);
+	if (g_hGetBonePosition != null)
+		SDKCall(g_hGetBonePosition, iEntity, iBone, origin, angles);
 }
 
 stock void SnapEyeAngles(int client, float viewAngles[3])
@@ -469,19 +446,15 @@ stock int FindNearestEnemy(int client, float flMaxDistance = 9999999999.0)
 }
 
 float m_itAimStart[MAXPLAYERS + 1];
-stock void LookAtPosition(int client, float flGoal[3])
+stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3])
 {
 	float max_angvel = 1024.0;
-	float fps = GetConVarFloat(EBotFPS);
 
 	if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]))
 		max_angvel += (GetEntPropFloat(m_nearestEnemy[client], Prop_Data, "m_flSpeed"));
 	
 	float eye_to_target[3];
 	SubtractVectors(flGoal, GetEyePosition(client), eye_to_target);
-	
-	float eye_ang[3];
-	GetClientEyeAngles(client, eye_ang);
 	
 	NormalizeVector(eye_to_target, eye_to_target);
 	
@@ -510,42 +483,6 @@ stock void LookAtPosition(int client, float flGoal[3])
 	new_eye_angle[2] = 0.0;
 	
 	SnapEyeAngles(client, new_eye_angle);
-	
-	/*float aimspeed = GetRandomFloat(0.16, 0.20);
-	if (StrContains(currentMap, "mvm_" , false) != -1)
-		aimspeed = GetRandomFloat(0.36, 0.40);
-	else if (m_difficulty[client] == 1)
-		aimspeed = GetRandomFloat(0.20, 0.24);
-	else if (m_difficulty[client] == 2)
-		aimspeed = GetRandomFloat(0.24, 0.28);
-	else if (m_difficulty[client] == 3)
-		aimspeed = GetRandomFloat(0.28, 0.32);
-	else if (m_difficulty[client] == 4)
-		aimspeed = GetRandomFloat(0.32, 0.36);
-	aimspeed -= GetConVarFloat(EBotFPS); // balance the aimspeed
-
-	if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]))
-	{
-		aimspeed += (GetEntPropFloat(m_nearestEnemy[client], Prop_Data, "m_flSpeed") / 500.0);
-		aimspeed += (GetEntPropFloat(client, Prop_Data, "m_flSpeed") / 500.0);
-	}
-
-	float flPos[3];
-	GetClientEyePosition(client, flPos);
-
-	float flAng[3];
-	GetClientEyeAngles(client, flAng);
-	
-	// get normalised direction from target to client
-	float desired_dir[3];
-	MakeVectorFromPoints(flPos, flGoal, desired_dir);
-	GetVectorAngles(desired_dir, desired_dir);
-	
-	// ease the current direction to the target direction
-	flAng[0] += AngleNormalize(desired_dir[0] - flAng[0]) * aimspeed;
-	flAng[1] += AngleNormalize(desired_dir[1] - flAng[1]) * aimspeed;
-
-	SnapEyeAngles(client, flAng);*/
 }
 
 stock float AngleNormalize(float angle)
@@ -1242,7 +1179,7 @@ stock bool CheckForward(int client)
 		TE_SetupBeamPoints(clientOrigin, clientTargetOrigin, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, (flFraction == 1.0 ? {255, 0, 0, 255} : {0, 255, 0, 255}), 30);
 		TE_SendToClient(m_hostEntity);
 	}
-	
+
 	if (flFraction >= 1.0) 
 		return !(flFraction == 0.0);
 	return false;
@@ -1436,7 +1373,7 @@ stock bool HasSapper(int entity)
 {
 	if (!HasEntProp(entity, Prop_Send, "m_bHasSapper"))
 		return false;
-	return GetEntProp(entity, Prop_Send, "m_bHasSapper");
+	return GetEntProp(entity, Prop_Send, "m_bHasSapper") != 0;
 }
 
 stock bool ClientViews(int Viewer, int Target, float fThreshold = 0.70)

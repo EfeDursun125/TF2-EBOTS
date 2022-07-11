@@ -1,6 +1,6 @@
-int RememberedProcess[MAXPLAYERS + 1] = PRO_DEFAULT;
-float CurrentProcessTime[MAXPLAYERS + 1] = 9999.0;
-float RememberedProcessTime[MAXPLAYERS + 1] = 0.0;
+int RememberedProcess[MAXPLAYERS + 1];
+float CurrentProcessTime[MAXPLAYERS + 1];
+float RememberedProcessTime[MAXPLAYERS + 1];
 
 stock void SetProcess(int client, int process, float time = 9999.0, const char[] debugnote = "clear", bool ignoredebug = false, bool remember = true)
 {
@@ -214,9 +214,9 @@ public bool IsReadyForTheProcess(int client, int process)
 	return true;
 }
 
-stock char GetProcessName(int process)
+stock char[] GetProcessName(int process)
 {
-	char string[PLATFORM_MAX_PATH] = "UNKNOWN";
+	char string[64] = "UNKNOWN";
 	switch (process)
 	{
 		case PRO_DEFAULT:
