@@ -37,6 +37,7 @@ public void SpySapUpdate(int client)
 	FindEnemyEntities(client);
 	CheckHealth(client);
 	CheckAmmo(client);
+	SpyAimLogic(client);
 
 	m_goalEntity[client] = m_knownSentry[client];
 	if (!IsValidEntity(m_goalEntity[client]) || !HasEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper"))
@@ -49,6 +50,7 @@ public void SpySapUpdate(int client)
 	{
 		float distance = GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true);
 		int range = Squared(256);
+
 		if (distance <= range)
 		{
 			BackstabMove(client, m_nearestEnemy[client]);
@@ -57,12 +59,12 @@ public void SpySapUpdate(int client)
 	}
 
 	FollowPath(client, GetOrigin(m_goalEntity[client]));
-	
-	bool lookAt = true;
+
 	if (HasEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") == 0)
 	{
 		float distance = GetVectorDistance(GetOrigin(client), GetCenter(m_goalEntity[client]), true);
 		int range = Squared(256);
+
 		if (distance <= range)
 		{
 			m_lookAt[client] = GetCenter(m_goalEntity[client]);
@@ -72,8 +74,8 @@ public void SpySapUpdate(int client)
 		}
 	}
 
-	if (lookAt)
-		SpyAimLogic(client);
+	if (HasEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") != 0)
+		FinishCurrentProcess(client);
 	
 	if (!m_hasEntitiesNear[client])
 		SpyReactChecker(client);
@@ -86,5 +88,6 @@ public void SpySapEnd(int client)
 		int weapon = GetRandomInt(0, 1);
 		EquipWeaponSlot(client, weapon);
 	}
+	
 	m_knownSentry[client] = -1; // what if sentry is unreachable???
 }

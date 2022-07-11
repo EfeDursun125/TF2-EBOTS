@@ -38,15 +38,24 @@ public void EngineerIdleUpdate(int client)
 		return;
 	}
 	
-	if (WantsBuildTeleporterEnter[client] && GetRandomInt(1, 3) == 1)
+	if (!IsValidEntity(SentryGun[client]))
 	{
-		SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
-		return;
+		if (WantsBuildTeleporterEnter[client] && GetRandomInt(1, 3) == 1)
+		{
+			SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
+			return;
+		}
+
+		if (WantsBuildTeleporterExit[client] && GetRandomInt(1, 3) == 1)
+		{
+			SetProcess(client, PRO_BUILDTELEPORTEREXIT, 80.0, "| process started -> trying to build teleporter exit");
+			return;
+		}
 	}
 
 	if (WantsBuildSentryGun[client])
 	{
-		SetProcess(client, PRO_BUILDSENTRY, 20.0, "| process started -> trying to build sentry gun");
+		SetProcess(client, PRO_BUILDSENTRY, 40.0, "| process started -> trying to build sentry gun");
 		return;
 	}
 
@@ -58,7 +67,13 @@ public void EngineerIdleUpdate(int client)
 
 	if (WantsBuildTeleporterExit[client])
 	{
-		SetProcess(client, PRO_BUILDTELEPORTEREXIT, 60.0, "| process started -> trying to build teleporter exit");
+		SetProcess(client, PRO_BUILDTELEPORTEREXIT, 80.0, "| process started -> trying to build teleporter exit");
+		return;
+	}
+
+	if (WantsBuildTeleporterEnter[client])
+	{
+		SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
 		return;
 	}
 

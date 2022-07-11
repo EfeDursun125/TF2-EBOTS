@@ -29,6 +29,17 @@ public void SpyHuntUpdate(int client)
 		SetProcess(client, PRO_HIDE, 60.0, "", true);
 		return;
 	}
+
+	if (IsValidEntity(m_knownSentry[client]))
+	{
+		if (HasEntProp(m_nearestEntity[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_knownSentry[client], Prop_Send, "m_bHasSapper") == 0)
+		{
+			SetProcess(client, PRO_SPYSAP, GetRandomFloat(40.0, 80.0), "| process started -> try to sap buildings");
+			return;
+		}
+		else
+			m_knownSentry[client] = -1;
+	}
 	
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
@@ -101,9 +112,8 @@ public void SpyReactChecker(int client)
 		
 		if (IsClientAimingToMe(client, m_nearestEnemy[client]) && IsAttacking(m_nearestEnemy[client]) && !IsWeaponSlotActive(m_nearestEnemy[client], 2) && !TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 		{
-			if (!m_lowHealth[client] && GetClientHealth(m_nearestEnemy[client]) <= 175.0) // maybe i can kill him?
+			if (!m_lowHealth[client] && IsWeaponSlotActive(client, 0) && GetClientHealth(m_nearestEnemy[client]) <= 175.0) // maybe i can kill him?
 			{
-				EquipWeaponSlot(client, 0);
 				if (m_enemiesNearCount[client] > m_friendsNearCount[client])
 					SetProcess(client, PRO_HIDE, 60.0, "", true);
 				else

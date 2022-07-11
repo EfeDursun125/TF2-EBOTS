@@ -296,11 +296,10 @@ public void SelectObjective(int client)
 				}
 				else if (IsValidEntity(m_bluPayload))
 				{
-					float paypos[3];
-					paypos = GetOrigin(m_bluPayload);
-					m_goalPosition[client][0] = paypos[0] + GetRandomFloat(-768.0, 768.0);
-					m_goalPosition[client][1] = paypos[1] + GetRandomFloat(-768.0, 768.0);
-					m_goalPosition[client][2] = paypos[2] + GetRandomFloat(0.0, 768.0);
+					m_goalPosition[client] = GetOrigin(m_bluPayload);
+					m_goalPosition[client][0] += GetRandomFloat(-768.0, 768.0);
+					m_goalPosition[client][1] += GetRandomFloat(-768.0, 768.0);
+					m_goalPosition[client][2] += GetRandomFloat(0.0, 512.0);
 					SetGoalIndex(client, FindNearestWaypoint(m_goalPosition[client], 999999.0, client));
 				}
 			}
@@ -311,10 +310,24 @@ public void SelectObjective(int client)
 				m_goalPosition[client][1] += GetRandomFloat(-64.0, 64.0);
 				SetGoalIndex(client, FindNearestWaypoint(m_goalPosition[client], 999999.0, client));
 			}
-				
 		}
 		else if (IsValidEntity(m_bluPayload))
+		{
 			m_goalEntity[client] = m_bluPayload;
+			if (GetClientTeam(client) == 2)
+			{
+				m_goalPosition[client] = GetOrigin(m_bluPayload);
+				m_goalPosition[client][0] += GetRandomFloat(-768.0, 768.0);
+				m_goalPosition[client][1] += GetRandomFloat(-768.0, 768.0);
+				m_goalPosition[client][2] += GetRandomFloat(0.0, 512.0);
+			}
+			else
+			{
+				m_goalPosition[client] = GetOrigin(m_bluPayload);
+				m_goalPosition[client][0] += GetRandomFloat(-64.0, 64.0);
+				m_goalPosition[client][1] += GetRandomFloat(-64.0, 64.0);
+			}
+		}
 	}
 	else if (StrContains(currentMap, "plr_" , false) != -1)
 	{
@@ -425,7 +438,7 @@ stock void ObjectiveMovement(int client)
 	if (m_hasWaypoints && TF2_GetPlayerClass(client) == TFClass_Sniper && m_hasSniperWaypoints && m_primaryID[client] != 56 && m_primaryID[client] != 1005 && m_primaryID[client] != 1092)
 	{
 		int index = m_goalIndex[client];
-		if (index != -1 && m_paths[index].flags == _:WAYPOINT_SNIPER && (m_paths[index].activeArea == 0 || m_paths[index].activeArea == currentActiveArea))
+		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea == currentActiveArea))
 		{
 			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squared(4))
 			{
@@ -469,23 +482,8 @@ stock void ObjectiveMovement(int client)
 	{
 		if (m_hasWaypoints)
 			FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
-		else if (IsValidEntity(m_goalEntity[client]))
-		{
-			float cappointpos[3];
-			GetEntPropVector(m_goalEntity[client], Prop_Send, "m_vecOrigin", cappointpos);
-			if (GetTeamNumber(m_goalEntity[client]) == GetClientTeam(client))
-			{
-				m_goalPosition[client][0] = cappointpos[0] + GetRandomFloat(-768.0, 768.0);
-				m_goalPosition[client][1] = cappointpos[1] + GetRandomFloat(-768.0, 768.0);
-				m_goalPosition[client][2] = cappointpos[2] + GetRandomFloat(-768.0, 768.0);
-			}
-			else
-			{
-				m_goalPosition[client][0] = cappointpos[0] + GetRandomFloat(-64.0, 64.0);
-				m_goalPosition[client][1] = cappointpos[1] + GetRandomFloat(-64.0, 64.0);
-			}
+		else
 			FollowPath(client, m_goalPosition[client]);
-		}
 	}
 	else if (StrContains(currentMap, "plr_" , false) != -1)
 	{
@@ -542,6 +540,8 @@ stock void ObjectiveMovement(int client)
 	else if (StrContains(currentMap, "cp_" , false) != -1)
 	{
 		if (m_hasWaypoints)
+			FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
+		else
 			FollowPath(client, m_goalPosition[client]);
 	}
 	else if (m_hasWaypoints)
@@ -551,4 +551,13 @@ stock void ObjectiveMovement(int client)
 		m_goalPosition[client] = GetOrigin(m_goalEntity[client]);
 		FollowPath(client, m_goalPosition[client]);
 	}
+}
+
+stock void NavMeshControlPoint(int client)
+{
+	if (!m_isSlowThink[client])
+		return;
+	
+	m_goalEntity[client] = GetNearestEnemyControlPoint(client);
+	m_goalPosition[client] = GetOrigin(m_goalEntity[client]);
 }

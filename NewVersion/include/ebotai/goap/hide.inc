@@ -62,6 +62,12 @@ stock void HideUpdate(int client)
 		if (distance <= range)
 			BackstabMove(client, m_nearestEnemy[client], false);
 	}
+	else if (m_isSlowThink[client] && !IsMoving(client)) // same
+	{
+		DeletePathNodes(client);
+		FinishCurrentProcess(client, true);
+		SetProcess(client, PRO_IDLE, GetRandomFloat(2.0, 4.0), "", true);
+	}
 
 	if (m_currentIndex[client] == m_coverIndex[client])
 	{
