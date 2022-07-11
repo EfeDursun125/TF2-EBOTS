@@ -1122,17 +1122,18 @@ stock bool CheckWallRight(int client)
 	clientTargetOrigin[1] = clientOrigin[1] + (fw[1] * 32.0) + (right[1] * 32.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
-	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
-	bool hit = TR_DidHit(tr);
+	TR_TraceRayFilter(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
+	float flFraction = TR_GetFraction();
 
 	if (GetConVarInt(EBotDebug) == 1)
 	{
-		TE_SetupBeamPoints(clientOrigin, clientTargetOrigin, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, (hit ? {255, 0, 0, 255} : {0, 0, 255, 255}), 30);
+		TE_SetupBeamPoints(clientOrigin, clientTargetOrigin, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, (flFraction == 1.0 ? {255, 0, 0, 255} : {0, 0, 255, 255}), 30);
 		TE_SendToClient(m_hostEntity);
 	}
 	
-	delete tr;
-	return hit;
+	if (flFraction >= 1.0) 
+		return !(flFraction == 0.0);
+	return false;
 }
 
 // check wall on left
@@ -1149,17 +1150,18 @@ stock bool CheckWallLeft(int client)
 	clientTargetOrigin[1] = clientOrigin[1] + (fw[1] * 32.0) - (right[1] * 32.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
-	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
-	bool hit = TR_DidHit(tr);
+	TR_TraceRayFilter(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
+	float flFraction = TR_GetFraction();
 
 	if (GetConVarInt(EBotDebug) == 1)
 	{
-		TE_SetupBeamPoints(clientOrigin, clientTargetOrigin, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, (hit ? {255, 0, 0, 255} : {0, 0, 255, 255}), 30);
+		TE_SetupBeamPoints(clientOrigin, clientTargetOrigin, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, (flFraction == 1.0 ? {255, 0, 0, 255} : {0, 0, 255, 255}), 30);
 		TE_SendToClient(m_hostEntity);
 	}
 
-	delete tr;
-	return hit;
+	if (flFraction >= 1.0) 
+		return !(flFraction == 0.0);
+	return false;
 }
 
 // check wall on right
@@ -1176,17 +1178,18 @@ stock bool CheckWallRight2(int client)
 	clientTargetOrigin[1] = clientOrigin[1] - (fw[1] * 32.0) + (right[1] * 32.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
-	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
-	bool hit = TR_DidHit(tr);
+	TR_TraceRayFilter(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
+	float flFraction = TR_GetFraction();
 
 	if (GetConVarInt(EBotDebug) == 1)
 	{
-		TE_SetupBeamPoints(clientOrigin, clientTargetOrigin, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, (hit ? {255, 0, 0, 255} : {0, 0, 255, 255}), 30);
+		TE_SetupBeamPoints(clientOrigin, clientTargetOrigin, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, (flFraction == 1.0 ? {255, 0, 0, 255} : {0, 0, 255, 255}), 30);
 		TE_SendToClient(m_hostEntity);
 	}
 	
-	delete tr;
-	return hit;
+	if (flFraction >= 1.0) 
+		return !(flFraction == 0.0);
+	return false;
 }
 
 // check wall on left
@@ -1203,17 +1206,18 @@ stock bool CheckWallLeft2(int client)
 	clientTargetOrigin[1] = clientOrigin[1] - (fw[1] * 32.0) - (right[1] * 32.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
-	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
-	bool hit = TR_DidHit(tr);
+	TR_TraceRayFilter(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, StuckFilter, client);
+	float flFraction = TR_GetFraction();
 
 	if (GetConVarInt(EBotDebug) == 1)
 	{
-		TE_SetupBeamPoints(clientOrigin, clientTargetOrigin, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, (hit ? {255, 0, 0, 255} : {0, 0, 255, 255}), 30);
+		TE_SetupBeamPoints(clientOrigin, clientTargetOrigin, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, (flFraction == 1.0 ? {255, 0, 0, 255} : {0, 0, 255, 255}), 30);
 		TE_SendToClient(m_hostEntity);
 	}
 
-	delete tr;
-	return hit;
+	if (flFraction >= 1.0) 
+		return !(flFraction == 0.0);
+	return false;
 }
 
 // check line of sight
@@ -1230,17 +1234,18 @@ stock bool CheckForward(int client)
 	clientTargetOrigin[1] = clientOrigin[1] + (fw[1] * 128.0);
 	clientTargetOrigin[2] = clientOrigin[2];
 
-	Handle tr = TR_TraceRayFilterEx(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, RocketFilter, client);
-	bool hit = TR_DidHit(tr);
+	TR_TraceRayFilter(clientOrigin, clientTargetOrigin, MASK_PLAYERSOLID, RayType_EndPoint, RocketFilter, client);
+	float flFraction = TR_GetFraction();
 
 	if (GetConVarInt(EBotDebug) == 1)
 	{
-		TE_SetupBeamPoints(clientOrigin, clientTargetOrigin, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, (hit ? {255, 0, 0, 255} : {0, 255, 0, 255}), 30);
+		TE_SetupBeamPoints(clientOrigin, clientTargetOrigin, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, (flFraction == 1.0 ? {255, 0, 0, 255} : {0, 255, 0, 255}), 30);
 		TE_SendToClient(m_hostEntity);
 	}
 	
-	delete tr;
-	return hit;
+	if (flFraction >= 1.0) 
+		return !(flFraction == 0.0);
+	return false;
 }
 
 public bool RocketFilter(int entity, int mask)
