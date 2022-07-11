@@ -1,7 +1,7 @@
-int SentryGun[MAXPLAYERS + 1] = -1;
-int Dispenser[MAXPLAYERS + 1] = -1;
-int TeleporterEnter[MAXPLAYERS + 1] = -1;
-int TeleporterExit[MAXPLAYERS + 1] = -1;
+int SentryGun[MAXPLAYERS + 1];
+int Dispenser[MAXPLAYERS + 1];
+int TeleporterEnter[MAXPLAYERS + 1];
+int TeleporterExit[MAXPLAYERS + 1];
 
 bool SentryHealthIsFull[MAXPLAYERS + 1];
 bool SentryIsMaxLevel[MAXPLAYERS + 1];
@@ -15,9 +15,9 @@ bool TeleporterEnterIsMaxLevel[MAXPLAYERS + 1];
 bool TeleporterExitHealthIsFull[MAXPLAYERS + 1];
 bool TeleporterExitIsMaxLevel[MAXPLAYERS + 1];
 
-float EngineerMoveSentryTimer[MAXPLAYERS + 1] = 0.0;
+float EngineerMoveSentryTimer[MAXPLAYERS + 1];
 bool WantsMoveSentryGun[MAXPLAYERS + 1];
-float EngineerMoveDispenserTimer[MAXPLAYERS + 1] = 0.0;
+float EngineerMoveDispenserTimer[MAXPLAYERS + 1];
 bool WantsMoveDispenser[MAXPLAYERS + 1];
 
 public bool EngineerIdleRequirements(int client)
@@ -40,13 +40,13 @@ public void EngineerIdleUpdate(int client)
 	
 	if (!IsValidEntity(SentryGun[client]))
 	{
-		if (WantsBuildTeleporterEnter[client] && GetRandomInt(1, 3) == 1)
+		if (!m_enterFail[client] && WantsBuildTeleporterEnter[client] && GetRandomInt(1, 3) == 1)
 		{
 			SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
 			return;
 		}
 
-		if (WantsBuildTeleporterExit[client] && GetRandomInt(1, 3) == 1)
+		if (!m_exitFail[client] && WantsBuildTeleporterExit[client] && GetRandomInt(1, 3) == 1)
 		{
 			SetProcess(client, PRO_BUILDTELEPORTEREXIT, 80.0, "| process started -> trying to build teleporter exit");
 			return;
@@ -65,13 +65,13 @@ public void EngineerIdleUpdate(int client)
 		return;
 	}
 
-	if (WantsBuildTeleporterExit[client])
+	if (!m_exitFail[client] && WantsBuildTeleporterExit[client])
 	{
 		SetProcess(client, PRO_BUILDTELEPORTEREXIT, 80.0, "| process started -> trying to build teleporter exit");
 		return;
 	}
 
-	if (WantsBuildTeleporterEnter[client])
+	if (!m_enterFail[client] && WantsBuildTeleporterEnter[client])
 	{
 		SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
 		return;
@@ -83,7 +83,9 @@ public void EngineerIdleUpdate(int client)
 	CheckEngineerBuildings(client);
 	LookUpdate(client);
 
-	if (IsValidEntity(SentryGun[client]) && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
+	if (IsWeaponSlotActive(client, 5))
+		EquipWeaponSlot(client, GetRandomInt(0, 2));
+	else if (IsValidEntity(SentryGun[client]) && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
 	{
 		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{

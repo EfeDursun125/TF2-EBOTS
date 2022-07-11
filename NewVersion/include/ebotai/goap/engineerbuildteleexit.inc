@@ -1,4 +1,5 @@
-bool m_teleExitTriggerBlock[MAXPLAYERS + 1] = false;
+bool m_teleExitTriggerBlock[MAXPLAYERS + 1];
+
 public bool BuildTeleExitRequirements(int client)
 {
 	if (m_teleExitTriggerBlock[client])
@@ -76,7 +77,7 @@ public void BuildTeleExitUpdate(int client)
 
 public void BuildTeleExitEnd(int client)
 {
-	// :(
+	m_exitFail[client] = true;
 }
 
 stock void PickTeleExitSpot(int client, float area[3] = NULL_VECTOR)

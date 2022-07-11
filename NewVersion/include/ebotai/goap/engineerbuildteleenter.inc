@@ -1,4 +1,5 @@
-bool m_teleEnterTriggerBlock[MAXPLAYERS + 1] = false;
+bool m_teleEnterTriggerBlock[MAXPLAYERS + 1];
+
 public bool BuildTeleEnterRequirements(int client)
 {
 	if (m_teleEnterTriggerBlock[client])
@@ -88,7 +89,7 @@ public void BuildTeleEnterUpdate(int client)
 
 public void BuildTeleEnterEnd(int client)
 {
-	// :(
+	m_enterFail[client] = true;
 }
 
 stock void PickTeleEnterSpot(int client, float area[3] = NULL_VECTOR)
