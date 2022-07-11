@@ -75,7 +75,7 @@ public void OnPluginStart()
 	HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Post);
 	//HookEvent("teamplay_waiting_ends", PlayAnimation, EventHookMode_Post);
 	EBotDebug = CreateConVar("ebot_debug", "0", "");
-	EBotFPS = CreateConVar("ebot_run_fps", "0.05", "0.033 = 29 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS");
+	EBotFPS = CreateConVar("ebot_run_fps", "0.1", "0.033 = 29 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS");
 	EBotMelee = CreateConVar("ebot_melee_range", "128", "");
 	EBotSenseMin = CreateConVar("ebot_minimum_sense_chance", "10", "Minimum 10");
 	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Maximum 90");
@@ -87,9 +87,9 @@ public void OnPluginStart()
 	m_eBotDodgeRangeMax = CreateConVar("ebot_maximum_dodge_range", "1024", "the range when enemy closer than a value, bot will start dodging enemies");
 	m_eBotDodgeRangeChance = CreateConVar("ebot_dodge_change_range_chance", "10", "the chance for change dodge range when attack process ends (1-100)");
 	EBotQuota = CreateConVar("ebot_quota", "-1", "");
-
-	sv_cheats = FindConVar("sv_cheats");
-	cheat_flags = GetConVarFlags(sv_cheats);
+	EBotAutoWaypoint = CreateConVar("ebot_waypoint_auto", "0", "");
+	EBotRadius = CreateConVar("ebot_waypoint_default_radius", "0", "");
+	EBotDistance = CreateConVar("ebot_waypoint_auto_distance", "250.0", "");
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -111,7 +111,9 @@ public void OnPluginStart()
 // trigger on map start
 public void OnMapStart()
 {
-	SetConVarFlags(sv_cheats, cheat_flags);
+	if (!GameRules_GetProp("m_bPlayingMannVsMachine"))
+		SetConVarInt(FindConVar("nb_player_stop"), 1);
+	
 	GetCurrentMap(currentMap, sizeof(currentMap));
 	SetConVarInt(FindConVar("nav_generate_fencetops"), 0);
 	SetConVarInt(FindConVar("mp_waitingforplayers_cancel"), 1);
@@ -194,9 +196,8 @@ public void EBotDeathChat(int client)
 // trigger on client put in the server
 public void OnClientPutInServer(int client)
 {
-	if (addBot && IsValidClient(client) && IsFakeClient(client))
+	if (IsValidClient(client) && IsEBot(client))
 	{
-		addBot = false;
 		isEBot[client] = true;
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	}
@@ -424,7 +425,8 @@ public Action AddEBot(int client, int args)
 
 public void AddEBotConsole()
 {
-	char filepath[PLATFORM_MAX_PATH];
+	ServerCommand("tf_bot_add");
+	/*char filepath[PLATFORM_MAX_PATH];
     BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/ebot_names.txt");
     File fp = OpenFile(filepath, "r");
 
@@ -457,10 +459,15 @@ public void AddEBotConsole()
 	else
 		Format(ChosenName, sizeof(ChosenName), "ebot %d", GetRandomInt(0, 9999));
 	
-	SetConVarFlags(sv_cheats, cheat_flags^(FCVAR_NOTIFY|FCVAR_REPLICATED));
-	addBot = true;
+	Handle cheat = FindConVar("sv_cheats");
+	int flags = GetConVarFlags(cheat);
+	if (flags & (FCVAR_NOTIFY|FCVAR_REPLICATED))
+    	SetConVarFlags(cheat, flags^(FCVAR_NOTIFY|FCVAR_REPLICATED));
+
 	ServerCommand("sv_cheats 1; bot -name \"%s\" -class random; sv_cheats 0", ChosenName);
-	SetConVarFlags(sv_cheats, cheat_flags);
+
+	if (!(flags & (FCVAR_NOTIFY|FCVAR_REPLICATED)))
+    	SetConVarFlags(cheat, flags);*/
 }
 
 public Action KickEBot(int client, int args)
@@ -471,7 +478,6 @@ public Action KickEBot(int client, int args)
 
 public void KickEBotConsole()
 {
-	addBot = false;
 	int EBotTeam;
 	if (GetTeamClientCount(2) > GetTeamClientCount(3))
 		EBotTeam = 2;
@@ -517,6 +523,7 @@ public void OnGameFrame()
 	}
 
 	DrawWaypoints();
+	AutoWaypoint();
 
 	if (GetConVarInt(EBotDebug) == 1)
 	{
@@ -620,14 +627,15 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 		}
 		else
 		{
-			// aim to position
-			LookAtPosition(client, m_lookAt[client]);
 			int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
 			SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
 		}
 		
 		// move to position
 		vel = m_moveVel[client];
+
+		// aim to position
+		LookAtPosition(client, m_lookAt[client]);
 	}
 	
 	return Plugin_Continue;
@@ -932,9 +940,9 @@ public Action PointCaptured(Handle event, char[] name, bool dontBroadcast)
 		int team = GetEventInt(event, "team");
 
 		if (team == 3)
-			currentActiveArea = currentArea + 2;
+			currentActiveArea = currentArea + 1;
 		else
-			currentActiveArea = currentArea - 2;
+			currentActiveArea = currentArea - 1;
 
 		if (currentActiveArea >= 7)
 			currentActiveArea = 1;
