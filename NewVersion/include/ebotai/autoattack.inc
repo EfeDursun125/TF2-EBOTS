@@ -177,10 +177,10 @@ stock void SelectBestCombatWeapon(int client)
 	float meleerange = Squaredf(GetConVarFloat(EBotMelee));
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Pyro)
-		meleerange *= 0.5;
+		meleerange *= 0.75;
 
 	if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
-		meleerange *= 2.0;
+		meleerange = 300.0;
 
 	if (distance <= meleerange)
 		EquipWeaponSlot(client, 2);

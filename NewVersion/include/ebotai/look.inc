@@ -37,21 +37,27 @@ stock void LookAtEnemiens(int client)
 		}
 		else
 		{
-			float distance = GetVectorDistance(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client]), true);
-			if (distance <= Squared(512))
-				BestAimPosition[2] -= 15.0;
-			else if (distance <= Squared(768))
-				BestAimPosition[2] += 50.0;
-			else if (distance <= Squared(1024))
-				BestAimPosition[2] += 100.0;
-			else if (distance <= Squared(1280))
-				BestAimPosition[2] += 150.0;
-			else if (distance <= Squared(1536))
-				BestAimPosition[2] += 200.0;
-			else if (distance > Squared(1536))
-				BestAimPosition[2] += 250.0;
+			float clientEyes[3];
+			clientEyes = GetEyePosition(client);
+			float enemyEyes[3];
+			enemyEyes = GetEyePosition(m_nearestEnemy[client]);
+			float distance = GetVectorDistance(clientEyes, enemyEyes);
+			float v = 910.0;
+			float v2 = v * v;
+			float v4 = v2 * v2;
+			float g = -800.0;
+			float x = distance;
+			float x2 = x * x;
+			float y = enemyEyes[2] - clientEyes[2];
+			float angle = ArcTangent2(v2 + sqrt(v4 - g * (g * x2 + (2 * y) * v2)), g * x);
+
+			float vca = v * Cosine(angle);
+			float vsa = v * Sine(angle);
+
+			float distance2 = (vca / g) * (vsa + sqrt(vsa * vsa + (2 * g * clientEyes[2])));
+			BestAimPosition[2] += FloatAbs(distance - distance2);
 			
-			if (IsVisible(GetEyePosition(client), BestAimPosition))
+			if (IsVisible(clientEyes, BestAimPosition))
 				m_lookAt[client] = BestAimPosition;
 			else
 				m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
@@ -233,10 +239,12 @@ stock void LookAround(int client)
 			{
 				if (IsValidEntity(GetPlayerWeaponSlot(client, TFWeaponSlot_Primary)))
 				{
+					if (IsMoving(client))
+						m_buttons[client] |= IN_JUMP;
 					if (m_lowHealth[client] || m_lowAmmo[client] || m_difficulty[client] == 1)
 						m_attack2Timer[client] = GetGameTime() + 2.0;
 					else
-						m_attack2Timer[client] = GetGameTime() + m_difficulty[client] + 1.0;
+						m_attack2Timer[client] = GetGameTime() + GetRandomFloat(1.0, m_difficulty[client] + 2.0);
 				}
 				else
 					m_attack2Timer[client] = 0.0;
@@ -318,4 +326,11 @@ stock void LookAround(int client)
 			}
 		}
 	}
+}
+
+stock float sqrt(float value)
+{
+	if (value < 0)
+		value = -value;
+	return SquareRoot(value);
 }

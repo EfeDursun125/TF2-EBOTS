@@ -140,9 +140,15 @@ public void CheckSlowThink(int client)
 			if (!TF2_IsPlayerInCondition(client, TFCond_Disguised) && !TF2_IsPlayerInCondition(client, TFCond_Disguising) && !TF2_HasTheFlag(client))
 				DisguiseAsEnemy(client);
 
-			if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) && !m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])
-				m_buttons[client] |= IN_ATTACK2;
+			if (TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+			{
+				int cloak = FindSendPropInfo("CTFPlayer", "m_flCloakMeter");
+				SetEntDataFloat(client, cloak, 100.0);
 
+				if (CurrentProcess[client] != PRO_HIDE && !m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])
+					m_buttons[client] |= IN_ATTACK2;
+			}
+			
 			if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]) && HasEntProp(m_nearestEntity[client], Prop_Send, "m_bHasSapper")) // remember sappable things
 				m_knownSentry[client] = m_nearestEntity[client];
 		}
@@ -163,9 +169,6 @@ public void CheckHideFromDanger(int client)
 		return;
 	
 	if (!m_isSlowThink[client])
-		return;
-	
-	if (TF2_GetPlayerClass(client) == TFClass_Sniper)
 		return;
 	
 	bool musthide = false;
@@ -216,7 +219,7 @@ public void CheckAmmo(int client)
 	if (!m_isSlowThink[client])
 		return;
 		
-	if (GetAmmo(client, 0) <= 3 || (TF2_GetPlayerClass(client) != TFClass_Spy && TF2_GetPlayerClass(client) != TFClass_Medic && GetAmmo(client, 1) <= 6))
+	if (GetAmmo(client, 0) <= 3 && TF2_GetPlayerClass(client) != TFClass_Spy && TF2_GetPlayerClass(client) != TFClass_Medic)
 		m_lowAmmo[client] = true;
 	else
 		m_lowAmmo[client] = false;

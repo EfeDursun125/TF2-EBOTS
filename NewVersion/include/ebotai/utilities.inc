@@ -114,9 +114,9 @@ Handle m_eBotDodgeRangeChance;
 Handle EBotQuota;
 Handle EBotChangeClassChance;
 Handle EBotDeadChat;
-
-Handle sv_cheats;
-int cheat_flags;
+Handle EBotAutoWaypoint;
+Handle EBotRadius;
+Handle EBotDistance;
 
 Handle g_hLookupBone;
 Handle g_hGetBonePosition;
@@ -170,7 +170,9 @@ stock char GetRandomClassName()
 
 stock bool IsEBot(int bot)
 {
-	return isEBot[bot];
+	if (!GameRules_GetProp("m_bPlayingMannVsMachine"))
+		return IsFakeClient(bot);
+	return false;
 }
 
 #define	MASK_CUSTOM (CONTENTS_SOLID|CONTENTS_MOVEABLE|0x40|CONTENTS_MONSTER|CONTENTS_WINDOW|CONTENTS_DEBRIS)
@@ -390,22 +392,10 @@ stock void EquipWeaponSlot(int client, int slot)
 {
 	if (IsWeaponSlotActive(client, slot))
 		return;
-	
-	if (IsFakeClient(client))
-	{
-		char buffer[MAX_NAME_LENGTH];
-		GetClientName(client, buffer, sizeof(buffer));
-		int flags = GetCommandFlags("cc_bot_selectweapon");
-		SetCommandFlags("cc_bot_selectweapon", flags & ~FCVAR_CHEAT);
-		FakeClientCommand(client, "cc_bot_selectweapon \"%s\" %i", buffer, slot);
-		SetCommandFlags("cc_bot_selectweapon", flags|FCVAR_CHEAT);
-	}
-	else
-	{
-		int iWeapon = GetPlayerWeaponSlot(client, slot);
-		if (IsValidEntity(iWeapon))
-			EquipWeapon(client, iWeapon);
-	}
+
+	int iWeapon = GetPlayerWeaponSlot(client, slot);
+	if (IsValidEntity(iWeapon))
+		EquipWeapon(client, iWeapon);
 }
 
 stock void EquipWeapon(int client, int weapon)
@@ -484,18 +474,8 @@ stock void LookAtPosition(int client, float flGoal[3])
 	float max_angvel = 1024.0;
 	float fps = GetConVarFloat(EBotFPS);
 
-	if (m_difficulty[client] >= 1 && m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]))
-	{
+	if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]))
 		max_angvel += (GetEntPropFloat(m_nearestEnemy[client], Prop_Data, "m_flSpeed"));
-		if ((m_difficulty[client] > 2 || m_difficulty[client] == 1) && CurrentProcess[client] != PRO_HEAL && (IsWeaponSlotActive(client, 0) || IsWeaponSlotActive(client, 1)))
-		{
-			float EntVel[3];
-			GetEntPropVector(m_nearestEnemy[client], Prop_Data, "m_vecVelocity", EntVel);
-			m_lookAt[client][0] += (EntVel[0] * fps);
-			m_lookAt[client][1] += (EntVel[1] * fps);
-			m_lookAt[client][2] += (EntVel[2] * fps);
-		}
-	}
 	
 	float eye_to_target[3];
 	SubtractVectors(flGoal, GetEyePosition(client), eye_to_target);
@@ -521,11 +501,9 @@ stock void LookAtPosition(int client, float flGoal[3])
 	if (m_difficulty[client] < 2 && cos_error > 0.98)
 		m_itAimStart[client] = GetGameTime();
 	
-	float multiply = 0.6 - fps;
-	
 	float new_eye_angle[3];
-	new_eye_angle[0] = ApproachAngle(ang_to_target[0], eye_ang[0], (max_angvel * GetGameFrameTime()) * multiply);
-	new_eye_angle[1] = ApproachAngle(ang_to_target[1], eye_ang[1], (max_angvel * GetGameFrameTime()) * (multiply + multiply));
+	new_eye_angle[0] = ApproachAngle(ang_to_target[0], eye_ang[0], (max_angvel * GetGameFrameTime()) * 0.5);
+	new_eye_angle[1] = ApproachAngle(ang_to_target[1], eye_ang[1], (max_angvel * GetGameFrameTime()));
 
 	new_eye_angle[0] = AngleNormalize(new_eye_angle[0]);
 	new_eye_angle[1] = AngleNormalize(new_eye_angle[1]);
@@ -763,11 +741,10 @@ stock bool IsValidClient(int client)
 	return true;
 }
 
-stock bool IsVisible(float start2[3], float end[3])
+stock bool IsVisible(float start[3], float end[3])
 {
-	Handle trace = TR_TraceRayFilterEx(start2, end, MASK_CUSTOM, RayType_EndPoint, TraceEntityFilterStuff);
-	float flFraction = TR_GetFraction(trace);
-	delete trace;
+	TR_TraceRayFilter(start, end, MASK_CUSTOM, RayType_EndPoint, TraceEntityFilterStuff);
+	float flFraction = TR_GetFraction();
 	if (flFraction >= 1.0) 
 		return !(flFraction == 0.0);
 	return false;
@@ -783,12 +760,8 @@ stock bool IsVisibleWaypoint(int start[3], int end[3])
 	fend[0] = float(end[0]);
 	fend[1] = float(end[1]);
 	fend[2] = float(end[2] + 18);
-	Handle trace = TR_TraceRayFilterEx(fstart, fend, MASK_CUSTOM, RayType_EndPoint, TraceEntityFilterStuff);
-	float flFraction = TR_GetFraction(trace);
-	delete trace;
-	if (flFraction >= 1.0) 
-		return !(flFraction == 0.0);
-	return false;
+	TR_TraceRayFilter(fstart, fend, MASK_CUSTOM, RayType_EndPoint, TraceEntityFilterStuff);
+	return TR_GetFraction() >= 0.9;
 }
 
 public bool TraceEntityFilterStuff(int entity, int mask)
@@ -1385,7 +1358,15 @@ stock float GetPercentInvisible(int client)
 
 stock void DisguiseAsEnemy(int client)
 {
-	TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), view_as<TFClassType>(GetRandomInt(1, 9)));
+	ArrayList class = new ArrayList();
+	class.Push(3);
+	class.Push(4);
+	class.Push(6);
+	class.Push(7);
+	class.Push(8);
+	class.Push(9);
+	TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), view_as<TFClassType>(class.Get(GetRandomInt(0, class.Length - 1))));
+	delete class;
 }
 
 stock bool IsClientAimingToMe(int client, int target)
@@ -1666,4 +1647,181 @@ stock bool IsRevealedSpyByTarget(int client, target)
 		return true;
 	
 	return false;
+}
+
+stock int GetNearestEnemyControlPoint(int client)
+{
+	int NearestControlPoint = -1;
+	
+	float distance = -1.0; 
+	float nearestDistance = -1.0;
+	
+	int iControlPoint = -1;
+	
+	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+	{
+		if (!IsValidEntity(iControlPoint))
+			continue;
+		
+		if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked") != 0)
+			continue;
+		
+		if (GetClientTeam(client) == GetTeamNumber(iControlPoint))
+			continue;
+		
+		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iControlPoint));
+        
+		if (distance < nearestDistance || nearestDistance == -1.0)
+		{
+			NearestControlPoint = iControlPoint;
+			nearestDistance = distance;
+		}
+	}
+	
+	return NearestControlPoint;
+}
+
+stock int GetEnemyControlPointCount(int client)
+{
+	int EnemyControlPointCount = 0;
+	
+	int iControlPoint = -1;
+	
+	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+	{
+		if (!IsValidEntity(iControlPoint))
+			continue;
+
+		if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked") != 0)
+			continue;
+		
+		if (GetClientTeam(client) == GetTeamNumber(iControlPoint))
+			continue;
+		
+		EnemyControlPointCount++;
+	}
+	
+	return EnemyControlPointCount;
+}
+
+stock int GetNearestMyControlPoint(int client)
+{
+	int NearestControlPoint = -1;
+	
+	float distance = -1.0; 
+	float nearestDistance = -1.0;
+	
+	int iControlPoint = -1;
+	
+	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+	{
+		if (!IsValidEntity(iControlPoint))
+			continue;
+		
+		if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked") != 0)
+			continue;
+		
+		if (GetClientTeam(client) != GetTeamNumber(iControlPoint))
+			continue;
+		
+		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iControlPoint), true);
+        
+		if (distance < nearestDistance || nearestDistance == -1.0)
+		{
+			NearestControlPoint = iControlPoint;
+			nearestDistance = distance;
+		}
+	}
+	
+	return NearestControlPoint;
+}
+
+stock int GetMyControlPointCount(int client)
+{
+	int MyControlPointCount = 0;
+	
+	int iControlPoint = -1;
+	
+	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+	{
+		if (!IsValidEntity(iControlPoint))
+			continue;
+		
+		if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked") != 0)
+			continue;
+		
+		if (GetClientTeam(client) != GetTeamNumber(iControlPoint))
+			continue;
+		
+		MyControlPointCount++;
+	}
+	
+	return MyControlPointCount;
+}
+
+stock int GetNearestBluControlPoint()
+{
+	int iControlPoint = -1;
+	
+	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+	{
+		if (!IsValidEntity(iControlPoint))
+			continue;
+		
+		if (GetTeamNumber(iControlPoint) != 3)
+			continue;
+	}
+	
+	return iControlPoint;
+}
+
+stock int GetNearestDefendableControlPoint(int client)
+{
+	int NearestControlPoint = -1;
+	
+	float distance = -1.0; 
+	float nearestDistance = -1.0;
+	
+	int iControlPoint = -1;
+	
+	if (GetNearestBluControlPoint() != -1)
+	{
+		while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+		{
+			if (!IsValidEntity(iControlPoint))
+				continue;
+			
+			if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked") != 0)
+				continue;
+			
+			if (GetClientTeam(client) != GetTeamNumber(iControlPoint))
+				continue;
+			
+			distance = GetVectorDistance(GetOrigin(GetNearestBluControlPoint()), GetOrigin(iControlPoint), true);
+			
+			if (distance < nearestDistance || nearestDistance == -1.0)
+			{
+				NearestControlPoint = iControlPoint;
+				nearestDistance = distance;
+			}
+		}
+	}
+	else
+	{
+		while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+		{
+			if (!IsValidEntity(iControlPoint))
+				continue;
+			
+			if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked") != 0)
+				continue;
+			
+			if (GetClientTeam(client) != GetTeamNumber(iControlPoint))
+				continue;
+			
+			NearestControlPoint = iControlPoint;
+		}
+	}
+	
+	return NearestControlPoint;
 }

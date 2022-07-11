@@ -573,7 +573,7 @@ stock bool IsWaypointReachable(int start[3], int goal[3])
     float distance = GetVectorDistance(destination, src);
 
     // is the destination not close enough?
-    if (distance > 320)
+    if (distance > 333)
         return false;
 
     // if waypoint is visible from current position
@@ -646,6 +646,36 @@ stock bool IsWaypointReachable(int start[3], int goal[3])
     return false;
 }
 
+stock void AutoWaypoint()
+{
+    if (GetConVarInt(EBotAutoWaypoint) != 1)
+        return;
+
+    if (!IsValidClient(m_hostEntity))
+		FindHostEntity();
+
+    if (!(GetEntityFlags(m_hostEntity) & FL_ONGROUND))
+        return;
+
+    if (!IsMoving(m_hostEntity))
+        return;
+
+    int index = -1;
+    float maxDistance = 99999999.0;
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        float distance = GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(m_hostEntity), true);
+        if (distance < maxDistance)
+        {
+            index = i;
+            maxDistance = distance;
+        }
+    }
+
+    if (index != -1 && GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[index].origin)) > GetConVarFloat(EBotDistance))
+        WaypointAdd(VectorAsInt(GetOrigin(m_hostEntity)));
+}
+
 stock void WaypointAdd(int origin[3])
 {
     if (m_waypointNumber >= MaxWaypoints)
@@ -660,7 +690,7 @@ stock void WaypointAdd(int origin[3])
     m_paths[index].index = index;
     m_paths[index].activeArea = 0;
     m_paths[index].flags = 0;
-    m_paths[index].radius = 0;
+    m_paths[index].radius = GetConVarInt(EBotRadius);
     m_paths[index].team = 0;
 
     m_paths[index].origin = origin;
@@ -690,7 +720,92 @@ stock void WaypointAdd(int origin[3])
             AddPath(i, index, GetVectorDistance(VectorAsFloat(m_paths[i].origin), VectorAsFloat(m_paths[index].origin)));
     }
 
+    //CalculateWayzone(index);
     PrintHintTextToAll("Waypoint added to %d %d %d", m_paths[index].origin[0], m_paths[index].origin[1], m_paths[index].origin[2]);
+}
+
+stock void CalculateWayzone(int index)
+{
+    float start[3];
+    float direction[3];
+
+    TraceResult tr;
+    bool wayBlocked = false;
+
+    for (int i = 0; i < MaxPathIndex; i++)
+    {
+        if (m_paths[index].pathIndex[i] != -1)
+        {
+            m_paths[index].radius = 0.0f;
+            return;
+        }
+    }
+
+    for (float scanDistance = 16.0f; scanDistance < 144.0f; scanDistance += 16.0f)
+    {
+        start = VectorAsFloat(m_paths[index].origin);
+        MakeVectors(nullvec);
+
+        direction = g_pGlobals->v_forward * scanDistance;
+        direction = direction.ToAngles();
+
+        m_paths[index].radius = scanDistance;
+
+        for (float circleRadius = 0.0f; circleRadius < 180.0f; circleRadius += 5.0f)
+        {
+            MakeVectors(direction);
+
+            Vector radiusStart = start - g_pGlobals->v_forward * scanDistance;
+            Vector radiusEnd = start + g_pGlobals->v_forward * scanDistance;
+
+            TraceHull(radiusStart, radiusEnd, true, head_hull, null, &tr);
+
+            Vector dropStart = start + (g_pGlobals->v_forward * scanDistance);
+            Vector dropEnd = dropStart - Vector(0.0f, 0.0f, scanDistance + 60.0f);
+
+            TraceHull(dropStart, dropEnd, true, head_hull, null, &tr);
+
+            if (tr.flFraction >= 1.0f)
+            {
+                wayBlocked = true;
+                path->radius -= 16.0f;
+
+                break;
+            }
+
+            dropStart = start - (g_pGlobals->v_forward * scanDistance);
+            dropEnd = dropStart - Vector(0.0f, 0.0f, scanDistance + 60.0f);
+
+            TraceHull(dropStart, dropEnd, true, head_hull, null, &tr);
+
+            if (tr.flFraction >= 1.0f)
+            {
+                wayBlocked = true;
+                path->radius -= 16.0f;
+                break;
+            }
+
+            radiusEnd.z += 34.0f;
+            TraceHull(radiusStart, radiusEnd, true, head_hull, null, &tr);
+
+            if (tr.flFraction < 1.0f)
+            {
+                wayBlocked = true;
+                path->radius -= 16.0f;
+                break;
+            }
+
+            direction.y = AngleNormalize(direction.y + circleRadius);
+        }
+
+        if (wayBlocked)
+            break;
+    }
+
+    path->radius -= 16.0f;
+
+    if (path->radius < 0.0f)
+        path->radius = 0.0f;
 }
 
 stock void AddPath(int srcIndex, int destIndex, float distance)
