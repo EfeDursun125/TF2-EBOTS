@@ -90,7 +90,7 @@ public void OnPluginStart()
 	EBotAutoWaypoint = CreateConVar("ebot_waypoint_auto", "0", "");
 	EBotRadius = CreateConVar("ebot_waypoint_default_radius", "0", "");
 	EBotDistance = CreateConVar("ebot_waypoint_auto_distance", "250.0", "");
-	
+
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsValidClient(i))
@@ -99,10 +99,9 @@ public void OnPluginStart()
 		if (!IsFakeClient(i))
 			continue;
 		
-		if (StrContains(currentMap, "mvm_" , false) != -1 && GetClientTeam(i) != 2)
+		if (GameRules_GetProp("m_bPlayingMannVsMachine") && GetClientTeam(i) != 2)
 			continue;
-			
-		isEBot[i] = true;
+		
 		SDKHook(i, SDKHook_OnTakeDamage, OnTakeDamage);
 		m_difficulty[i] = -1;
 	}
@@ -197,10 +196,7 @@ public void EBotDeathChat(int client)
 public void OnClientPutInServer(int client)
 {
 	if (IsValidClient(client) && IsEBot(client))
-	{
-		isEBot[client] = true;
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
-	}
 
 	// delete path positions
 	delete m_positions[client];
@@ -224,7 +220,10 @@ public void OnClientPutInServer(int client)
 	m_checkTimer[client] = 0.0;
 	m_wasdTimer[client] = 0.0;
 	m_knownSentry[client] = -1;
+	m_enterFail[client] = false;
+	m_exitFail[client] = false;
 	CurrentProcessTime[client] = 0.0;
+	CurrentProcess[client] = PRO_DEFAULT;
 	m_itAimStart[client] = GetGameTime();
 	
 	if (GetConVarInt(EBotDifficulty) < 0 || GetConVarInt(EBotDifficulty) > 4)
@@ -421,6 +420,7 @@ public Action SetAim2(int client, int args)
 public Action AddEBot(int client, int args)
 {
 	AddEBotConsole();
+	return Plugin_Handled;
 }
 
 public void AddEBotConsole()
@@ -491,7 +491,7 @@ public void KickEBotConsole()
 		if (!IsValidClient(i))
 			continue;
 		
-		if (!isEBot[i] && !IsFakeClient(i))
+		if (!IsFakeClient(i))
 			continue;
 		
 		if (GetClientTeam(i) != EBotTeam)
@@ -628,14 +628,15 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 		else
 		{
 			int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
-			SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
+			if (nOldButtons & (IN_JUMP|IN_DUCK))
+				SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
 		}
 		
 		// move to position
 		vel = m_moveVel[client];
 
 		// aim to position
-		LookAtPosition(client, m_lookAt[client]);
+		LookAtPosition(client, m_lookAt[client], angles);
 	}
 	
 	return Plugin_Continue;
@@ -668,6 +669,9 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_goalEntity[client] = -1;
 		m_lastFailedWaypoint[client] = -1;
 		m_itAimStart[client] = GetGameTime();
+		m_enterFail[client] = false;
+		m_exitFail[client] = false;
+		m_pathDelay[client] = 0.0;
 		DeletePathNodes(client);
 
 		if (TF2_GetPlayerClass(client) == TFClass_Engineer)
@@ -721,6 +725,8 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 
 		m_nextStuckCheck[client] = GetGameTime() + 20.0;
 	}
+
+	return Plugin_Handled;
 }
 
 // trigger when bot spawns
@@ -741,6 +747,8 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 
 	if (IsEBot(victim))
 		EBotDeathChat(victim);
+	
+	return Plugin_Handled;
 }
 
 // trigger when bot gets damaged
@@ -787,6 +795,8 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 			}
 		}
 	}
+
+	return Plugin_Handled;
 }
 
 // on bot take damage
@@ -898,6 +908,8 @@ public Action PointStartCapture(Handle event, char[] name, bool dontBroadcast)
 		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active area: %d", currentActiveArea);
 	}
+
+	return Plugin_Handled;
 }
 
 public Action PointUnlocked(Handle event, char[] name, bool dontBroadcast)
@@ -923,6 +935,8 @@ public Action PointUnlocked(Handle event, char[] name, bool dontBroadcast)
 		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active area: %d", currentActiveArea);
 	}
+
+	return Plugin_Handled;
 }
 
 public Action PointCaptured(Handle event, char[] name, bool dontBroadcast)
@@ -961,11 +975,14 @@ public Action PointCaptured(Handle event, char[] name, bool dontBroadcast)
 			DeletePathNodes(search);
 		}
 	}
+
+	return Plugin_Handled;
 }
 
 public Action PrintHudTextOnStart(Handle timer)
 {
     PrintHintTextToAll("%s", m_aboutTheWaypoint);
+	return Plugin_Handled;
 }
 
 public Action PlayAnimation(Handle event, char[] name, bool dontBroadcast)
