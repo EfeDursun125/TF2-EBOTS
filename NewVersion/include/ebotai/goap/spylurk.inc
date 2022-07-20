@@ -10,11 +10,15 @@ public void SpyLurkStart(int client)
 {
 	if (!IsValidClient(m_goalEntity[client]) || !IsValidEntity(m_goalEntity[client]))
 		SelectObjective(client);
+	
+	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+		m_buttons[client] |= IN_ATTACK2;
 }
 
 public void SpyLurkUpdate(int client)
 {
 	CurrentProcessTime[client] = GetGameTime() + 9999.0; // no timeout
+
 	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 	{
 		SetProcess(client, PRO_HIDE, 60.0, "", true);
@@ -31,6 +35,8 @@ public void SpyLurkUpdate(int client)
 		else
 			m_knownSentry[client] = -1;
 	}
+
+	
 
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);

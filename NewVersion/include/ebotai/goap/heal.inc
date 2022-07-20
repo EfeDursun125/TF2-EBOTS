@@ -35,7 +35,10 @@ public void HealUpdate(int client)
 	{
 		if (GetVectorDistance(GetOrigin(client), GetOrigin(m_healTarget[client]), true) <= Squared(GetConVarInt(EBotMedicFollowRange)))
 		{
-			if (IsWeaponSlotActive(client, 1))
+			if (!IsWeaponSlotActive(client, 1))
+				EquipWeaponSlot(client, 1);
+			
+			if (IsWeaponSlotActive(client, 1) || (m_primaryID[client] == 1079 || m_primaryID[client] == 305))
 			{
 				if (m_hasEnemiesNear[client] && (GetClientHealth(client) <= 60 || TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Spy))
 					m_buttons[client] |= IN_ATTACK2;
@@ -52,17 +55,18 @@ public void HealUpdate(int client)
 				if (m_hasEnemiesNear[client] && !ClientViews(client, m_nearestEnemy[client]))
 					BackstabMove(client, m_healTarget[client], false);
 			}
-			else
-				EquipWeaponSlot(client, 1);
 		}
 		else
 		{
+			if (IsWeaponSlotActive(client, 1) || (m_primaryID[client] == 1079 || m_primaryID[client] == 305))
+				m_attackTimer[client] = GetGameTime() + 0.4;
+			
 			m_lookAt[client] = GetEyePosition(m_healTarget[client]);
 			FollowPath(client, GetOrigin(m_healTarget[client]));
 		}
 	}
 
-	if (!IsValidClient(m_healTarget[client]) || !IsPlayerAlive(m_healTarget[client]))
+	if (!IsValidClient(m_healTarget[client]) || !IsPlayerAlive(m_healTarget[client]) || (GameRules_GetProp("m_bPlayingMedieval") && GetClientHealth(m_healTarget[client]) >= GetMaxHealth(m_healTarget[client])))
 		FinishCurrentProcess(client);
 }
 

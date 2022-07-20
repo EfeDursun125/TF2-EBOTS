@@ -32,6 +32,25 @@ public void EngineerIdleStart(int client)
 
 public void EngineerIdleUpdate(int client)
 {
+	CheckHealth(client);
+
+	if (IsMetalLow(client))
+		m_lowAmmo[client] = true;
+	else
+		m_lowAmmo[client] = false;
+	
+	if (m_lowAmmo[client])
+	{
+		RememberedProcess[client] = PRO_ENGINEERIDLE;
+		SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack.");
+	}
+
+	CheckHideFromDanger(client);
+	FindFriendsAndEnemiens(client);
+	FindEnemyEntities(client);
+	CheckEngineerBuildings(client);
+	LookUpdate(client);
+
 	if (TF2_HasTheFlag(client))
 	{
 		CurrentProcess[client] = PRO_DEFAULT;
@@ -76,12 +95,6 @@ public void EngineerIdleUpdate(int client)
 		SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
 		return;
 	}
-
-	CheckHideFromDanger(client);
-	FindFriendsAndEnemiens(client);
-	FindEnemyEntities(client);
-	CheckEngineerBuildings(client);
-	LookUpdate(client);
 
 	if (IsWeaponSlotActive(client, 5))
 		EquipWeaponSlot(client, GetRandomInt(0, 2));
@@ -185,18 +198,10 @@ public void EngineerIdleUpdate(int client)
 		else
 			FollowPath(client, GetOrigin(SentryGun[client]));
 	}
-
-	CheckHealth(client);
-
-	if (IsMetalLow(client))
-		m_lowAmmo[client] = true;
-	else
-		m_lowAmmo[client] = false;
-	
-	if (m_lowAmmo[client])
+	else if (!IsValidEntity(SentryGun[client]))
 	{
-		RememberedProcess[client] = PRO_ENGINEERIDLE;
-		SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack.");
+		SetProcess(client, PRO_BUILDSENTRY, 40.0, "| process started -> trying to build sentry gun");
+		return;
 	}
 }
 

@@ -32,13 +32,6 @@ stock void GetHealthStart(int client)
 
 stock void GetHealthUpdate(int client)
 {
-	if ((GetClientHealth(client) > (GetMaxHealth(client) / 1.4)))
-	{
-		m_lowHealth[client] = false;
-		FinishCurrentProcess(client, true);
-		return;
-	}
-
 	CheckHideFromDanger(client);	
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
@@ -56,7 +49,7 @@ stock void GetHealthUpdate(int client)
 				FollowPath(client, m_goalPosition[client]);
 		}
 		else
-			FinishCurrentProcess(client, true);
+			SetFailedProcess(client, true);
 	}
 	else if (IsValidEntity(m_goalEntity[client]))
 	{
@@ -77,7 +70,7 @@ stock void GetHealthUpdate(int client)
 		FindNearestHealthPack(client);
 		// check again
 		if (!IsValidEntity(m_goalEntity[client])) // no avaliable health packs.
-			FinishCurrentProcess(client, true);
+			SetFailedProcess(client, true);
 	}
 }
 
@@ -109,7 +102,7 @@ stock int FindHealthWaypoint(int client)
       		continue;
 		
 		// only get safe health packs
-		if (m_hasEnemiesNear[client])
+		if (m_hasEnemiesNear[client] && !GameRules_GetProp("m_bPlayingMedieval"))
 		{
 			float distance = GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(m_nearestEnemy[client]), true);
 			if (distance <= Squared(768))

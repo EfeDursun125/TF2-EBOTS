@@ -5,7 +5,7 @@ public bool DefaultRequirements(int client)
 
 public void DefaultStart(int client)
 {
-	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+	if (!GameRules_GetProp("m_bPlayingMedieval") && TF2_GetPlayerClass(client) == TFClass_Engineer)
 		SetProcess(client, PRO_ENGINEERIDLE, 9999.0, "", true);
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Spy)
@@ -104,7 +104,7 @@ public void DefaultEnd(int client)
 
 public void SelectObjective(int client)
 {
-	if (m_hasWaypoints && TF2_GetPlayerClass(client) == TFClass_Sniper && m_hasSniperWaypoints && m_primaryID[client] != 56 && m_primaryID[client] != 1005 && m_primaryID[client] != 1092)
+	if (m_hasWaypoints && TF2_GetPlayerClass(client) == TFClass_Sniper && (GameRules_GetProp("m_bPlayingMedieval") || m_hasSniperWaypoints && m_primaryID[client] != 56 && m_primaryID[client] != 1005 && m_primaryID[client] != 1092))
 	{
 		int myindex = m_goalIndex[client];
 		if (myindex != -1 && m_paths[myindex].flags == WAYPOINT_SNIPER && (m_paths[myindex].activeArea == 0 || m_paths[myindex].activeArea == currentActiveArea))
@@ -362,7 +362,7 @@ public void SelectObjective(int client)
 		}
 		m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
 	}
-	else if (StrContains(currentMap, "cp_" , false) != -1 || StrContains(currentMap, "tc_" , false) != -1 || StrContains(currentMap, "mvm_" , false) != -1)
+	else if (StrContains(currentMap, "" , false) != -1 || StrContains(currentMap, "tc_" , false) != -1 || StrContains(currentMap, "mvm_" , false) != -1)
 	{
 		if (m_hasWaypoints)
 		{
@@ -425,12 +425,31 @@ public void SelectObjective(int client)
 				else
 					m_goalPosition[client] = VectorAsFloat(m_paths[index].origin);
 			}
+			else
+			{
+				m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
+				if (m_paths[m_goalIndex[client]].radius > 0)
+				{
+					m_goalPosition[client][0] = float(m_paths[m_goalIndex[client]].origin[0] + GetRandomInt(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius));
+					m_goalPosition[client][1] = float(m_paths[m_goalIndex[client]].origin[1] + GetRandomInt(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius));
+					m_goalPosition[client][2] = float(m_paths[m_goalIndex[client]].origin[2]);
+				}
+				else
+					m_goalPosition[client] = VectorAsFloat(m_paths[m_goalIndex[client]].origin);
+			}
 		}
 	}
 	else if (m_hasWaypoints)
 	{
 		m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
-		m_goalPosition[client] = VectorAsFloat(m_paths[m_goalIndex[client]].origin);
+		if (m_paths[m_goalIndex[client]].radius > 0)
+		{
+			m_goalPosition[client][0] = float(m_paths[m_goalIndex[client]].origin[0] + GetRandomInt(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius));
+			m_goalPosition[client][1] = float(m_paths[m_goalIndex[client]].origin[1] + GetRandomInt(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius));
+			m_goalPosition[client][2] = float(m_paths[m_goalIndex[client]].origin[2]);
+		}
+		else
+			m_goalPosition[client] = VectorAsFloat(m_paths[m_goalIndex[client]].origin);
 	}
 	else
 		m_goalEntity[client] = FindNearestEnemy(client);
@@ -438,7 +457,7 @@ public void SelectObjective(int client)
 
 stock void ObjectiveMovement(int client)
 {
-	if (m_hasWaypoints && TF2_GetPlayerClass(client) == TFClass_Sniper && m_hasSniperWaypoints && m_primaryID[client] != 56 && m_primaryID[client] != 1005 && m_primaryID[client] != 1092)
+	if (m_hasWaypoints && TF2_GetPlayerClass(client) == TFClass_Sniper && m_hasSniperWaypoints && (GameRules_GetProp("m_bPlayingMedieval") || m_primaryID[client] != 56 && m_primaryID[client] != 1005 && m_primaryID[client] != 1092))
 	{
 		int index = m_goalIndex[client];
 		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea == currentActiveArea))
@@ -540,7 +559,7 @@ stock void ObjectiveMovement(int client)
 			}
 		}
 	}
-	else if (StrContains(currentMap, "cp_" , false) != -1)
+	else if (StrContains(currentMap, "" , false) != -1)
 	{
 		if (m_hasWaypoints)
 			FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
