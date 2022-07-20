@@ -81,6 +81,7 @@ public void OnPluginStart()
 	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Maximum 90", FCVAR_NONE);
 	EBotDifficulty = CreateConVar("ebot_difficulty", "2", "0 = Beginner | 1 = Easy | 2 = Normal | 3 = Hard | 4 = Expert", FCVAR_NONE);
 	EBotMedicFollowRange = CreateConVar("ebot_medic_follow_range", "150", "", FCVAR_NONE);
+	EBotChangeClass = CreateConVar("ebot_change_class", "1", "", FCVAR_NONE);
 	EBotChangeClassChance = CreateConVar("ebot_change_class_chance", "35", "", FCVAR_NONE);
 	EBotDeadChat = CreateConVar("ebot_dead_chat_chance", "30", "", FCVAR_NONE);
 	m_eBotDodgeRangeMin = CreateConVar("ebot_minimum_dodge_range", "512", "the range when enemy closer than a value, bot will start dodging enemies", FCVAR_NONE);
@@ -225,6 +226,7 @@ public void OnClientPutInServer(int client)
 	CurrentProcessTime[client] = 0.0;
 	CurrentProcess[client] = PRO_DEFAULT;
 	m_itAimStart[client] = GetGameTime();
+	m_damageTime[client] = 0.0;
 	
 	if (GetConVarInt(EBotDifficulty) < 0 || GetConVarInt(EBotDifficulty) > 4)
 		m_difficulty[client] = GetRandomInt(0, 4);
@@ -425,8 +427,7 @@ public Action AddEBot(int client, int args)
 
 public void AddEBotConsole()
 {
-	ServerCommand("tf_bot_add");
-	/*char filepath[PLATFORM_MAX_PATH];
+	char filepath[PLATFORM_MAX_PATH];
     BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/ebot_names.txt");
     File fp = OpenFile(filepath, "r");
 
@@ -458,16 +459,9 @@ public void AddEBotConsole()
 		BotNames.GetString(GetRandomInt(0, BotNames.Length - 1), ChosenName, sizeof(ChosenName));
 	else
 		Format(ChosenName, sizeof(ChosenName), "ebot %d", GetRandomInt(0, 9999));
-	
-	Handle cheat = FindConVar("sv_cheats");
-	int flags = GetConVarFlags(cheat);
-	if (flags & (FCVAR_NOTIFY|FCVAR_REPLICATED))
-    	SetConVarFlags(cheat, flags^(FCVAR_NOTIFY|FCVAR_REPLICATED));
 
-	ServerCommand("sv_cheats 1; bot -name \"%s\" -class random; sv_cheats 0", ChosenName);
-
-	if (!(flags & (FCVAR_NOTIFY|FCVAR_REPLICATED)))
-    	SetConVarFlags(cheat, flags);*/
+    SetConVarInt(FindConVar("sv_cheats"), 1, false, false);
+	ServerCommand("bot -name \"%s\" -class random", ChosenName);
 }
 
 public Action KickEBot(int client, int args)
@@ -491,7 +485,7 @@ public void KickEBotConsole()
 		if (!IsValidClient(i))
 			continue;
 		
-		if (!IsFakeClient(i))
+		if (!IsEBot(i))
 			continue;
 		
 		if (GetClientTeam(i) != EBotTeam)
@@ -507,19 +501,44 @@ public void OnGameFrame()
 {
 	if (GetConVarInt(EBotQuota) > -1)
 	{
+		int wanted = GetConVarInt(EBotQuota);
+
 		if (BotCheckTimer < GetGameTime())
 		{
-			if (GetTotalPlayersCount() < GetConVarInt(EBotQuota))
-				AddEBotConsole();
-			else if (GetTotalPlayersCount() > GetConVarInt(EBotQuota))
-				KickEBotConsole();
-			else if ((GetPlayersCountRed() + 1) < GetPlayersCountBlu())
-				KickEBotConsole();
-			else if ((GetPlayersCountBlu() + 1) < GetPlayersCountRed())
-				KickEBotConsole();
+			int total = GetTotalPlayersCount();
+			int red = GetPlayersCountRed();
+			int blu = GetPlayersCountBlu();
 
+			if (total < wanted)
+				AddEBotConsole();
+			else if (total > wanted)
+				KickEBotConsole();
+			else if ((red + 1) < blu)
+				KickEBotConsole();
+			else if ((blu + 1) < red)
+				KickEBotConsole();
+			
 			BotCheckTimer = GetGameTime() + 1.0;
 		}
+	}
+
+	if (GameRules_GetProp("m_bPlayingMedieval") && BotCheckTimer < GetGameTime())
+	{
+		int newArea = GetBluControlPointCount() + 1;
+		if (newArea != currentActiveArea)
+		{
+			currentActiveArea = newArea;
+			for (int search = 1; search <= MaxClients; search++)
+			{
+				if (!IsValidClient(search))
+					continue;
+
+				SelectObjective(search);
+				DeletePathNodes(search);
+			}
+		}
+
+		BotCheckTimer = GetGameTime() + 1.0;
 	}
 
 	DrawWaypoints();
@@ -611,7 +630,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			
 		if (GetEntProp(client, Prop_Send, "m_bJumping"))
 			buttons |= IN_DUCK;
-
+		
 		if (m_thinkTimer[client] < GetGameTime())
 		{
 			if (CurrentProcess[client] != PRO_ATTACK)
@@ -630,13 +649,42 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
 			if (nOldButtons & (IN_JUMP|IN_DUCK))
 				SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
+			
+			if (CurrentProcess[client] == PRO_BUILDDISPENSER && m_isSlowThink[client] && GetRandomInt(1, 3) == 1)
+				m_lookAt[client][1] = GetRandomFloat(1.0, 359.0);
 		}
+
+		if (TF2_IsPlayerInCondition(client, TFCond_Charging))
+			buttons &= ~IN_ATTACK;
 		
 		// move to position
 		vel = m_moveVel[client];
 
 		// aim to position
 		LookAtPosition(client, m_lookAt[client], angles);
+
+		if (m_paths[m_currentIndex[client]].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) == TFClass_DemoMan)
+		{
+			m_currentWaypointIndex[client]--;
+			m_targetNode[client]--;
+			m_currentIndex[client] = m_pathIndex[client].Get(m_currentWaypointIndex[client]);
+			m_nextStuckCheck[client] = GetGameTime() + 5.0;
+			float vec[3];
+			float camangle[3];
+			float wayorigin[3];
+			wayorigin = VectorAsFloat(m_paths[m_currentIndex[client]].origin);
+			wayorigin[2] += GetHeight(client);
+			MakeVectorFromPoints(wayorigin, GetEyePosition(client), vec);
+			GetVectorAngles(vec, camangle);
+			camangle[0] *= -1.0;
+			camangle[1] += 180.0;
+			ClampAngle(camangle);
+			m_lookAt[client] = wayorigin;
+			m_pauseTime[client] = GetGameTime() + 3.0;
+			SetEntPropFloat(client, Prop_Send, "m_flChargeMeter", 100.0);
+			TeleportEntity(client, NULL_VECTOR, camangle, vec);
+			buttons |= IN_ATTACK2;
+		}
 	}
 	
 	return Plugin_Continue;
@@ -648,12 +696,75 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	if (IsValidClient(client) && IsEBot(client))
 	{
-		int changeclass = GetRandomInt(1, 100);
-		if (changeclass <= GetConVarInt(EBotChangeClassChance))
+		if (GetConVarBool(EBotChangeClass))
 		{
-			TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1, 9)));
-			if (IsPlayerAlive(client))
-				TF2_RespawnPlayer(client);
+			int changeclass = GetRandomInt(1, 100);
+			if (changeclass <= GetConVarInt(EBotChangeClassChance))
+			{
+				if (GameRules_GetProp("m_bPlayingMedieval"))
+				{
+					int randomclass = GetRandomInt(1, 5);
+					if (randomclass == 1)
+						TF2_SetPlayerClass(client, TFClass_DemoMan);
+					else if (randomclass == 2)
+						TF2_SetPlayerClass(client, TFClass_Spy);
+					else if (randomclass == 3)
+						TF2_SetPlayerClass(client, TFClass_Sniper);
+					else if (randomclass == 4)
+					{
+						if (GetClientTeam(client) == 3)
+						{
+							if (currentActiveArea == 1)
+								TF2_SetPlayerClass(client, TFClass_Sniper);
+							else 
+								TF2_SetPlayerClass(client, TFClass_DemoMan);
+						}
+						else
+						{
+							randomclass = GetRandomInt(1, 2);
+							if (randomclass == 1)
+								TF2_SetPlayerClass(client, TFClass_Sniper);
+							else
+								TF2_SetPlayerClass(client, TFClass_Spy);
+						}
+					}
+					else
+					{
+						randomclass = GetRandomInt(1, 2);
+						if (randomclass == 1)
+							TF2_SetPlayerClass(client, TFClass_Medic);
+						else
+						{
+							randomclass = GetRandomInt(1, 3);
+							if (randomclass == 1)
+								TF2_SetPlayerClass(client, TFClass_Heavy);
+							else if (randomclass == 2)
+								TF2_SetPlayerClass(client, TFClass_Pyro);
+							else
+							{
+								randomclass = GetRandomInt(1, 2);
+								if (randomclass == 1)
+									TF2_SetPlayerClass(client, TFClass_Scout);
+								else
+									TF2_SetPlayerClass(client, TFClass_Soldier);
+							}
+						}
+					}
+				}
+				else
+				{
+					if (IsValidClient(m_lastKiller[client]) && (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Sniper || TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Engineer))
+						TF2_SetPlayerClass(client, TFClass_Spy);
+					else
+						TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1, 9)));
+				}
+
+				if (IsPlayerAlive(client))
+				{
+					TF2_RespawnPlayer(client);
+					DeletePathNodes(client);
+				}
+			}
 		}
 		
 		delete m_positions[client];
@@ -735,8 +846,11 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 	int victim = GetClientOfUserId(GetEventInt(event, "userid"));
 	int client = GetClientOfUserId(GetEventInt(event, "attacker"));
 	
-	if (IsValidClient(client) && IsEBot(client))
+	if (IsValidClient(client) && IsEBot(client) && IsValidClient(victim))
 	{
+		if (TF2_GetPlayerClass(client) == TFClass_Spy)
+			TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), TF2_GetPlayerClass(victim), victim);
+		
 		if (GetRandomInt(1, 3) == 1 && !m_lowHealth[client] && !m_hasEntitiesNear[client])
 		{
 			FindFriendsAndEnemiens(client);
@@ -746,7 +860,10 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 	}
 
 	if (IsValidClient(client) && IsEBot(victim))
+	{
+		m_lastKiller[victim] = client;
 		EBotDeathChat(victim);
+	}
 	
 	return Plugin_Handled;
 }
@@ -759,6 +876,8 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 
 	if (!IsValidClient(client))
 		return Plugin_Handled;
+	
+	m_damageTime[client] = GetGameTime();
 	
 	if (!m_hasEntitiesNear[client] && IsValidEntity(target))
 	{
