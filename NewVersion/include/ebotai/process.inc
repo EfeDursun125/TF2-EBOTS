@@ -1,9 +1,13 @@
+int FailedProcess[MAXPLAYERS + 1];
 int RememberedProcess[MAXPLAYERS + 1];
 float CurrentProcessTime[MAXPLAYERS + 1];
 float RememberedProcessTime[MAXPLAYERS + 1];
 
 stock void SetProcess(int client, int process, float time = 9999.0, const char[] debugnote = "clear", bool ignoredebug = false, bool remember = true)
 {
+	if (FailedProcess[client] == process)
+		return;
+	
 	if (IsReadyForTheProcess(client, process) && CurrentProcess[client] != process)
 	{
 		if (!ignoredebug)
@@ -170,6 +174,15 @@ stock void FinishCurrentProcess(int client, bool nodbg = false, const char[] deb
 
 		StartProcess(client, PRO_DEFAULT);
 		CurrentProcess[client] = PRO_DEFAULT;
+	}
+}
+
+stock void SetFailedProcess(int client, bool nodbg = false, const char[] debugnote = "finished by the system")
+{
+	if (CurrentProcess[client] != PRO_DEFAULT)
+	{
+		FailedProcess[client] = CurrentProcess[client];
+		FinishCurrentProcess(client, nodbg, debugnote);
 	}
 }
 

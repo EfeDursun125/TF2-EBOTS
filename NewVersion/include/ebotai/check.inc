@@ -10,6 +10,25 @@ public void CheckSlowThink(int client)
 		m_secondaryID[client] = TF2_GetPlayerWeaponID(client, 1);
 		m_meleeID[client] = TF2_GetPlayerWeaponID(client, 2);
 
+		if (m_meleeID[client] == 656)
+		{
+			if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Taunting))
+				FakeClientCommandThrottled(client, "taunt");
+		}
+
+		if (GameRules_GetProp("m_bPlayingMedieval"))
+		{
+			if (!IsMoving(client))
+			{
+				if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) != TFClass_Sniper)
+					AStarFindPath(-1, FindNearestWaypoint(GetOrigin(m_nearestEnemy[client]), 999999.0, client), client, GetOrigin(m_nearestEnemy[client]));
+				else if (m_goalIndex[client] != -1 && m_paths[m_goalIndex[client]].activeArea != currentActiveArea)
+					SelectObjective(client);
+			}
+			else if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_DemoMan)
+				m_buttons[client] |= IN_ATTACK2;
+		}
+
 		if (!m_hasWaypoints)
 			CheckWalls(client);
 
@@ -174,7 +193,7 @@ public void CheckHideFromDanger(int client)
 	
 	bool musthide = false;
 
-	if (m_enemiesNearCount[client] > m_friendsNearCount[client] + 2)
+	if (!GameRules_GetProp("m_bPlayingMedieval") && m_enemiesNearCount[client] > m_friendsNearCount[client] + 2)
 		musthide = true;
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Spy && m_meleeID[client] == 356)

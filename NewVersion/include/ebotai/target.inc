@@ -32,6 +32,9 @@ public void FindFriendsAndEnemiens(int client)
 		{
 			if (TF2_GetPlayerClass(client) == TFClass_Medic)
 			{
+				if (GameRules_GetProp("m_bPlayingMedieval") && GetClientHealth(i) >= GetMaxHealth(i))
+					continue;
+				
 				if (TF2_IsPlayerInCondition(i, TFCond_Cloaked))
 					continue;
 		
@@ -53,7 +56,22 @@ public void FindFriendsAndEnemiens(int client)
 				m_friendsNearCount[client]++;
 				m_friendDistance[client] = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
 				float realdist = m_friendDistance[client];
-				float edict_distance = realdist * GetClientHealth(i);
+				float pri = 1.0; // lowest = highest priority
+
+				if (TF2_GetPlayerClass(i) == TFClass_Heavy)
+					pri = 0.5;
+				else if (TF2_GetPlayerClass(i) == TFClass_Soldier)
+					pri = 0.6;
+				else if (TF2_GetPlayerClass(i) == TFClass_Pyro)
+					pri = 0.7;
+				else if (TF2_GetPlayerClass(i) == TFClass_DemoMan)
+					pri = 0.8;
+				else if (TF2_GetPlayerClass(i) == TFClass_Scout)
+					pri = 0.9;
+				else if (TF2_GetPlayerClass(i) == TFClass_Medic)
+					pri = 1.1;
+
+				float edict_distance = ((realdist * GetClientHealth(i)) * (TF2_GetNumberOfHealers(i) + 1)) * pri;
 
 				if (edict_distance < medicdist)
 				{
@@ -75,14 +93,23 @@ public void FindFriendsAndEnemiens(int client)
 		}
 		else
 		{
+			// avoid fighting if we active uber
+			if (TF2_GetPlayerClass(client) == TFClass_Medic && TF2_IsPlayerInCondition(client, TFCond_Ubercharged) && IsWeaponSlotActive(client, 1))
+			{
+				m_enemiesNearCount[client] = 0;
+				m_enemyDistance[client] = 0.0;
+				m_nearestEnemy[client] = -1;
+				m_hasEnemiesNear[client] = false;
+				return;
+			}
+
 			float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
 			if (TF2_HasTheFlag(i))
 			{
 				m_enemiesNearCount[client] = 1;
 				m_enemyDistance[client] = edict_distance;
 				m_nearestEnemy[client] = i;
-				m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
-				m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
+				m_hasEnemiesNear[client] = false;
 
 				if (m_hasEnemiesNear[client])
 					m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
@@ -92,7 +119,7 @@ public void FindFriendsAndEnemiens(int client)
 			
 			if (edict_distance > Squared(80))
 			{
-				if (!ClientViews(client, i) && !IsAttacking(i) && !TF2_IsPlayerInCondition(client, TFCond_Disguised))
+				if (!IsAttacking(i) && !TF2_IsPlayerInCondition(client, TFCond_Disguised) && !ClientViews(client, i))
 					continue;
 				
 				if (TF2_GetPlayerClass(i) == TFClass_Spy && !IsRevealedSpyByTarget(i, client))

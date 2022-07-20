@@ -103,6 +103,9 @@ int m_difficulty[MAXPLAYERS + 1];
 int m_redPayload = -1;
 int m_bluPayload = -1;
 
+float m_damageTime[MAXPLAYERS + 1];
+int m_lastKiller[MAXPLAYERS + 1];
+
 Handle EBotDebug;
 Handle EBotFPS;
 Handle EBotMelee;
@@ -119,6 +122,7 @@ Handle EBotDeadChat;
 Handle EBotAutoWaypoint;
 Handle EBotRadius;
 Handle EBotDistance;
+Handle EBotChangeClass;
 
 Handle g_hLookupBone;
 Handle g_hGetBonePosition;
@@ -181,6 +185,11 @@ public void InitGamedata()
 	}
 }
 
+stock bool GotDamageByLast(int client, float value)
+{
+	return m_damageTime[client] > GetGameTime() + value;
+}
+
 stock void FindPayload()
 {
 	int iPayload = -1;
@@ -224,7 +233,7 @@ stock int GetBotCount()
 {
 	int count = 0;
 	for (int i = 1; i <= MaxClients; i++)
-		if (IsValidClient(i) && IsFakeClient(i))
+		if (IsValidClient(i) && IsEBot(i))
 			count++;
 	return count;
 }
@@ -233,7 +242,7 @@ stock int GetPlayersCount()
 {
 	int count = 0;
 	for (int i = 1; i <= MaxClients; i++)
-		if (IsValidClient(i) && !IsFakeClient(i) && GetClientTeam(i) != 1)
+		if (IsValidClient(i) && !IsEBot(i) && GetClientTeam(i) != 1)
 			count++;
 	return count;
 }
@@ -515,8 +524,16 @@ stock float ApproachAngle(float target, float value, float speed)
 	return AngleNormalize(value);
 }
 
-stock void MoveTo(int client, const float flGoal[3], bool checkStuck = true)
+stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
 {
+	// we can only go forward
+	if (TF2_IsPlayerInCondition(client, TFCond_Charging))
+	{
+		m_moveVel[client][0] = 500.0;
+		m_moveVel[client][1] = 0.0;
+		return;
+	}
+
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);
 	
@@ -529,6 +546,14 @@ stock void MoveTo(int client, const float flGoal[3], bool checkStuck = true)
 	float fAng[3];
 	GetClientEyeAngles(client, fAng);
 
+	float vecDir[3];
+	if (AvoidBumpingEnemies(client, vecDir))
+	{
+		flGoal[0] += vecDir[0];
+		flGoal[1] += vecDir[1];
+		flGoal[2] += vecDir[2];
+	}
+	
 	float newmove[3];
 	SubtractVectors(flGoal, flPos, newmove);
 
@@ -815,6 +840,8 @@ stock int TF2_GetPlayerWeaponID(int client, int slot)
 stock int TF2_GetHealingTarget(int client)
 {
 	int index = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	if (!HasEntProp(index, Prop_Send, "m_hHealingTarget"))
+		return -1;
 	return GetEntPropEnt(index, Prop_Send, "m_hHealingTarget");
 }
 
@@ -856,7 +883,7 @@ stock bool IsResupply(int entity, int team)
 
 stock bool IsAttacking(int client)
 {
-	if (GetClientButtons(client) == IN_ATTACK)
+	if (GetClientButtons(client) & (IN_ATTACK | IN_ATTACK2))
 		return true;
 	return false;
 }
@@ -1185,6 +1212,18 @@ stock bool CheckForward(int client)
 	return false;
 }
 
+stock void ClampAngle(float fAngles[3])
+{
+	while(fAngles[0] > 89.0)
+		fAngles[0]-=360.0;
+	while(fAngles[0] < -89.0)
+		fAngles[0]+=360.0;
+	while(fAngles[1] > 180.0)
+		fAngles[1]-=360.0;
+	while(fAngles[1] <-180.0)
+		fAngles[1]+=360.0;
+}
+
 public bool RocketFilter(int entity, int mask)
 {
 	char class[64];
@@ -1311,9 +1350,51 @@ stock void DisguiseAsEnemy(int client)
 	delete class;
 }
 
+stock bool AvoidBumpingEnemies(int client, float out[3])
+{
+	if (TF2_GetPlayerClass(client) != TFClass_Spy)
+		return false;
+	
+	int ClosestPlayer = 0;
+	float flClosestDistance = Squaredf(192.0);
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsValidClient(i))
+			continue;
+		
+		if (!IsPlayerAlive(i))
+			continue;
+		
+		if (GetClientTeam(i) != GetEnemyTeam(i))
+			continue;
+
+		if (TF2_IsPlayerInCondition(i, TFCond_Cloaked))
+			continue;
+		
+		if (TF2_IsPlayerInCondition(i, TFCond_Disguised))
+			continue;
+		
+		float flDistance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
+		if (flClosestDistance > flDistance)
+		{
+			flClosestDistance = flDistance;
+			ClosestPlayer = i;
+		}
+	}
+	
+	if (ClosestPlayer)
+	{
+		SubtractVectors(GetOrigin(client), GetOrigin(ClosestPlayer), out);
+		return true;
+	}
+	
+	return false;
+}
+
 stock bool IsClientAimingToMe(int client, int target)
 {
-	if (ClientViews(target, client, 0.9))
+	if (ClientViews(target, client, 0.96))
 		return true;
 		
 	return false;
@@ -1321,7 +1402,7 @@ stock bool IsClientAimingToMe(int client, int target)
 
 stock bool IsClientVisibleInScreen(int client, int target)
 {
-	if (ClientViews(client, target, 0.6))
+	if (ClientViews(client, target))
 		return true;
 		
 	return false;
@@ -1329,7 +1410,7 @@ stock bool IsClientVisibleInScreen(int client, int target)
 
 stock bool IsClientAimingToPosition(int client, float targetposition[3])
 {
-	if (ClientViewsOrigin(client, targetposition, 0.9))
+	if (ClientViewsOrigin(client, targetposition, 0.96))
 		return true;
 		
 	return false;
@@ -1374,6 +1455,11 @@ stock bool HasSapper(int entity)
 	if (!HasEntProp(entity, Prop_Send, "m_bHasSapper"))
 		return false;
 	return GetEntProp(entity, Prop_Send, "m_bHasSapper") != 0;
+}
+
+stock bool IsSappable(int entity)
+{
+	return HasEntProp(entity, Prop_Send, "m_bHasSapper");
 }
 
 stock bool ClientViews(int Viewer, int Target, float fThreshold = 0.70)

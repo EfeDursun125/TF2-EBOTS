@@ -52,8 +52,6 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 				m_nextStuckCheck[client] = GetGameTime() + 5.0;
 				MoveToWaypoint(client, flGoPos, targetposition);
 			}
-			else if (TF2_GetPlayerClass(client) == TFClass_Medic)
-				MoveTo(client, flGoPos);
 			else
 				MoveTo(client, flGoPos, m_hasWaypoints ? m_hasEntitiesNear[client] : true);
 			
@@ -62,7 +60,8 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 			float speed = GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
 			if (m_hasWaypoints)
 			{
-				float value = 64.0;
+				bool isCharging = false;
+				float value = isCharging ? 192.0 : 64.0;
 				if (m_paths[m_currentIndex[client]].flags == _:WAYPOINT_SNIPER || m_paths[m_currentIndex[client]].flags == _:WAYPOINT_DEFEND || m_paths[m_currentIndex[client]].flags == _:WAYPOINT_SENTRY)
 				{
 					if (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].radius > 0.0)
@@ -78,8 +77,15 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 				}
 
 				float flNodeDist = GetVectorDistance(VectorAsFloat(m_paths[m_currentIndex[client]].origin), flPos, true);
-				if (flNodeDist <= Squaredf(value) || GetVectorDistance(flGoPos, flPos, true) <= Squaredf(54.0))
+				if (flNodeDist <= Squaredf(value) || GetVectorDistance(flGoPos, flPos, true) <= Squaredf(isCharging ? 162.0 : 54.0))
 				{
+					if (m_paths[m_currentIndex[client]].flags == _:WAYPOINT_ROCKETJUMP)
+					{
+						m_pauseTime[client] = GetGameTime() + 1.0;
+						m_buttons[client] |= IN_JUMP;
+						m_lookAt[client] = VectorAsFloat(m_paths[m_currentIndex[client]].origin);
+						m_buttons[client] |= IN_ATTACK;
+					}
 					m_nextStuckCheck[client] = GetGameTime() + 5.0;
 					m_currentWaypointIndex[client]--;
 					m_targetNode[client]--;
@@ -95,13 +101,6 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 						}
 						else
 							DJTime[client] = GetGameTime() + 0.05;
-					}
-					else if (TF2_GetPlayerClass(client) == TFClass_Soldier && m_paths[m_currentIndex[client]].flags == _:WAYPOINT_ROCKETJUMP)
-					{
-						m_pauseTime[client] = GetGameTime() + 1.0;
-						m_buttons[client] |= IN_JUMP;
-						m_lookAt[client] = VectorAsFloat(m_paths[m_currentIndex[client]].origin);
-						m_buttons[client] |= IN_ATTACK;
 					}
 				}
 			}
@@ -146,8 +145,6 @@ stock void FindPath(int client, float targetposition2[3], int entity = -1, int i
 	if (pathdelayer > GetGameTime())
 		return;
 	
-	pathdelayer = GetGameTime() + 0.16;
-
 	DeletePathNodes(client);
 	
 	float flPos[3];
@@ -172,6 +169,7 @@ stock void FindPath(int client, float targetposition2[3], int entity = -1, int i
 	bool bBuiltPath = NavMesh_BuildPath(startArea, goalArea, targetposition2, NavMeshRandomizedPathCost, _, closestArea, flMaxPathLength, flMaxStepSize);
 	if (bBuiltPath)
 	{
+		pathdelayer = GetGameTime() + 0.16;
 		CNavArea tempArea = closestArea;
 		CNavArea parentArea = tempArea.Parent;
 		int iNavDirection;

@@ -42,7 +42,8 @@ enum
     WAYPOINT_TELEPORTEREXIT = 15,
     WAYPOINT_CAPTUREPOINT = 16,
     WAYPOINT_NOSTRAFE = 17,
-    WAYPOINT_NOSPY = 18
+    WAYPOINT_NOSPY = 18,
+    WAYPOINT_DEMOCHARGE = 19
 };
 
 enum AStarState_t {OPEN, CLOSED, NEW};
@@ -270,6 +271,12 @@ stock void DrawWaypoints()
             color[0] = 160;
             color[1] = 124;
             color[2] = 122;
+        }
+        else if (m_paths[i].flags == _:WAYPOINT_DEMOCHARGE)
+        {
+            color[0] = 139;
+            color[1] = 189;
+            color[2] = 204;
         }
         else if (m_paths[i].flags == _:WAYPOINT_ROUTE)
         {
@@ -518,6 +525,8 @@ stock void DrawWaypoints()
             wpflags = "No Strafe (Safe Movement)";
         else if (m_paths[i].flags == _:WAYPOINT_NOSPY)
             wpflags = "No Spy";
+        else if (m_paths[i].flags == _:WAYPOINT_DEMOCHARGE)
+            wpflags = "Demo Charge";
         
         SetHudTextParams(0.0, 0.0, nextDrawTime + 0.02, 255, 255, 255, 255, 2, 1.0, 0.0, 0.0);
         ShowHudText(m_hostEntity, -1, "Nearest Waypoint Data\nIndex: %d (%d/%d)\nTeam: %s\nActive Area: %d\nFlags: %s\nRadius: %d\nOrigin: %d %d %d\nAim Start Origin: %d %d %d\nAim End Origin: %d %d %d", m_paths[i].index, m_waypointNumber, MaxWaypoints, wpteam, m_paths[i].activeArea, wpflags, m_paths[i].radius, m_paths[i].origin[0], m_paths[i].origin[1], m_paths[i].origin[2], m_paths[i].campStart[0], m_paths[i].campStart[1], m_paths[i].campStart[2], m_paths[i].campEnd[0], m_paths[i].campEnd[1], m_paths[i].campEnd[2]);
@@ -736,12 +745,12 @@ stock void WaypointAdd(int origin[3])
     {
         if (m_paths[index].pathIndex[i] != -1)
         {
-            m_paths[index].radius = 0.0f;
+            m_paths[index].radius = 0.0;
             return;
         }
     }
 
-    for (float scanDistance = 16.0f; scanDistance < 144.0f; scanDistance += 16.0f)
+    for (float scanDistance = 16.0; scanDistance < 144.0; scanDistance += 16.0)
     {
         start = VectorAsFloat(m_paths[index].origin);
         MakeVectors(nullvec);
@@ -997,7 +1006,11 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
     if (srcIndex == destIndex)
 		return;
 	
-    m_pathDelay[client] = GetGameTime() + 0.5;
+    if (CurrentProcess[client] == PRO_HEAL)
+        m_pathDelay[client] = GetGameTime() + 0.25;
+    else
+        m_pathDelay[client] = GetGameTime() + 0.5;
+
     DeletePathNodes(client);
 
     for (int i = 0; i < m_waypointNumber; i++)
@@ -1052,20 +1065,29 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
             if (self == -1)
                 continue;
             
-            if (self != destIndex)
-            {
-                // blocked waypoint
-                if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
-                    continue;
+            // blocked waypoint
+            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
+                continue;
             
-                if (m_paths[self].flags == _:WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
-                    continue;
+            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
+                continue;
 
-                if (m_paths[self].flags == _:WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
-                    continue;
+            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
+                continue;
             
-                if (m_paths[self].flags == _:WAYPOINT_NOSPY && TF2_GetPlayerClass(client) == TFClass_Spy)
-                    continue;
+            if (m_paths[self].flags == WAYPOINT_NOSPY && TF2_GetPlayerClass(client) != TFClass_Spy)
+                continue;
+                 
+            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) != TFClass_DemoMan)
+                continue;
+            else
+            {
+                int wearable = MaxClients + 1;
+	            while ((wearable = FindEntityByClassname(wearable, "tf_wearable_demoshield*")) > MaxClients)
+	            {
+    	        	if (GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity") != client)
+                        continue;
+                }
             }
 
             // calculate the F value as F = G + H
