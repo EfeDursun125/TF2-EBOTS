@@ -4,6 +4,9 @@
 #include <tf2>
 #include <tf2_stocks>
 #include <navmesh>
+#include <tf2items>
+
+float autoupdate = 0.0;
 
 float DJTime[MAXPLAYERS + 1];
 float NoDodge[MAXPLAYERS + 1];
@@ -13,7 +16,7 @@ public Plugin myinfo =
 	name = "[TF2] E-BOT",
 	author = "EfeDursun125",
 	description = "",
-	version = "0.03",
+	version = "0.04",
 	url = "https://steamcommunity.com/id/EfeDursun91/"
 }
 
@@ -75,7 +78,7 @@ public void OnPluginStart()
 	HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Post);
 	//HookEvent("teamplay_waiting_ends", PlayAnimation, EventHookMode_Post);
 	EBotDebug = CreateConVar("ebot_debug", "0", "", FCVAR_NONE);
-	EBotFPS = CreateConVar("ebot_run_fps", "0.1", "0.033 = 29 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS", FCVAR_NONE);
+	EBotFPS = CreateConVar("ebot_run_fps", "0.1", "0.0333 = 30 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS | 0.2 = 5 FPS", FCVAR_NONE);
 	EBotMelee = CreateConVar("ebot_melee_range", "128", "", FCVAR_NONE);
 	EBotSenseMin = CreateConVar("ebot_minimum_sense_chance", "10", "Minimum 10", FCVAR_NONE);
 	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Maximum 90", FCVAR_NONE);
@@ -128,6 +131,7 @@ public void OnMapStart()
 	ammopacks = 0;
 	pathdelayer = 0.0;
 	BotCheckTimer = 0.0;
+	autoupdate = 0.0;
 
 	for (int x = 0; x <= GetMaxEntities(); x++)
 	{
@@ -225,7 +229,6 @@ public void OnClientPutInServer(int client)
 	m_exitFail[client] = false;
 	CurrentProcessTime[client] = 0.0;
 	CurrentProcess[client] = PRO_DEFAULT;
-	m_itAimStart[client] = GetGameTime();
 	m_damageTime[client] = 0.0;
 	
 	if (GetConVarInt(EBotDifficulty) < 0 || GetConVarInt(EBotDifficulty) > 4)
@@ -255,7 +258,7 @@ public Action WaypointOff(int client, int args)
 public Action WaypointCreate(int client, int args)
 {
 	if (showWaypoints)
-		WaypointAdd(VectorAsInt(GetOrigin(m_hostEntity)));
+		WaypointAdd(GetOrigin(m_hostEntity));
 	else
 	{
 		showWaypoints = true;
@@ -268,7 +271,7 @@ public Action WaypointDelete(int client, int args)
 {
 	if (showWaypoints)
 	{
-		if (nearestIndex != -1 && GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+		if (nearestIndex != -1 && GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
 			DeleteWaypointIndex(nearestIndex);
 		else
 			PrintHintTextToAll("Move closer to waypoint");
@@ -289,15 +292,17 @@ public Action SaveWaypoint(int client, int args)
 
 public Action AddRadius(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
 	{
 		m_paths[nearestIndex].radius += 16;
 		if (m_paths[nearestIndex].radius > 128)
-			m_paths[nearestIndex].radius = 0;
+			m_paths[nearestIndex].radius = 0.0;
+
 		PrintHintTextToAll("Current radius is %d", m_paths[nearestIndex].radius);
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
+	
 	return Plugin_Handled;
 }
 
@@ -305,16 +310,17 @@ public Action SetFlag(int client, int args)
 {
 	char flag[32];
     GetCmdArgString(flag, sizeof(flag));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
 	{
 		int intflag = StringToInt(flag);
-		if (intflag == _:WAYPOINT_DEFEND || intflag == _:WAYPOINT_SENTRY || intflag == _:WAYPOINT_DEMOMANCAMP || intflag == _:WAYPOINT_SNIPER || intflag == _:WAYPOINT_TELEPORTERENTER || intflag == _:WAYPOINT_TELEPORTEREXIT)
+		if (intflag == WAYPOINT_DEFEND || intflag == WAYPOINT_SENTRY || intflag == WAYPOINT_DEMOMANCAMP || intflag == WAYPOINT_SNIPER || intflag == WAYPOINT_TELEPORTERENTER || intflag == WAYPOINT_TELEPORTEREXIT)
 		{
 			float origin[3];
 			GetAimOrigin(m_hostEntity, origin);
-			m_paths[nearestIndex].campStart = VectorAsInt(origin);
-			m_paths[nearestIndex].campEnd = VectorAsInt(origin);
+			m_paths[nearestIndex].campStart = origin;
+			m_paths[nearestIndex].campEnd = origin;
 		}
+
 		m_paths[nearestIndex].flags = StringToInt(flag);
 		PrintHintTextToAll("Waypoint Flag Added: %d", StringToInt(flag));
 	}
@@ -327,25 +333,27 @@ public Action SetTeam(int client, int args)
 {
 	char team[32];
     GetCmdArgString(team, sizeof(team));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
 	{
 		m_paths[nearestIndex].team = StringToInt(team);
 		PrintHintTextToAll("Waypoint Team Changed: %d", view_as<TFTeam>(StringToInt(team)));
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
+	
 	return Plugin_Handled;
 }
 
 public Action Select(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
 	{
 		savedIndex = nearestIndex;
 		PrintHintTextToAll("Waypoint selected %d", savedIndex);
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
+	
 	return Plugin_Handled;
 }
 
@@ -353,13 +361,14 @@ public Action PathAdd(int client, int args)
 {
 	if (savedIndex == -1)
 		PrintHintTextToAll("Select a waypoint first");
-	else if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	else if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
 	{
-		AddPath(savedIndex, nearestIndex, GetVectorDistance(VectorAsFloat(m_paths[savedIndex].origin), VectorAsFloat(m_paths[nearestIndex].origin)));
+		AddPath(savedIndex, nearestIndex, GetVectorDistance(m_paths[savedIndex].origin, m_paths[nearestIndex].origin));
 		savedIndex = -1;
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
+	
 	return Plugin_Handled;
 }
 
@@ -367,13 +376,14 @@ public Action PathDelete(int client, int args)
 {
 	if (savedIndex == -1)
 		PrintHintTextToAll("Select a waypoint first");
-	else if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	else if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
 	{
 		DeletePath(savedIndex, nearestIndex);
 		savedIndex = -1;
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
+	
 	return Plugin_Handled;
 }
 
@@ -381,41 +391,44 @@ public Action SetArea(int client, int args)
 {
 	char area[32];
     GetCmdArgString(area, sizeof(area));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
 	{
 		m_paths[nearestIndex].activeArea = StringToInt(area);
 		PrintHintTextToAll("Waypoint Area Set: %d", StringToInt(area));
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
+	
 	return Plugin_Handled;
 }
 
 public Action SetAim1(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
 	{
 		float origin[3];
 		GetAimOrigin(m_hostEntity, origin);
-		m_paths[nearestIndex].campStart = VectorAsInt(origin);
+		m_paths[nearestIndex].campStart = origin;
 		PrintHintTextToAll("Waypoint Set Aim Start: %d %d %d", m_paths[nearestIndex].campStart[0], m_paths[nearestIndex].campStart[1], m_paths[nearestIndex].campStart[2]);
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
+	
 	return Plugin_Handled;
 }
 
 public Action SetAim2(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), VectorAsFloat(m_paths[nearestIndex].origin), true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
 	{
 		float origin[3];
 		GetAimOrigin(m_hostEntity, origin);
-		m_paths[nearestIndex].campEnd = VectorAsInt(origin);
+		m_paths[nearestIndex].campEnd = origin;
 		PrintHintTextToAll("Waypoint Set Aim End: %d %d %d", m_paths[nearestIndex].campEnd[0], m_paths[nearestIndex].campEnd[1], m_paths[nearestIndex].campEnd[2]);
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
+	
 	return Plugin_Handled;
 }
 
@@ -522,12 +535,16 @@ public void OnGameFrame()
 		}
 	}
 
-	if (GameRules_GetProp("m_bPlayingMedieval") && BotCheckTimer < GetGameTime())
+	if (autoupdate < GetGameTime())
 	{
 		int newArea = GetBluControlPointCount() + 1;
 		if (newArea != currentActiveArea)
 		{
 			currentActiveArea = newArea;
+
+			if (GetConVarInt(EBotDebug) == 1)
+				PrintHintTextToAll("Active area: %d", currentActiveArea);
+
 			for (int search = 1; search <= MaxClients; search++)
 			{
 				if (!IsValidClient(search))
@@ -538,7 +555,7 @@ public void OnGameFrame()
 			}
 		}
 
-		BotCheckTimer = GetGameTime() + 1.0;
+		autoupdate = GetGameTime() + GetRandomFloat(3.0, 5.0);
 	}
 
 	DrawWaypoints();
@@ -573,11 +590,11 @@ public void OnGameFrame()
 		}
 	}
 
-	if (GetConVarFloat(EBotFPS) > 0.1)
-		SetConVarFloat(EBotFPS, 0.1);
+	if (GetConVarFloat(EBotFPS) > 0.2)
+		SetConVarFloat(EBotFPS, 0.2);
 	
-	if (GetConVarFloat(EBotFPS) < 0.033)
-		SetConVarFloat(EBotFPS, 0.033);
+	if (GetConVarFloat(EBotFPS) < 0.0333)
+		SetConVarFloat(EBotFPS, 0.0333);
 }
 
 // repeat for all clients
@@ -642,10 +659,12 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			
 			CheckSlowThink(client);
 			ThinkAI(client);
-			m_thinkTimer[client] = GetGameTime() + GetConVarFloat(EBotFPS);
+			m_thinkTimer[client] = GetGameTime() + (GetConVarFloat(EBotFPS) + GetRandomFloat(0.001, 0.01));
 		}
 		else
 		{
+			LookAtPosition(client, m_lookAt[client], angles, m_tackEntity[client]);
+
 			int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
 			if (nOldButtons & (IN_JUMP|IN_DUCK))
 				SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
@@ -656,12 +675,8 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 
 		if (TF2_IsPlayerInCondition(client, TFCond_Charging))
 			buttons &= ~IN_ATTACK;
-		
-		// move to position
-		vel = m_moveVel[client];
 
-		// aim to position
-		LookAtPosition(client, m_lookAt[client], angles);
+		vel = m_moveVel[client];
 
 		if (m_paths[m_currentIndex[client]].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) == TFClass_DemoMan)
 		{
@@ -672,7 +687,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			float vec[3];
 			float camangle[3];
 			float wayorigin[3];
-			wayorigin = VectorAsFloat(m_paths[m_currentIndex[client]].origin);
+			wayorigin = m_paths[m_currentIndex[client]].origin;
 			wayorigin[2] += GetHeight(client);
 			MakeVectorFromPoints(wayorigin, GetEyePosition(client), vec);
 			GetVectorAngles(vec, camangle);
@@ -779,7 +794,6 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_goalIndex[client] = -1;
 		m_goalEntity[client] = -1;
 		m_lastFailedWaypoint[client] = -1;
-		m_itAimStart[client] = GetGameTime();
 		m_enterFail[client] = false;
 		m_exitFail[client] = false;
 		m_pathDelay[client] = 0.0;
@@ -829,7 +843,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 
 			if (index != -1)
 			{
-				AStarFindPath(-1, index, client, VectorAsFloat(m_paths[index].origin));
+				AStarFindPath(-1, index, client, m_paths[index].origin);
 				m_nextStuckCheck[client] = GetGameTime() + 20.0;
 			}
 		}
@@ -855,7 +869,7 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 		{
 			FindFriendsAndEnemiens(client);
 			if (!m_hasEnemiesNear[client] && (!m_hasFriendsNear[client] || TF2_GetPlayerClass(client) == TFClass_Sniper))
-				FakeClientCommandThrottled(client, "taunt");
+				PlayTaunt(client, 463);
 		}
 	}
 
@@ -874,13 +888,12 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	int target = GetClientOfUserId(GetEventInt(event, "attacker"));
 
-	if (!IsValidClient(client))
+	if (!IsValidClient(client) || client == target)
 		return Plugin_Handled;
-	
-	m_damageTime[client] = GetGameTime();
 	
 	if (!m_hasEntitiesNear[client] && IsValidEntity(target))
 	{
+		m_damageTime[client] = GetGameTime();
 		m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.5, 5.0);
 		m_lookAt[client] = GetCenter(target);
 		m_nearestEntity[client] = target;
@@ -889,6 +902,7 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 	
 	if (IsEBot(client) && IsValidClient(target))
 	{
+		m_damageTime[client] = GetGameTime();
 		if (!m_hasEnemiesNear[client] || !IsPlayerAlive(m_nearestEnemy[client]))
 		{
 			m_lookAt[client] = GetEyePosition(target);
@@ -998,7 +1012,7 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 
 			if (index != -1)
 			{
-				AStarFindPath(-1, index, client, VectorAsFloat(m_paths[index].origin));
+				AStarFindPath(-1, index, client, m_paths[index].origin);
 				m_nextStuckCheck[client] = GetGameTime() + 20.0;
 			}
 		}
