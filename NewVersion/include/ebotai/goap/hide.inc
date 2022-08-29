@@ -23,7 +23,7 @@ stock bool HideRequirements(int client)
 
 stock void HideStart(int client)
 {
-	m_goalPosition[client] = VectorAsFloat(m_paths[m_coverIndex[client]].origin);
+	m_goalPosition[client] = m_paths[m_coverIndex[client]].origin;
 	DeletePathNodes(client);
 	AStarFindPath(m_currentIndex[client], m_coverIndex[client], client, m_goalPosition[client]);
 }

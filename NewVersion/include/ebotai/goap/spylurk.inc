@@ -17,6 +17,9 @@ public void SpyLurkStart(int client)
 
 public void SpyLurkUpdate(int client)
 {
+	if (TF2_GetPlayerClass(client) != TFClass_Spy && m_hasEnemiesNear[client])
+		AutoAttack(client);
+
 	CurrentProcessTime[client] = GetGameTime() + 9999.0; // no timeout
 
 	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
@@ -35,8 +38,6 @@ public void SpyLurkUpdate(int client)
 		else
 			m_knownSentry[client] = -1;
 	}
-
-	
 
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);

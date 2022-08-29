@@ -39,9 +39,9 @@ public void BuildTeleExitUpdate(int client)
 		if (m_hasWaypoints && index != -1)
 		{
 			if (GetRandomInt(1, 2) == 1)
-				m_lookAt[client] = VectorAsFloat(m_paths[index].campStart);
+				m_lookAt[client] = m_paths[index].campStart;
 			else
-				m_lookAt[client] = VectorAsFloat(m_paths[index].campEnd);
+				m_lookAt[client] = m_paths[index].campEnd;
 		}
 		else
 			m_lookAt[client] = teleexitbuildarea;
@@ -129,12 +129,13 @@ stock void PickTeleExitSpot(int client, float area[3] = NULL_VECTOR)
 			m_goalIndex[client] = index;
 			if (m_paths[index].radius > 0)
 			{
-				area[0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-				area[1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-				area[2] = float(m_paths[index].origin[2]);
+				area[0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				area[1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				area[2] = m_paths[index].origin[2];
 			}
 			else
-				area = VectorAsFloat(m_paths[index].origin);
+				area = m_paths[index].origin;
+			
 			return;
 		}
 	}

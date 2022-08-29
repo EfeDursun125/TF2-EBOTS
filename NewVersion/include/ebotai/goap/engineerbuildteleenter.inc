@@ -4,8 +4,10 @@ public bool BuildTeleEnterRequirements(int client)
 {
 	if (m_teleEnterTriggerBlock[client])
 		return false;
+	
 	if (GetMetal(client) < 50.0)
 		return false;
+	
 	return true;
 }
 
@@ -47,9 +49,9 @@ public void BuildTeleEnterUpdate(int client)
 			if (index != -1)
 			{
 				if (GetRandomInt(1, 2) == 1)
-					position = VectorAsFloat(m_paths[index].campStart);
+					position = m_paths[index].campStart;
 				else
-					position = VectorAsFloat(m_paths[index].campEnd);
+					position = m_paths[index].campEnd;
 			}
 		}
 		else
@@ -139,14 +141,15 @@ stock void PickTeleEnterSpot(int client, float area[3] = NULL_VECTOR)
 		if (index != -1)
 		{
 			m_goalIndex[client] = index;
-			if (m_paths[index].radius > 0)
+			if (m_paths[index].radius > 0.0)
 			{
-				area[0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-				area[1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-				area[2] = float(m_paths[index].origin[2]);
+				area[0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				area[1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				area[2] = m_paths[index].origin[2];
 			}
 			else
-				area = VectorAsFloat(m_paths[index].origin);
+				area = m_paths[index].origin;
+			
 			return;
 		}
 	}

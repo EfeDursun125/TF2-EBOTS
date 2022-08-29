@@ -167,7 +167,7 @@ public void EngineerIdleUpdate(int client)
 		else
 			FollowPath(client, GetOrigin(Dispenser[client]));
 	}
-	else if (IsValidEntity(SentryGun[client]))
+	else if (IsValidEntity(SentryGun[client]) && hasWrench(client))
 	{
 		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
@@ -199,10 +199,9 @@ public void EngineerIdleUpdate(int client)
 			FollowPath(client, GetOrigin(SentryGun[client]));
 	}
 	else if (!IsValidEntity(SentryGun[client]))
-	{
 		SetProcess(client, PRO_BUILDSENTRY, 40.0, "| process started -> trying to build sentry gun");
-		return;
-	}
+	else
+		SetProcess(client, PRO_DEFAULT, 999999.0, "| process started -> default due we don't have wrench");
 }
 
 public void EngineerIdleEnd(int client)
@@ -212,7 +211,7 @@ public void EngineerIdleEnd(int client)
 
 public void CheckEngineerBuildings(int client)
 {
-	if (m_isSlowThink[client])
+	if (!m_isSlowThink[client])
 		return;
 	
 	SentryGun[client] = TF2_GetObject(client, TFObject_Sentry, TFObjectMode_None);
@@ -227,7 +226,7 @@ public void CheckEngineerBuildings(int client)
 		int SentryHealth = GetEntProp(SentryGun[client], Prop_Send, "m_iHealth");
 		int SentryMaxHealth = GetEntProp(SentryGun[client], Prop_Send, "m_iMaxHealth");
 
-		if (TF2_GetPlayerWeaponID(client, 2) == 142)
+		if (TF2_GetPlayerWeaponID(client, 2) == 142 || !hasWrench(client))
 			SentryIsMaxLevel[client] = true;
 		else
 		{
@@ -237,7 +236,7 @@ public void CheckEngineerBuildings(int client)
 				SentryIsMaxLevel[client] = true;
 		}
 				
-		if (SentryHealth < SentryMaxHealth)
+		if (SentryHealth < SentryMaxHealth && hasWrench(client))
 			SentryHealthIsFull[client] = false;
 		else
 			SentryHealthIsFull[client] = true;
@@ -259,12 +258,12 @@ public void CheckEngineerBuildings(int client)
 		int DispenserHealth = GetEntProp(Dispenser[client], Prop_Send, "m_iHealth");
 		int DispenserMaxHealth = GetEntProp(Dispenser[client], Prop_Send, "m_iMaxHealth");
 
-		if (DispenserLevel < 3)
+		if (DispenserLevel < 3 && hasWrench(client))
 			DispenserIsMaxLevel[client] = false;
 		else
 			DispenserIsMaxLevel[client] = true;
 		
-		if (DispenserHealth < DispenserMaxHealth)
+		if (DispenserHealth < DispenserMaxHealth && hasWrench(client))
 			DispenserHealthIsFull[client] = false;
 		else
 			DispenserHealthIsFull[client] = true;
@@ -288,12 +287,12 @@ public void CheckEngineerBuildings(int client)
 		int TeleporterHealth = GetEntProp(TeleporterEnter[client], Prop_Send, "m_iHealth");
 		int TeleporterMaxHealth = GetEntProp(TeleporterEnter[client], Prop_Send, "m_iMaxHealth");
 
-		if (TeleporterLevel < 3)
+		if (TeleporterLevel < 3 && hasWrench(client))
 			TeleporterEnterIsMaxLevel[client] = false;
 		else
 			TeleporterEnterIsMaxLevel[client] = true;
 				
-		if (TeleporterHealth < TeleporterMaxHealth)
+		if (TeleporterHealth < TeleporterMaxHealth && hasWrench(client))
 			TeleporterEnterHealthIsFull[client] = false;
 		else
 			TeleporterEnterHealthIsFull[client] = true;
@@ -310,12 +309,12 @@ public void CheckEngineerBuildings(int client)
 		int TeleporterHealth = GetEntProp(TeleporterExit[client], Prop_Send, "m_iHealth");
 		int TeleporterMaxHealth = GetEntProp(TeleporterExit[client], Prop_Send, "m_iMaxHealth");
 
-		if (TeleporterLevel < 3)
+		if (TeleporterLevel < 3 && hasWrench(client))
 			TeleporterExitIsMaxLevel[client] = false;
 		else
 			TeleporterExitIsMaxLevel[client] = true;
 				
-		if (TeleporterHealth < TeleporterMaxHealth)
+		if (TeleporterHealth < TeleporterMaxHealth && hasWrench(client))
 			TeleporterExitHealthIsFull[client] = false;
 		else
 			TeleporterExitHealthIsFull[client] = true;

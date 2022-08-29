@@ -56,7 +56,7 @@ stock void GetAmmoUpdate(int client)
 		int index = FindAmmoWaypoint(client);
 		if (index != -1)
 		{
-			m_goalPosition[client] = VectorAsFloat(m_paths[index].origin);
+			m_goalPosition[client] = m_paths[index].origin;
 			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squared(48))
 				MoveTo(client, m_goalPosition[client], false);
 			else
@@ -116,17 +116,17 @@ stock int FindAmmoWaypoint(int client)
 		// only get safe ammo packs
 		if (m_hasEnemiesNear[client])
 		{
-			float distance = GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(m_nearestEnemy[client]), true);
+			float distance = GetVectorDistance(m_paths[i].origin, GetOrigin(m_nearestEnemy[client]), true);
 			if (distance <= Squared(768))
 				continue;
 		
-			if (distance <= GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client)))
+			if (distance <= GetVectorDistance(m_paths[i].origin, GetOrigin(client)))
 				continue;
 		}
 		
-		if (GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client), true) <= Squared(1024))
+		if (GetVectorDistance(m_paths[i].origin, GetOrigin(client), true) <= Squared(1024))
 			NearAmmoPacks.Push(i);
-		else if (GetVectorDistance(VectorAsFloat(m_paths[i].origin), GetOrigin(client), true) <= Squared(2048))
+		else if (GetVectorDistance(m_paths[i].origin, GetOrigin(client), true) <= Squared(2048))
 			MedAmmoPacks.Push(i);
 		else
 			AllAmmoPacks.Push(i);

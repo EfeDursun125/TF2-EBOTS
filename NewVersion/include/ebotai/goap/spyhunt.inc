@@ -20,15 +20,22 @@ public void SpyHuntStart(int client)
 
 public void SpyHuntUpdate(int client)
 {
+	if (TF2_GetPlayerClass(client) != TFClass_Spy && m_hasEnemiesNear[client])
+	{
+		LookAtEnemiens(client);
+		SelectBestCombatWeapon(client);
+		AutoAttack(client);
+	}
+	
 	CheckHealth(client);
 	CheckAmmo(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
 
 	int threat = m_goalEntity[client];
-	// opportunistically attack closer threat if they are much closer to us than our existing threat
 	int closestThreat = m_nearestEnemy[client];
 	
+	// opportunistically attack closer threat if they are much closer to us than our existing threat
 	if (!IsValidClient(threat) || !IsPlayerAlive(threat))
 	{
 		threat = closestThreat;
@@ -156,7 +163,7 @@ public void SpyHuntUpdate(int client)
 	{
 		const float circleStrafeRange = 256.0;
 
-		if (threatRange <= Squaredf(circleStrafeRange))
+		if (threatRange <= Squaredf(circleStrafeRange) && IsVisible(GetEyePosition(client), GetEyePosition(playerThreat)))
 		{
 			// we're close - aim our stab attack
 			m_lookAt[client] = GetEyePosition(playerThreat);

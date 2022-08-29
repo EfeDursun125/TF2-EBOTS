@@ -27,6 +27,13 @@ public void SpySapStart(int client)
 
 public void SpySapUpdate(int client)
 {
+	if (TF2_GetPlayerClass(client) != TFClass_Spy && m_hasEnemiesNear[client])
+	{
+		LookAtEnemiens(client);
+		SelectBestCombatWeapon(client);
+		AutoAttack(client);
+	}
+	
 	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 	{
 		SetProcess(client, PRO_HIDE, 60.0, "", true);

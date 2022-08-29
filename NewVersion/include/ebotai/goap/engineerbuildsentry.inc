@@ -27,7 +27,7 @@ public void BuildSentryUpdate(int client)
 
 		int index = m_goalIndex[client];
 		if (m_hasWaypoints && index != -1)
-			m_lookAt[client] = VectorAsFloat(m_paths[index].campStart);
+			m_lookAt[client] = m_paths[index].campStart;
 		else
 			m_lookAt[client] = sentrybuildarea;
 	}
@@ -45,9 +45,9 @@ public void BuildSentryUpdate(int client)
 		{
 			int index = m_goalIndex[client];
 			if (index != -1)
-				SentryAngle = VectorAsFloat(m_paths[index].campStart);
-			//else
-			//	index == m_currentWaypointIndex[client];
+				SentryAngle = m_paths[index].campStart;
+			else
+				index = m_currentWaypointIndex[client];
 
 			if (!IsNullVector(SentryAngle))
 				m_lookAt[client] = SentryAngle;
@@ -137,14 +137,15 @@ public void PickSentrySpot(int client, float area[3])
 		if (index != -1)
 		{
 			m_goalIndex[client] = index;
-			if (m_paths[index].radius > 0)
+			if (m_paths[index].radius > 0.0)
 			{
-				area[0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-				area[1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-				area[2] = float(m_paths[index].origin[2]);
+				area[0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				area[1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				area[2] = m_paths[index].origin[2];
 			}
 			else
-				area = VectorAsFloat(m_paths[index].origin);
+				area = m_paths[index].origin;
+			
 			return;
 		}
 	}

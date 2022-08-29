@@ -29,7 +29,7 @@ public void DefaultUpdate(int client)
 	if (m_hasEnemiesNear[client])
 		SetProcess(client, PRO_ATTACK, 180.0, "", true);
 	
-	if (TF2_GetPlayerClass(client) == TFClass_Medic)
+	if (IsMedic(client) || HasCrossbow(client))
 	{
 		if (m_hasEnemiesNear[client] && m_hasFriendsNear[client] && m_friendDistance[client] <= m_enemyDistance[client])
 			SetProcess(client, PRO_HEAL, (m_difficulty[client] + 8.0), "", true);
@@ -47,25 +47,25 @@ public void DefaultUpdate(int client)
 
 		int index = m_goalIndex[client];
 		int current = m_currentIndex[client];
-		if (index <= 0 || ((m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092) && m_paths[current].flags == _:WAYPOINT_SNIPER) || m_paths[index].flags == _:WAYPOINT_ROUTE || (m_paths[index].activeArea != 0 && m_paths[index].activeArea != currentActiveArea) || (current > 0 && (m_paths[current].flags == _:WAYPOINT_ROUTE || m_paths[current].flags == _:WAYPOINT_RESUPPLY || m_paths[current].flags == _:WAYPOINT_HEALTH || m_paths[current].flags == _:WAYPOINT_AMMO || m_paths[current].flags == _:WAYPOINT_CAPTUREPOINT)))
+		if (index <= 0 || ((m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092) && m_paths[current].flags == WAYPOINT_SNIPER) || m_paths[index].flags == WAYPOINT_ROUTE || (m_paths[index].activeArea != 0 && m_paths[index].activeArea != currentActiveArea) || (current > 0 && (m_paths[current].flags == WAYPOINT_ROUTE || m_paths[current].flags == WAYPOINT_RESUPPLY || m_paths[current].flags == WAYPOINT_HEALTH || m_paths[current].flags == WAYPOINT_AMMO || m_paths[current].flags == WAYPOINT_CAPTUREPOINT)))
 		{
 			SelectObjective(client);
 			FollowPath(client, m_goalPosition[client], -1, index);
 		}
 
-		if (index != -1 && (m_paths[index].flags == _:WAYPOINT_SNIPER || m_paths[index].flags == _:WAYPOINT_DEFEND) && GetVectorDistance(GetOrigin(client), VectorAsFloat(m_paths[index].origin), true) <= Squared(128))
+		if (index != -1 && (m_paths[index].flags == WAYPOINT_SNIPER || m_paths[index].flags == WAYPOINT_DEFEND) && GetVectorDistance(GetOrigin(client), m_paths[index].origin, true) <= Squared(128))
 		{
 			if (m_pauseTime[client] < GetGameTime())
 			{
 				if (GetRandomInt(1, 2) == 1)
-					m_lookAt[client] = VectorAsFloat(m_paths[index].campStart);
+					m_lookAt[client] = m_paths[index].campStart;
 				else
-					m_lookAt[client] = VectorAsFloat(m_paths[index].campEnd);
+					m_lookAt[client] = m_paths[index].campEnd;
 				
 				m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.0, 7.0);
 			}
 
-			if (TF2_GetPlayerClass(client) == TFClass_Sniper && m_primaryID[client] != 56 && m_primaryID[client] != 1005 && m_primaryID[client] != 1092)
+			if (IsSniper(client))
 			{
 				if (m_primaryID[client] != 1098 && !TF2_IsPlayerInCondition(client, TFCond_Zoomed) && !IsMoving(client))
 					m_buttons[client] |= IN_ATTACK2;
@@ -104,7 +104,7 @@ public void DefaultEnd(int client)
 
 public void SelectObjective(int client)
 {
-	if (m_hasWaypoints && TF2_GetPlayerClass(client) == TFClass_Sniper && (GameRules_GetProp("m_bPlayingMedieval") || m_hasSniperWaypoints && m_primaryID[client] != 56 && m_primaryID[client] != 1005 && m_primaryID[client] != 1092))
+	if (m_hasWaypoints && m_hasSniperWaypoints && IsSniper(client))
 	{
 		int myindex = m_goalIndex[client];
 		if (myindex != -1 && m_paths[myindex].flags == WAYPOINT_SNIPER && (m_paths[myindex].activeArea == 0 || m_paths[myindex].activeArea == currentActiveArea))
@@ -130,7 +130,7 @@ public void SelectObjective(int client)
 
 			if (!IsWaypointUsed(i))
 				GoodSniperPoints.Push(i);
-			else if (m_paths[i].radius > 32)
+			else if (m_paths[i].radius > 32.0)
 				GoodSniperPoints.Push(i);
 			else
 				AllSniperPoints.Push(i);
@@ -150,14 +150,14 @@ public void SelectObjective(int client)
 		if (index != -1)
 		{
 			m_goalIndex[client] = index;
-			if (m_paths[index].radius > 0)
+			if (m_paths[index].radius > 0.0)
 			{
-				m_goalPosition[client][0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-				m_goalPosition[client][1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-				m_goalPosition[client][2] = float(m_paths[index].origin[2]);
+				m_goalPosition[client][0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				m_goalPosition[client][1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				m_goalPosition[client][2] = m_paths[index].origin[2];
 			}
 			else
-				m_goalPosition[client] = VectorAsFloat(m_paths[index].origin);
+				m_goalPosition[client] = m_paths[index].origin;
 			
 			return;
 		}
@@ -182,18 +182,18 @@ public void SelectObjective(int client)
             	else if (m_paths[i].team == 3 && GetClientTeam(client) == 2)
                 	continue;
 				
-				if (m_paths[i].flags == _:WAYPOINT_CAPTUREPOINT)
+				if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT)
 				{
 					index = i
 					break;
 				}
 				
-				if (m_paths[i].flags != _:WAYPOINT_DEFEND)
+				if (m_paths[i].flags != WAYPOINT_DEFEND)
 					continue;
 
 				if (!IsWaypointUsed(i))
 					GoodDefendPoints.Push(i);
-				else if (m_paths[i].radius > 32)
+				else if (m_paths[i].radius > 32.0)
 					GoodDefendPoints.Push(i);
 				else
 					AllDefendPoints.Push(i);
@@ -213,14 +213,14 @@ public void SelectObjective(int client)
 			if (index != -1)
 			{
 				m_goalIndex[client] = index;
-				if (m_paths[index].radius > 0)
+				if (m_paths[index].radius > 0.0)
 				{
-					m_goalPosition[client][0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-					m_goalPosition[client][1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-					m_goalPosition[client][2] = float(m_paths[index].origin[2]);
+					m_goalPosition[client][0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+					m_goalPosition[client][1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+					m_goalPosition[client][2] = m_paths[index].origin[2];
 				}
 				else
-					m_goalPosition[client] = VectorAsFloat(m_paths[index].origin);
+					m_goalPosition[client] = m_paths[index].origin;
 			}
 		}
 		else
@@ -265,7 +265,7 @@ public void SelectObjective(int client)
 
 					if (!IsWaypointUsed(i))
 						GoodDefendPoints.Push(i);
-					else if (m_paths[i].radius > 32)
+					else if (m_paths[i].radius > 32.0)
 						GoodDefendPoints.Push(i);
 					else
 						AllDefendPoints.Push(i);
@@ -285,14 +285,14 @@ public void SelectObjective(int client)
 				if (index != -1)
 				{
 					m_goalIndex[client] = index;
-					if (m_paths[index].radius > 0)
+					if (m_paths[index].radius > 0.0)
 					{
-						m_goalPosition[client][0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-						m_goalPosition[client][1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-						m_goalPosition[client][2] = float(m_paths[index].origin[2]);
+						m_goalPosition[client][0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+						m_goalPosition[client][1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+						m_goalPosition[client][2] = m_paths[index].origin[2];
 					}
 					else
-						m_goalPosition[client] = VectorAsFloat(m_paths[index].origin);
+						m_goalPosition[client] = m_paths[index].origin;
 				}
 				else if (IsValidEntity(m_bluPayload))
 				{
@@ -308,6 +308,7 @@ public void SelectObjective(int client)
 				m_goalPosition[client] = GetOrigin(m_bluPayload);
 				m_goalPosition[client][0] += GetRandomFloat(-64.0, 64.0);
 				m_goalPosition[client][1] += GetRandomFloat(-64.0, 64.0);
+				m_goalPosition[client][2] += GetRandomFloat(-64.0, 64.0);
 				SetGoalIndex(client, FindNearestWaypoint(m_goalPosition[client], 999999.0, client));
 			}
 		}
@@ -326,6 +327,7 @@ public void SelectObjective(int client)
 				m_goalPosition[client] = GetOrigin(m_bluPayload);
 				m_goalPosition[client][0] += GetRandomFloat(-64.0, 64.0);
 				m_goalPosition[client][1] += GetRandomFloat(-64.0, 64.0);
+				m_goalPosition[client][2] += GetRandomFloat(-64.0, 64.0);
 			}
 		}
 	}
@@ -339,6 +341,7 @@ public void SelectObjective(int client)
 			m_goalPosition[client] = GetOrigin(m_redPayload);
 			m_goalPosition[client][0] += GetRandomFloat(-64.0, 64.0);
 			m_goalPosition[client][1] += GetRandomFloat(-64.0, 64.0);
+			m_goalPosition[client][2] += GetRandomFloat(-64.0, 64.0);
 			SetGoalIndex(client, FindNearestWaypoint(m_goalPosition[client], 999999.0, client));
 			m_goalEntity[client] = m_redPayload;
 		}
@@ -347,6 +350,7 @@ public void SelectObjective(int client)
 			m_goalPosition[client] = GetOrigin(m_bluPayload);
 			m_goalPosition[client][0] += GetRandomFloat(-64.0, 64.0);
 			m_goalPosition[client][1] += GetRandomFloat(-64.0, 64.0);
+			m_goalPosition[client][2] += GetRandomFloat(-64.0, 64.0);
 			SetGoalIndex(client, FindNearestWaypoint(m_goalPosition[client], 999999.0, client));
 			m_goalEntity[client] = m_bluPayload;
 		}
@@ -393,7 +397,7 @@ public void SelectObjective(int client)
 
 				if (!IsWaypointUsed(i))
 					GoodDefendPoints.Push(i);
-				else if (m_paths[i].radius > 32)
+				else if (m_paths[i].radius > 32.0)
 					GoodDefendPoints.Push(i);
 				else
 					AllDefendPoints.Push(i);
@@ -416,40 +420,40 @@ public void SelectObjective(int client)
 			if (index != -1)
 			{
 				m_goalIndex[client] = index;
-				if (m_paths[index].radius > 0)
+				if (m_paths[index].radius > 0.0)
 				{
-					m_goalPosition[client][0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-					m_goalPosition[client][1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-					m_goalPosition[client][2] = float(m_paths[index].origin[2]);
+					m_goalPosition[client][0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+					m_goalPosition[client][1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+					m_goalPosition[client][2] = m_paths[index].origin[2];
 				}
 				else
-					m_goalPosition[client] = VectorAsFloat(m_paths[index].origin);
+					m_goalPosition[client] = m_paths[index].origin;
 			}
 			else
 			{
 				m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
-				if (m_paths[m_goalIndex[client]].radius > 0)
+				if (m_paths[m_goalIndex[client]].radius > 0.0)
 				{
-					m_goalPosition[client][0] = float(m_paths[m_goalIndex[client]].origin[0] + GetRandomInt(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius));
-					m_goalPosition[client][1] = float(m_paths[m_goalIndex[client]].origin[1] + GetRandomInt(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius));
-					m_goalPosition[client][2] = float(m_paths[m_goalIndex[client]].origin[2]);
+					m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+					m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+					m_goalPosition[client][2] = m_paths[m_goalIndex[client]].origin[2];
 				}
 				else
-					m_goalPosition[client] = VectorAsFloat(m_paths[m_goalIndex[client]].origin);
+					m_goalPosition[client] = m_paths[m_goalIndex[client]].origin;
 			}
 		}
 	}
 	else if (m_hasWaypoints)
 	{
 		m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
-		if (m_paths[m_goalIndex[client]].radius > 0)
+		if (m_paths[m_goalIndex[client]].radius > 0.0)
 		{
-			m_goalPosition[client][0] = float(m_paths[m_goalIndex[client]].origin[0] + GetRandomInt(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius));
-			m_goalPosition[client][1] = float(m_paths[m_goalIndex[client]].origin[1] + GetRandomInt(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius));
-			m_goalPosition[client][2] = float(m_paths[m_goalIndex[client]].origin[2]);
+			m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+			m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+			m_goalPosition[client][2] = m_paths[m_goalIndex[client]].origin[2];
 		}
 		else
-			m_goalPosition[client] = VectorAsFloat(m_paths[m_goalIndex[client]].origin);
+			m_goalPosition[client] = m_paths[m_goalIndex[client]].origin;
 	}
 	else
 		m_goalEntity[client] = FindNearestEnemy(client);
@@ -457,7 +461,7 @@ public void SelectObjective(int client)
 
 stock void ObjectiveMovement(int client)
 {
-	if (m_hasWaypoints && TF2_GetPlayerClass(client) == TFClass_Sniper && m_hasSniperWaypoints && (GameRules_GetProp("m_bPlayingMedieval") || m_primaryID[client] != 56 && m_primaryID[client] != 1005 && m_primaryID[client] != 1092))
+	if (m_hasWaypoints && IsSniper(client) && m_hasSniperWaypoints)
 	{
 		int index = m_goalIndex[client];
 		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea == currentActiveArea))
