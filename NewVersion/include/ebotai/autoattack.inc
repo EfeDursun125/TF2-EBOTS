@@ -26,28 +26,27 @@ stock void AutoAttack(int client)
 	if (IsReloading(client))
 		return;
 	
-	if (TF2_GetPlayerClass(client) == TFClass_Sniper)
+	if (IsSniper(client))
 	{
 		if (IsWeaponSlotActive(client, 0))
 		{
-			if (m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092 || m_primaryID[client] == 1098)
-			{
-				if (m_attackTimer[client] < GetGameTime())
-					m_attackTimer[client] = GetGameTime() + GetRandomFloat(1.25, 2.25);
-			}
-			else
-			{
-				if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && m_isSlowThink[client] && GetRandomInt(-1, m_difficulty[client]) >= 0)
-					m_buttons[client] |= IN_ATTACK;
+			if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && m_isSlowThink[client] && GetRandomInt(-1, m_difficulty[client]) >= 0)
+				m_buttons[client] |= IN_ATTACK;
 
-				if (m_difficulty[client] > 0 && m_lowHealth[client])
-					return;
+			if (m_difficulty[client] > 0 && m_lowHealth[client])
+				return;
 
-				if (!TF2_IsPlayerInCondition(client, TFCond_Zoomed))
-					m_buttons[client] |= IN_ATTACK2;
-			}
+			if (!TF2_IsPlayerInCondition(client, TFCond_Zoomed))
+				m_buttons[client] |= IN_ATTACK2;
+			
 			return;
 		}
+	}
+	else if (m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092 || m_primaryID[client] == 1098)
+	{
+		if (m_attackTimer[client] < GetGameTime())
+			m_attackTimer[client] = GetGameTime() + GetRandomFloat(1.25, 2.25);
+		return;
 	}
 
 	if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Engineer)
@@ -186,35 +185,35 @@ stock void SelectBestCombatWeapon(int client)
 		EquipWeaponSlot(client, 2);
 	else
 	{
-		if (TF2_GetPlayerClass(client) == TFClass_Sniper)
+		if (IsSniper(client))
 		{
-			if (m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092 || m_primaryID[client] == 1098)
-			{
-				if (m_attackTimer[client] < GetGameTime() && distance <= Squared(512))
-					EquipWeaponSlot(client, 1);
-				else
-					EquipWeaponSlot(client, 0);
-			}
-			else if (distance <= Squared(512))
+			if (distance <= Squared(512))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
 		}
-		else if(TF2_GetPlayerClass(client) == TFClass_Heavy)
+		else if (m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092 || m_primaryID[client] == 1098)
+		{
+			if (m_attackTimer[client] < GetGameTime() && distance <= Squared(512))
+				EquipWeaponSlot(client, 1);
+			else
+				EquipWeaponSlot(client, 0);
+		}
+		else if (TF2_GetPlayerClass(client) == TFClass_Heavy)
 		{
 			if (distance <= Squared(256) || (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags == WAYPOINT_JUMP))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
 		}
-		else if(TF2_GetPlayerClass(client) == TFClass_Pyro)
+		else if (TF2_GetPlayerClass(client) == TFClass_Pyro)
 		{
 			if (!(GetEntityFlags(client) & FL_INWATER) && distance <= Squared(350))
 				EquipWeaponSlot(client, 0);
 			else
 				EquipWeaponSlot(client, 1);
 		}
-		else if(TF2_GetPlayerClass(client) == TFClass_Soldier)
+		else if (TF2_GetPlayerClass(client) == TFClass_Soldier)
 		{
 			if (distance <= Squared(256))
 				EquipWeaponSlot(client, 1);
@@ -223,25 +222,25 @@ stock void SelectBestCombatWeapon(int client)
 			else
 				EquipWeaponSlot(client, 0);
 		}
-		else if(TF2_GetPlayerClass(client) == TFClass_Medic)
+		else if (TF2_GetPlayerClass(client) == TFClass_Medic)
 			EquipWeaponSlot(client, 0);
-		else if(TF2_GetPlayerClass(client) == TFClass_DemoMan)
+		else if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
 			EquipWeaponSlot(client, 0);
-		else if(TF2_GetPlayerClass(client) == TFClass_Scout)
+		else if (TF2_GetPlayerClass(client) == TFClass_Scout)
 		{
 			if (distance >= Squared(1024))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
 		}
-		else if(TF2_GetPlayerClass(client) == TFClass_Engineer)
+		else if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 		{
 			if (distance >= Squared(1024))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
 		}
-		else if(TF2_GetPlayerClass(client) == TFClass_Spy)
+		else if (TF2_GetPlayerClass(client) == TFClass_Spy)
 			EquipWeaponSlot(client, 0);
 
 		if (IsWeaponSlotActive(client, 2) && distance > meleerange)

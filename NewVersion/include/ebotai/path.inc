@@ -29,7 +29,7 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 				{
 					float Vector[3];
 					float Vector2[3];
-					Vector = VectorAsFloat(m_paths[m_currentIndex[client]].origin);
+					Vector = m_paths[m_currentIndex[client]].origin;
 					Vector2 = Vector;
 					Vector2[2] += GetHeight(client);
 					TE_SetupBeamPoints(Vector, Vector2, m_laserIndex, m_laserIndex, 0, 30, 0.1, 1.0, 1.0, 5, 0.0, {0, 255, 0, 255}, 30);
@@ -47,7 +47,7 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 					m_nextStuckCheck[client] = GetGameTime() + 5.0;
 				}
 			}
-			else if (m_hasWaypoints && m_currentIndex[client] == m_goalIndex[client] && (m_paths[m_goalIndex[client]].flags == _:WAYPOINT_SNIPER || m_paths[m_goalIndex[client]].flags == _:WAYPOINT_DEFEND))
+			else if (m_hasWaypoints && m_currentIndex[client] == m_goalIndex[client] && (m_paths[m_goalIndex[client]].flags == WAYPOINT_SNIPER || m_paths[m_goalIndex[client]].flags == WAYPOINT_DEFEND))
 			{
 				m_nextStuckCheck[client] = GetGameTime() + 5.0;
 				MoveToWaypoint(client, flGoPos, targetposition);
@@ -60,40 +60,43 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 			float speed = GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
 			if (m_hasWaypoints)
 			{
-				bool isCharging = false;
-				float value = isCharging ? 192.0 : 64.0;
-				if (m_paths[m_currentIndex[client]].flags == _:WAYPOINT_SNIPER || m_paths[m_currentIndex[client]].flags == _:WAYPOINT_DEFEND || m_paths[m_currentIndex[client]].flags == _:WAYPOINT_SENTRY)
+				float flNodeDist = GetVectorDistance(m_paths[m_currentIndex[client]].origin, flPos, true);
+
+				float value = 54.0;
+				if (m_paths[m_currentIndex[client]].flags == WAYPOINT_SNIPER || m_paths[m_currentIndex[client]].flags == WAYPOINT_DEFEND || m_paths[m_currentIndex[client]].flags == WAYPOINT_SENTRY)
 				{
 					if (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].radius > 0.0)
-						value += float(m_paths[m_currentIndex[client]].radius);
+						value += m_paths[m_currentIndex[client]].radius;
 					else
 						value = 48.0;
 				}
 				else
-				{
+				{ 
 					if (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].radius > 0.0)
-						value = float(m_paths[m_currentIndex[client]].radius);
-					value += (GetConVarFloat(EBotFPS) * speed);
+						value = m_paths[m_currentIndex[client]].radius;
+					value += (speed * GetConVarFloat(EBotFPS));
 				}
-
-				float flNodeDist = GetVectorDistance(VectorAsFloat(m_paths[m_currentIndex[client]].origin), flPos, true);
-				if (flNodeDist <= Squaredf(value) || GetVectorDistance(flGoPos, flPos, true) <= Squaredf(isCharging ? 162.0 : 54.0))
+				
+				if (flNodeDist <= Squaredf(value) || GetVectorDistance(flGoPos, flPos, true) <= Squaredf(54.0))
 				{
-					if (m_paths[m_currentIndex[client]].flags == _:WAYPOINT_ROCKETJUMP)
+					if (m_paths[m_currentIndex[client]].flags == WAYPOINT_ROCKETJUMP)
 					{
 						m_pauseTime[client] = GetGameTime() + 1.0;
 						m_buttons[client] |= IN_JUMP;
-						m_lookAt[client] = VectorAsFloat(m_paths[m_currentIndex[client]].origin);
+						m_lookAt[client] = m_paths[m_currentIndex[client]].origin;
 						m_buttons[client] |= IN_ATTACK;
 					}
+
 					m_nextStuckCheck[client] = GetGameTime() + 5.0;
 					m_currentWaypointIndex[client]--;
 					m_targetNode[client]--;
-					if (m_paths[m_currentIndex[client]].flags == _:WAYPOINT_JUMP || m_paths[m_currentIndex[client]].flags == _:WAYPOINT_DOUBLEJUMP)
+
+					if (m_paths[m_currentIndex[client]].flags == WAYPOINT_JUMP || m_paths[m_currentIndex[client]].flags == WAYPOINT_DOUBLEJUMP)
 					{
 						m_positions[client].GetArray(m_targetNode[client], flGoPos);
 						MoveTo(client, flGoPos, !m_hasWaypoints);
 						m_buttons[client] |= IN_JUMP;
+
 						if (TF2_GetPlayerClass(client) == TFClass_Scout)
 						{
 							DJTime[client] = GetGameTime() + 0.5;
@@ -113,11 +116,14 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 					m_nextStuckCheck[client] = GetGameTime() + 5.0;
 					float jumppos[3];
 					CNavArea jump = NavMesh_GetArea(jumppos);
+
 					if (jump != INVALID_NAV_AREA && jump.Attributes & NAV_MESH_JUMP)
 						m_buttons[client] |= IN_JUMP;
+					
 					m_targetNode[client]--;
 				}
 			}
+
 			m_pathAhead[client] = flToPos;
 		}
 		else
@@ -136,16 +142,16 @@ stock void FindPath(int client, float targetposition2[3], int entity = -1, int i
 	{
 		if (StrContains(currentMap, "plr_" , false) != -1 || (StrContains(currentMap, "pl_" , false) != -1 && GetClientTeam(client) == 3))
 			SelectObjective(client);
+
 		if (index == -1)
 			index = FindNearestWaypoint(targetposition2, 999999.0, client);
+
 		AStarFindPath(-1, index, client, targetposition2);
 		return;
 	}
 
 	if (pathdelayer > GetGameTime())
 		return;
-	
-	DeletePathNodes(client);
 	
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);
@@ -169,6 +175,8 @@ stock void FindPath(int client, float targetposition2[3], int entity = -1, int i
 	bool bBuiltPath = NavMesh_BuildPath(startArea, goalArea, targetposition2, NavMeshRandomizedPathCost, _, closestArea, flMaxPathLength, flMaxStepSize);
 	if (bBuiltPath)
 	{
+		DeletePathNodes(client);
+		
 		pathdelayer = GetGameTime() + 0.16;
 		CNavArea tempArea = closestArea;
 		CNavArea parentArea = tempArea.Parent;

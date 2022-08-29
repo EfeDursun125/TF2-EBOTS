@@ -19,6 +19,14 @@ enum
 	PRO_HIDE
 }
 
+bool m_isSniper[MAXPLAYERS + 1];
+bool m_isMedic[MAXPLAYERS + 1];
+
+bool m_hasCrossbow[MAXPLAYERS + 1];
+bool m_hasWrench[MAXPLAYERS + 1];
+
+int m_tackEntity[MAXPLAYERS + 1];
+
 int CurrentProcess[MAXPLAYERS + 1];
 
 char currentMap[PLATFORM_MAX_PATH];
@@ -36,6 +44,10 @@ bool m_hasHostEntity = false;
 int m_primaryID[MAXPLAYERS + 1];
 int m_secondaryID[MAXPLAYERS + 1];
 int m_meleeID[MAXPLAYERS + 1];
+
+char m_primaryClassName[MAXPLAYERS + 1][64];
+char m_secondaryClassName[MAXPLAYERS + 1][64];
+char m_meleeClassName[MAXPLAYERS + 1][64];
 
 float m_redFlagCapPoint[3];
 float m_bluFlagCapPoint[3];
@@ -127,6 +139,7 @@ Handle EBotChangeClass;
 Handle g_hLookupBone;
 Handle g_hGetBonePosition;
 Handle g_hSnapEyeAngles;
+Handle g_hCustomTaunt;
 
 //bool isAFK[MAXPLAYERS + 1];
 
@@ -183,6 +196,42 @@ public void InitGamedata()
 		if ((g_hSnapEyeAngles = EndPrepSDKCall()) == null)
 			g_hSnapEyeAngles = null;
 	}
+
+	StartPrepSDKCall(SDKCall_Player);
+	PrepSDKCall_SetSignature(SDKLibrary_Server, "\x55\x8B\xEC\x81\xEC\x0C\x01\x00\x00\x53\x8B\x5D\x08\x57\x8B", 15);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+	if ((g_hCustomTaunt = EndPrepSDKCall()) == null)
+	{
+		StartPrepSDKCall(SDKCall_Player);
+		PrepSDKCall_SetSignature(SDKLibrary_Server, "@_ZN9CTFPlayer22PlayTauntSceneFromItemEPK13CEconItemView", 1);
+		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+		if ((g_hCustomTaunt = EndPrepSDKCall()) == null)
+			g_hCustomTaunt = null;
+	}
+}
+
+stock bool IsSniper(int client)
+{
+	if (IsEBot(client))
+		return m_isSniper[client];
+	else
+		return TF2_GetPlayerClass(client) == TFClass_Sniper;
+}
+
+stock bool IsMedic(int client)
+{
+	if (IsEBot(client))
+		return m_isMedic[client];
+	else
+		return TF2_GetPlayerClass(client) == TFClass_Medic;
+}
+
+stock bool HasCrossbow(int client)
+{
+	if (IsEBot(client))
+		return m_hasCrossbow[client];
+	else
+		return false;
 }
 
 stock bool GotDamageByLast(int client, float value)
@@ -310,33 +359,6 @@ stock int GetEnemyTeam(int team)
 	return team == 2 ? 3 : 2;
 }
 
-stock int[] VectorAsInt(float origin[3])
-{
-	int vector[3];
-	vector[0] = RoundToFloor(origin[0]);
-	vector[1] = RoundToFloor(origin[1]);
-	vector[2] = RoundToFloor(origin[2]);
-	return vector;
-}
-
-stock float[] VectorAsFloat(int origin[3])
-{
-	float vector[3];
-	vector[0] = float(origin[0]);
-	vector[1] = float(origin[1]);
-	vector[2] = float(origin[2]);
-	return vector;
-}
-
-stock float[] VectorWithRoot(int origin[3], int root1 = 0, int root2 = 0, int root3 = 0)
-{
-	float vector[3];
-	vector[0] = float(origin[0] + root1);
-	vector[1] = float(origin[1] + root2);
-	vector[2] = float(origin[2] + root3);
-	return vector;
-}
-
 stock void EyeVectors(int client, float fw[3] = NULL_VECTOR, float right[3] = NULL_VECTOR, float up[3] = NULL_VECTOR)
 {
 	GetAngleVectors(GetEyeAngles(client), fw, right, up);
@@ -420,6 +442,62 @@ stock void SnapEyeAngles(int client, float viewAngles[3])
 		TeleportEntity(client, NULL_VECTOR, viewAngles, NULL_VECTOR);
 }
 
+stock void PlayTaunt(int client, int tauntid = 463)
+{
+	if (g_hCustomTaunt != null)
+	{
+		int ent = MakeCEIVEnt(client, tauntid);
+		if (!IsValidEntity(ent))
+		{
+			FakeClientCommandThrottled(client, "taunt");
+			return;
+		}
+		
+		int iCEIVOffset = GetEntSendPropOffs(ent, "m_Item", true);
+		if (iCEIVOffset <= 0)
+		{
+			FakeClientCommandThrottled(client, "taunt");
+			return;
+		}
+
+		Address pEconItemView = GetEntityAddress(ent);
+		if (!IsValidAddress(pEconItemView))
+		{
+			FakeClientCommandThrottled(client, "taunt");
+			return;
+		}
+
+		pEconItemView += view_as<Address>(iCEIVOffset);
+
+		SDKCall(g_hCustomTaunt, client, pEconItemView);
+		AcceptEntityInput(ent, "Kill");
+	}
+	else
+		FakeClientCommandThrottled(client, "taunt");
+}
+
+stock int MakeCEIVEnt(int client, int itemdef)
+{
+	static Handle hItem;
+	if (hItem == INVALID_HANDLE)
+	{
+		hItem = TF2Items_CreateItem(OVERRIDE_ALL|PRESERVE_ATTRIBUTES|FORCE_GENERATION);
+		TF2Items_SetClassname(hItem, "tf_wearable_vm");
+		TF2Items_SetQuality(hItem, 6);
+		TF2Items_SetLevel(hItem, 1);
+	}
+
+	TF2Items_SetItemIndex(hItem, itemdef);
+	TF2Items_SetNumAttributes(hItem, 0);
+
+	return TF2Items_GiveNamedItem(client, hItem);
+}
+
+stock bool IsValidAddress(Address pAddress)
+{
+	return pAddress != Address_Null;
+}
+
 stock int FindNearestEnemy(int client, float flMaxDistance = 9999999999.0)
 {
 	float flBestDistance = Squaredf(flMaxDistance);
@@ -451,55 +529,59 @@ stock int FindNearestEnemy(int client, float flMaxDistance = 9999999999.0)
 			iBestTarget = i;
 		}
 	}
+
 	return iBestTarget;
 }
 
-float m_itAimStart[MAXPLAYERS + 1];
-stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3])
+stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3], int trackEntity = -1)
 {
-	float max_angvel = 1024.0;
+	float flAimSpeed = 0.5;
+	flAimSpeed -= GetConVarFloat(EBotFPS);
 
-	if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]))
-		max_angvel += (GetEntPropFloat(m_nearestEnemy[client], Prop_Data, "m_flSpeed"));
-	
-	float eye_to_target[3];
-	SubtractVectors(flGoal, GetEyePosition(client), eye_to_target);
-	
-	NormalizeVector(eye_to_target, eye_to_target);
-	
-	float ang_to_target[3];
-	GetVectorAngles(eye_to_target, ang_to_target);
-	
-	float eye_vec[3];
-	GetAngleVectors(eye_ang, eye_vec, NULL_VECTOR, NULL_VECTOR);
-	
-	float cos_error = GetVectorDotProduct(eye_to_target, eye_vec);
-	if (cos_error > 0.7)
-		max_angvel *= Sine((3.14 / 2.0) * (1.0 + ((-49.0 / 15.0) * (cos_error - 0.7))));
-	
-	if(m_itAimStart[client] != -1 && (GetGameTime() - m_itAimStart[client] < 0.25))
-		max_angvel *= 4.0 * (GetGameTime() - m_itAimStart[client]);
-	
-	if (m_difficulty[client] < 2 && cos_error > 0.98)
-		m_itAimStart[client] = GetGameTime();
-	
-	float new_eye_angle[3];
-	new_eye_angle[0] = ApproachAngle(ang_to_target[0], eye_ang[0], (max_angvel * GetGameFrameTime()) * 0.5);
-	new_eye_angle[1] = ApproachAngle(ang_to_target[1], eye_ang[1], (max_angvel * GetGameFrameTime()));
+	float tempGoal[3];
+	tempGoal = flGoal;
 
-	new_eye_angle[0] = AngleNormalize(new_eye_angle[0]);
-	new_eye_angle[1] = AngleNormalize(new_eye_angle[1]);
-	new_eye_angle[2] = 0.0;
+	if (IsValidEntity(trackEntity))
+	{
+		float flVel[3];
+		GetEntPropVector(trackEntity, Prop_Data, "m_vecAbsVelocity", flVel);
+
+		float time = GetGameTime() - m_thinkTimer[client];
+		tempGoal[0] += flVel[0] * time;
+		tempGoal[1] += flVel[1] * time;
+		trackEntity = -1;
+	}
+
+	float flPos[3];
+	GetClientEyePosition(client, flPos);
 	
-	SnapEyeAngles(client, new_eye_angle);
+	// get normalised direction from target to client
+	float desired_dir[3];
+	MakeVectorFromPoints(flPos, tempGoal, desired_dir);
+	GetVectorAngles(desired_dir, desired_dir);
+	
+	// ease the current direction to the target direction
+	eye_ang[0] += AngleNormalize(desired_dir[0] - eye_ang[0]) * flAimSpeed;
+	eye_ang[1] += AngleNormalize(desired_dir[1] - eye_ang[1]) * flAimSpeed;
+
+	SnapEyeAngles(client, eye_ang);
 }
 
 stock float AngleNormalize(float angle)
 {
-	angle = angle - 360.0 * RoundToFloor(angle / 360.0);
-	while (angle > 180.0) angle -= 360.0;
-	while (angle < -180.0) angle += 360.0;
+	angle = fmodf(angle, 360.0);
+	if (angle > 180) 
+		angle -= 360;
+	
+	if (angle < -180)
+		angle += 360;
+	
 	return angle;
+}
+
+stock float fmodf(float number, float denom)
+{
+	return number - RoundToFloor(number / denom) * denom;
 }
 
 stock float AngleDiff(float destAngle, float srcAngle)
@@ -526,23 +608,16 @@ stock float ApproachAngle(float target, float value, float speed)
 
 stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
 {
-	// we can only go forward
-	if (TF2_IsPlayerInCondition(client, TFCond_Charging))
-	{
-		m_moveVel[client][0] = 500.0;
-		m_moveVel[client][1] = 0.0;
-		return;
-	}
-
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);
-	
+
 	float flVel[3];
 	GetEntPropVector(client, Prop_Data, "m_vecAbsVelocity", flVel);
-	
-	flPos[0] += flVel[0] * (GetConVarFloat(EBotFPS));
-	flPos[1] += flVel[1] * (GetConVarFloat(EBotFPS));
 
+	float time = GetGameTime() - m_thinkTimer[client];
+	flPos[0] += flVel[0] * time;
+	flPos[1] += flVel[1] * time;
+	
 	float fAng[3];
 	GetClientEyeAngles(client, fAng);
 
@@ -707,23 +782,45 @@ stock bool IsVisible(float start[3], float end[3])
 {
 	TR_TraceRayFilter(start, end, MASK_CUSTOM, RayType_EndPoint, TraceEntityFilterStuff);
 	float flFraction = TR_GetFraction();
+
 	if (flFraction >= 1.0) 
 		return !(flFraction == 0.0);
+	
 	return false;
 }
 
-stock bool IsVisibleWaypoint(int start[3], int end[3])
+stock bool IsVisibleWaypoint(float start[3], float end[3])
 {
 	float fstart[3];
 	float fend[3];
-	fstart[0] = float(start[0]);
-	fstart[1] = float(start[1]);
-	fstart[2] = float(start[2] + 18);
-	fend[0] = float(end[0]);
-	fend[1] = float(end[1]);
-	fend[2] = float(end[2] + 18);
+
+	fstart[0] = start[0];
+	fstart[1] = start[1];
+	fstart[2] = start[2] + 18.0;
+	fend[0] = end[0];
+	fend[1] = end[1];
+	fend[2] = end[2] + 18.0;
+
 	TR_TraceRayFilter(fstart, fend, MASK_CUSTOM, RayType_EndPoint, TraceEntityFilterStuff);
 	return TR_GetFraction() >= 0.9;
+}
+
+stock float[] VectorWithRoot(float origin[3], float root1 = 0.0, float root2 = 0.0, float root3 = 0.0)
+{
+	float vector[3];
+	vector[0] = origin[0] + root1;
+	vector[1] = origin[1] + root2;
+	vector[2] = origin[2] + root3;
+	return vector;
+}
+
+stock float[] VectorAsFloat(int origin[3])
+{
+	float vector[3];
+	vector[0] = float(origin[0]);
+	vector[1] = float(origin[1]);
+	vector[2] = float(origin[2]);
+	return vector;
 }
 
 public bool TraceEntityFilterStuff(int entity, int mask)
@@ -835,6 +932,23 @@ stock int TF2_GetPlayerWeaponID(int client, int slot)
 	if (!IsValidEntity(validslot))
 		return -1;
 	return GetEntProp(validslot, Prop_Send, "m_iItemDefinitionIndex");
+}
+
+stock int TF2_GetWeaponID(int weapon)
+{
+	return GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+}
+
+stock char[] TF2_GetWeaponClassName(int weapon)
+{
+	char className[64] = "UNKNOWN";
+	GetEntityClassname(weapon, className, sizeof(className));
+	return className;
+}
+
+stock bool hasWrench(int client)
+{
+	return m_hasWrench[client];
 }
 
 stock int TF2_GetHealingTarget(int client)
@@ -1254,6 +1368,7 @@ stock float GetFastDistance(float vec1[3], float vec[3])
 	float result = (vec1[0] - vec[0]) + (vec1[1] - vec[1]) + (vec1[2] - vec[2]);
 	if (result < 0)
 		result = -result;
+
 	return result;
 }
 
@@ -1262,6 +1377,7 @@ stock int GetFastDistanceInt(int vec1[3], int vec[3])
 	int result = (vec1[0] - vec[0]) + (vec1[1] - vec[1]) + (vec1[2] - vec[2]);
 	if (result < 0)
 		result = -result;
+
 	return result;
 }
 

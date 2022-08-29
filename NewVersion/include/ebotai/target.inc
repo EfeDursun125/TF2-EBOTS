@@ -30,8 +30,12 @@ public void FindFriendsAndEnemiens(int client)
 		
 		if (GetClientTeam(i) == GetClientTeam(client))
 		{
-			if (TF2_GetPlayerClass(client) == TFClass_Medic)
+			if (IsMedic(client) || HasCrossbow(client))
 			{
+				// no medigun no pocket
+				if (HasCrossbow(client) && GetClientHealth(i) >= GetMaxHealth(i))
+					continue;
+
 				if (GameRules_GetProp("m_bPlayingMedieval") && GetClientHealth(i) >= GetMaxHealth(i))
 					continue;
 				
@@ -44,10 +48,10 @@ public void FindFriendsAndEnemiens(int client)
 				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsWeaponSlotActive(i, 2) && GetClientHealth(i) >= GetMaxHealth(i))
 					continue;
 		
-				if (TF2_GetPlayerClass(i) == TFClass_Medic && GetClientHealth(i) >= GetMaxHealth(i))
+				if (IsMedic(i) && GetClientHealth(i) >= GetMaxHealth(i))
 					continue;
 		
-				if (TF2_GetPlayerClass(i) == TFClass_Sniper && GetClientHealth(i) >= GetMaxHealth(i))
+				if (IsSniper(i) && GetClientHealth(i) >= GetMaxHealth(i))
 					continue;
 		
 				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsWeaponSlotActive(i, 5) && GetClientHealth(i) >= GetMaxHealth(i))
@@ -68,7 +72,7 @@ public void FindFriendsAndEnemiens(int client)
 					pri = 0.8;
 				else if (TF2_GetPlayerClass(i) == TFClass_Scout)
 					pri = 0.9;
-				else if (TF2_GetPlayerClass(i) == TFClass_Medic)
+				else if (IsMedic(i))
 					pri = 1.1;
 
 				float edict_distance = ((realdist * GetClientHealth(i)) * (TF2_GetNumberOfHealers(i) + 1)) * pri;
@@ -94,7 +98,7 @@ public void FindFriendsAndEnemiens(int client)
 		else
 		{
 			// avoid fighting if we active uber
-			if (TF2_GetPlayerClass(client) == TFClass_Medic && TF2_IsPlayerInCondition(client, TFCond_Ubercharged) && IsWeaponSlotActive(client, 1))
+			if (IsMedic(client) && TF2_IsPlayerInCondition(client, TFCond_Ubercharged) && IsWeaponSlotActive(client, 1))
 			{
 				m_enemiesNearCount[client] = 0;
 				m_enemyDistance[client] = 0.0;
@@ -128,7 +132,7 @@ public void FindFriendsAndEnemiens(int client)
 
 			if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && edict_distance > Squared(256))
 			{
-				if (m_difficulty[client] >= 1 && TF2_GetPlayerClass(i) == TFClass_Sniper)
+				if (m_difficulty[client] >= 1 && IsSniper(client))
 				{
 					m_enemiesNearCount[client] = 1;
 					m_enemyDistance[client] = edict_distance;

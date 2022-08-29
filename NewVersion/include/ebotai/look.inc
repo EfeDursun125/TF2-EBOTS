@@ -6,19 +6,75 @@ stock void LookAtEnemiens(int client)
 		return;
 	}
 
+	m_tackEntity[client] = m_nearestEnemy[client];
+
+	float distance = GetVectorDistance(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client]), true);
+	if (distance <= Squaredf(128.0))
+	{
+		m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
+		return;
+	}
+
 	float BestAimPosition[3];
-	if (TF2_GetPlayerClass(client) == TFClass_Soldier && IsWeaponSlotActive(client, 0))
+
+	if (IsSniper(client) && IsWeaponSlotActive(client, 0))
+	{
+		int iBone = LookupBone(m_nearestEnemy[client], "bip_head");
+		if (iBone != -1)
+		{
+			float AimPositon[3];
+			float Null[3];
+			GetBonePosition(m_nearestEnemy[client], iBone, AimPositon, Null);
+			AimPositon[2] += 3.0;
+			m_lookAt[client] = AimPositon;
+		}
+		else
+			m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
+	}
+	else if (m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092)
+	{
+		float EntVec[3];
+		GetEntPropVector(m_nearestEnemy[client], Prop_Data, "m_vecVelocity", EntVec);
+		float AimPositon[3];
+		AimPositon = GetEyePosition(m_nearestEnemy[client]);
+		if (GetEntityFlags(m_nearestEnemy[client]) & FL_ONGROUND)
+		{
+			float AimPositon2[3];
+			AimPositon2[2] = AimPositon[2] + (EntVec[2] / 2.5);
+			AimPositon2[1] = AimPositon[1] + (EntVec[1] / 2.5);
+			AimPositon2[0] = AimPositon[0] + (EntVec[0] / 2.5);
+			
+			if (IsVisible(GetEyePosition(client), AimPositon2))
+				m_lookAt[client] = AimPositon2;
+			else
+				m_lookAt[client] = AimPositon;
+		}
+		else
+		{
+			float AimPositon2[3];
+			AimPositon2[2] = AimPositon[2] + (EntVec[2] / 2);
+			AimPositon2[1] = AimPositon[1] + (EntVec[1] / 2);
+			AimPositon2[0] = AimPositon[0] + (EntVec[0] / 2);
+			
+			if (IsVisible(GetEyePosition(client), AimPositon2))
+				m_lookAt[client] = AimPositon2;
+			else
+				m_lookAt[client] = AimPositon;
+		}
+	}
+	else if (TF2_GetPlayerClass(client) == TFClass_Soldier && IsWeaponSlotActive(client, 0))
 	{
 		if (m_difficulty[client] >= 2 && IsVisible(GetEyePosition(client), GetOrigin(m_nearestEnemy[client])))
 		{
-			float distance = GetVectorDistance(GetEyePosition(client), GetOrigin(m_nearestEnemy[client]));
 			float EntVec[3];
 			GetEntPropVector(m_nearestEnemy[client], Prop_Data, "m_vecVelocity", EntVec);	
 
+			float dist = SquareRoot(distance);
+
 			m_lookAt[client] = GetOrigin(m_nearestEnemy[client]);
-			m_lookAt[client][0] += (EntVec[0] * (distance / 1100));
-			m_lookAt[client][1] += (EntVec[1] * (distance / 1100));
-			m_lookAt[client][2] += (EntVec[2] * (distance / 1100));
+			m_lookAt[client][0] += (EntVec[0] * (dist / 1100));
+			m_lookAt[client][1] += (EntVec[1] * (dist / 1100));
+			m_lookAt[client][2] += (EntVec[2] * (dist / 1100));
 		}
 		else
 			m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
@@ -28,8 +84,7 @@ stock void LookAtEnemiens(int client)
 		GetClientEyePosition(m_nearestEnemy[client], BestAimPosition);
 		if (TF2_GetPlayerWeaponID(client, 0) == 996)
 		{
-			float distance = GetVectorDistance(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client]));
-			BestAimPosition[2] += (distance / 7) - 5;
+			BestAimPosition[2] += (SquareRoot(distance) / 7) - 5;
 			if (IsVisible(GetEyePosition(client), BestAimPosition))
 				m_lookAt[client] = BestAimPosition;
 			else
@@ -56,10 +111,9 @@ stock void LookAtEnemiens(int client)
 				m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
 		}
 	}
-	else if (TF2_GetPlayerClass(client) == TFClass_Medic && IsWeaponSlotActive(client, 0))
+	else if ((IsMedic(client) || HasCrossbow(client)) && IsWeaponSlotActive(client, 0))
 	{
-		int primaryid = TF2_GetPlayerWeaponID(client, 0);
-		if (primaryid == 305 || primaryid == 1079)
+		if (m_primaryID[client] == 305 || m_primaryID[client] == 1079)
 		{
 			if (IsVisible(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client])))
 				m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
@@ -69,66 +123,18 @@ stock void LookAtEnemiens(int client)
 		else
 		{
 			GetClientEyePosition(m_nearestEnemy[client], BestAimPosition);
-			float distance = GetVectorDistance(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client]));
 			float EntVec[3];
 			GetEntPropVector(m_nearestEnemy[client], Prop_Data, "m_vecVelocity", EntVec);	
 
-			BestAimPosition[0] += (EntVec[0] * (distance / 990));
-			BestAimPosition[1] += (EntVec[1] * (distance / 990));
-			BestAimPosition[2] += (distance / 13.784048752090222);
+			float dist = SquareRoot(distance);
+
+			BestAimPosition[0] += (EntVec[0] * (dist / 990));
+			BestAimPosition[1] += (EntVec[1] * (dist / 990));
+			BestAimPosition[2] += (dist / 13.784048752090222);
 			//BestAimPosition[2] += (distance / 990 + 800);
 
 			if (IsVisible(GetEyePosition(client), BestAimPosition))
 				m_lookAt[client] = BestAimPosition;
-			else
-				m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
-		}
-	}
-	else if (TF2_GetPlayerClass(client) == TFClass_Sniper && IsWeaponSlotActive(client, 0))
-	{
-		int primaryid = TF2_GetPlayerWeaponID(client, 0);
-		if (primaryid == 56 || primaryid == 1005 || primaryid == 1092)
-		{
-			float EntVec[3];
-			GetEntPropVector(m_nearestEnemy[client], Prop_Data, "m_vecVelocity", EntVec);
-			float AimPositon[3];
-			AimPositon = GetEyePosition(m_nearestEnemy[client]);
-			if (GetEntityFlags(m_nearestEnemy[client]) & FL_ONGROUND)
-			{
-				float AimPositon2[3];
-				AimPositon2[2] = AimPositon[2] + (EntVec[2] / 2.5);
-				AimPositon2[1] = AimPositon[1] + (EntVec[1] / 2.5);
-				AimPositon2[0] = AimPositon[0] + (EntVec[0] / 2.5);
-				
-				if (IsVisible(GetEyePosition(client), AimPositon2))
-					m_lookAt[client] = AimPositon2;
-				else
-					m_lookAt[client] = AimPositon;
-			}
-			else
-			{
-				float AimPositon2[3];
-				AimPositon2[2] = AimPositon[2] + (EntVec[2] / 2);
-				AimPositon2[1] = AimPositon[1] + (EntVec[1] / 2);
-				AimPositon2[0] = AimPositon[0] + (EntVec[0] / 2);
-				
-				if (IsVisible(GetEyePosition(client), AimPositon2))
-					m_lookAt[client] = AimPositon2;
-				else
-					m_lookAt[client] = AimPositon;
-			}
-		}
-		else
-		{
-			int iBone = LookupBone(m_nearestEnemy[client], "bip_head");
-			if (iBone != -1)
-			{
-				float AimPositon[3];
-				float Null[3];
-				GetBonePosition(m_nearestEnemy[client], iBone, AimPositon, Null);
-				AimPositon[2] += 3.0;
-				m_lookAt[client] = AimPositon;
-			}
 			else
 				m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
 		}
@@ -210,9 +216,9 @@ stock void LookAround(int client)
 				int index = FindNearestWaypoint(GetEyePosition(search), 999999.0, client);
 				if (index != -1)
 				{
-					PlayerArea[0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius)) + ((PlayerArea[0] - ClientEye[0]) * 1024.0);
-					PlayerArea[1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius)) + ((PlayerArea[1] - ClientEye[1]) * 1024.0);
-					PlayerArea[2] = float(m_paths[index].origin[2]);
+					PlayerArea[0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius) + ((PlayerArea[0] - ClientEye[0]) * 1024.0);
+					PlayerArea[1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius) + ((PlayerArea[1] - ClientEye[1]) * 1024.0);
+					PlayerArea[2] = m_paths[index].origin[2];
 				}
 			}
 			else
@@ -223,8 +229,8 @@ stock void LookAround(int client)
 					area.GetRandomPoint(PlayerArea);
 					float fw[3];
 					EyeVectors(client, fw);
-					PlayerArea[0] += (fw[0] * 1024.0);
-					PlayerArea[1] += (fw[0] * 1024.0);
+					PlayerArea[0] += (fw[0] * 256.0);
+					PlayerArea[1] += (fw[0] * 256.0);
 				}
 			}
 
@@ -268,9 +274,9 @@ stock void LookAround(int client)
 			int index = FindNearestWaypoint(BestLookPos, 999999.0, client);
 			if (index != -1)
 			{
-				SelectRandom[0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-				SelectRandom[1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius));
-				SelectRandom[2] = float(m_paths[index].origin[2]);
+				SelectRandom[0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				SelectRandom[1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				SelectRandom[2] = m_paths[index].origin[2];
 			}
 		}
 		else
@@ -287,8 +293,8 @@ stock void LookAround(int client)
 	{
 		if (m_pauseTime[client] < GetGameTime())
 		{
-			m_lookAt[client][0] = SelectRandom[0] + ((SelectRandom[0] - ClientEye[0]) * 1024.0);
-			m_lookAt[client][1] = SelectRandom[1] + ((SelectRandom[1] - ClientEye[1]) * 1024.0);
+			m_lookAt[client][0] = SelectRandom[0] + ((SelectRandom[0] - ClientEye[0]) * 256.0);
+			m_lookAt[client][1] = SelectRandom[1] + ((SelectRandom[1] - ClientEye[1]) * 256.0);
 			m_lookAt[client][2] = SelectRandom[2] + GetHeight(client);
 			m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.25);
 		}
@@ -300,9 +306,9 @@ stock void LookAround(int client)
 			int index = FindNearestWaypoint(m_pathAhead[client], 999999.0, client);
 			if (index != -1)
 			{
-				m_lookAt[client][0] = float(m_paths[index].origin[0] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius)) + ((m_pathAhead[client][0] - ClientEye[0]) * 1024.0);
-				m_lookAt[client][1] = float(m_paths[index].origin[1] + GetRandomInt(-m_paths[index].radius, m_paths[index].radius)) + ((m_pathAhead[client][1] - ClientEye[1]) * 1024.0);
-				m_lookAt[client][2] = float(m_paths[index].origin[2]) + GetHeight(client);
+				m_lookAt[client][0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius) + ((m_pathAhead[client][0] - ClientEye[0]) * 1024.0);
+				m_lookAt[client][1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius) + ((m_pathAhead[client][1] - ClientEye[1]) * 1024.0);
+				m_lookAt[client][2] = m_paths[index].origin[2] + GetHeight(client);
 			}
 		}
 		else
@@ -313,17 +319,10 @@ stock void LookAround(int client)
 				float fw[3];
 				EyeVectors(client, fw);
 				area.GetRandomPoint(m_lookAt[client]);
-				m_lookAt[client][0] += fw[0] * 1024.0;
-				m_lookAt[client][1] += fw[0] * 1024.0;
+				m_lookAt[client][0] += fw[0] * 256.0;
+				m_lookAt[client][1] += fw[0] * 256.0;
 				m_lookAt[client][2] += GetHeight(client);
 			}
 		}
 	}
-}
-
-stock float sqrt(float value)
-{
-	if (value < 0)
-		value = -value;
-	return SquareRoot(value);
 }

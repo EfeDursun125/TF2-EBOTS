@@ -6,9 +6,42 @@ public void CheckSlowThink(int client)
 	{
 		m_isSlowThink[client] = true;
 
-		m_primaryID[client] = TF2_GetPlayerWeaponID(client, 0);
-		m_secondaryID[client] = TF2_GetPlayerWeaponID(client, 1);
-		m_meleeID[client] = TF2_GetPlayerWeaponID(client, 2);
+		m_isSniper[client] = false;
+		m_isMedic[client] = false;
+		m_hasCrossbow[client] = false;
+		m_hasWrench[client] = false;
+
+		int primaryWeapon = GetPlayerWeaponSlot(client, 0);
+		if (IsValidEntity(primaryWeapon))
+		{
+			m_primaryID[client] = TF2_GetWeaponID(primaryWeapon);
+			m_primaryClassName[client] = TF2_GetWeaponClassName(primaryWeapon);
+			
+			if (StrEqual(m_secondaryClassName[client], "tf_weapon_sniperrifle*"))
+				m_isSniper[client] = true;
+			else if (StrEqual(m_primaryClassName[client], "tf_weapon_crossbow"))
+				m_hasCrossbow[client] = true;
+		}
+
+		int secondaryWeapon = GetPlayerWeaponSlot(client, 1);
+		if (IsValidEntity(secondaryWeapon))
+		{
+			m_secondaryID[client] = TF2_GetWeaponID(secondaryWeapon);
+			m_secondaryClassName[client] = TF2_GetWeaponClassName(secondaryWeapon);
+			
+			if (StrEqual(m_secondaryClassName[client], "tf_weapon_medigun"))
+				m_isMedic[client] = true;
+		}
+
+		int meleeWeapon = GetPlayerWeaponSlot(client, 2);
+		if (IsValidEntity(meleeWeapon))
+		{
+			m_meleeID[client] = TF2_GetWeaponID(meleeWeapon);
+			m_meleeClassName[client] = TF2_GetWeaponClassName(meleeWeapon);
+
+			if (StrEqual(m_meleeClassName[client], "tf_weapon_wrench"))
+				m_hasWrench[client] = true;
+		}
 
 		if (m_meleeID[client] == 656)
 		{
@@ -61,7 +94,7 @@ public void CheckSlowThink(int client)
 			m_eBotDodgeRange[client] = GetRandomInt(GetConVarInt(m_eBotDodgeRangeMin), GetConVarInt(m_eBotDodgeRangeMax));
 		}
 
-		if (TF2_GetPlayerClass(client) == TFClass_Sniper && !m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])
+		if (IsSniper(client) && !m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])
 		{
 			if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && IsMoving(client))
 				m_buttons[client] |= IN_ATTACK2;
