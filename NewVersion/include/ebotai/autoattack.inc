@@ -187,7 +187,9 @@ stock void SelectBestCombatWeapon(int client)
 	{
 		if (IsSniper(client))
 		{
-			if (distance <= Squared(512))
+			if (m_secondaryID[client] == 57 || m_secondaryID[client] == 231 || m_secondaryID[client] == 642)
+				EquipWeaponSlot(client, 0);
+			else if (distance <= Squared(512))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
@@ -201,7 +203,9 @@ stock void SelectBestCombatWeapon(int client)
 		}
 		else if (TF2_GetPlayerClass(client) == TFClass_Heavy)
 		{
-			if (distance <= Squared(256) || (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags == WAYPOINT_JUMP))
+			if (m_secondaryID[client] == 311 || m_secondaryID[client] == 42 || m_secondaryID[client] == 863 || m_secondaryID[client] == 1002 || m_secondaryID[client] == 159 || m_secondaryID[client] == 433 || m_secondaryID[client] == 1190)
+				EquipWeaponSlot(client, 0);				   
+			else if (distance <= Squared(256) || (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags == WAYPOINT_JUMP))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
@@ -215,7 +219,9 @@ stock void SelectBestCombatWeapon(int client)
 		}
 		else if (TF2_GetPlayerClass(client) == TFClass_Soldier)
 		{
-			if (distance <= Squared(256))
+			if (m_secondaryID[client] == 129 || m_secondaryID[client] == 1001 || m_secondaryID[client] == 226 || m_secondaryID[client] == 354 || m_secondaryID[client] == 444)
+				EquipWeaponSlot(client, 0);				   
+			else if (distance <= Squared(256))
 				EquipWeaponSlot(client, 1);
 			else if (IsValidClient(m_nearestEnemy[client]) && TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Pyro && distance <= Squared(512))
 				EquipWeaponSlot(client, 1);
@@ -228,7 +234,12 @@ stock void SelectBestCombatWeapon(int client)
 			EquipWeaponSlot(client, 0);
 		else if (TF2_GetPlayerClass(client) == TFClass_Scout)
 		{
-			if (distance >= Squared(1024))
+			if (m_meleeID[client] == 44 || m_meleeID[client] == 648)
+				if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flChargeMeter"))
+					EquipWeaponSlot(client, 2);
+			else if (m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
+				EquipWeaponSlot(client, 0);	   
+			else if (distance >= Squared(1024))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
