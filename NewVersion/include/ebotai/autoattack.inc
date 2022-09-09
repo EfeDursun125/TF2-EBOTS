@@ -180,7 +180,10 @@ stock void SelectBestCombatWeapon(int client)
 
 	if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		meleerange = 300.0;
-
+		
+	if (m_meleeID[client] == 44 || m_meleeID[client] == 648)
+		meleerange = 1000.0;
+		
 	if (distance <= meleerange)
 		EquipWeaponSlot(client, 2);
 	else
@@ -234,11 +237,8 @@ stock void SelectBestCombatWeapon(int client)
 			EquipWeaponSlot(client, 0);
 		else if (TF2_GetPlayerClass(client) == TFClass_Scout)
 		{
-			if (m_meleeID[client] == 44 || m_meleeID[client] == 648)
-				if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flChargeMeter"))
-					EquipWeaponSlot(client, 2);
-			else if (m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
-				EquipWeaponSlot(client, 0);	   
+			if (m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
+				EquipWeaponSlot(client, 0);
 			else if (distance >= Squared(1024))
 				EquipWeaponSlot(client, 1);
 			else
@@ -246,7 +246,9 @@ stock void SelectBestCombatWeapon(int client)
 		}
 		else if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 		{
-			if (distance >= Squared(1024))
+			if (m_secondaryID[client] == 528)
+				EquipWeaponSlot(client, 0);
+			else if (distance >= Squared(1024))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
