@@ -17,7 +17,11 @@ public void CheckSlowThink(int client)
 			m_primaryID[client] = TF2_GetWeaponID(primaryWeapon);
 			m_primaryClassName[client] = TF2_GetWeaponClassName(primaryWeapon);
 			
-			if (StrEqual(m_secondaryClassName[client], "tf_weapon_sniperrifle*"))
+			if (StrEqual(m_primaryClassName[client], "tf_weapon_sniperrifle"))
+				m_isSniper[client] = true;
+			else if (StrEqual(m_primaryClassName[client], "tf_weapon_sniperrifle_decap"))
+				m_isSniper[client] = true;
+			else if (StrEqual(m_primaryClassName[client], "tf_weapon_sniperrifle_classic"))
 				m_isSniper[client] = true;
 			else if (StrEqual(m_primaryClassName[client], "tf_weapon_crossbow"))
 				m_hasCrossbow[client] = true;
@@ -40,6 +44,8 @@ public void CheckSlowThink(int client)
 			m_meleeClassName[client] = TF2_GetWeaponClassName(meleeWeapon);
 
 			if (StrEqual(m_meleeClassName[client], "tf_weapon_wrench"))
+				m_hasWrench[client] = true;
+			else if (StrEqual(m_meleeClassName[client], "tf_weapon_robot_arm"))
 				m_hasWrench[client] = true;
 		}
 
@@ -129,7 +135,7 @@ public void CheckSlowThink(int client)
 				m_buttons[client] |= IN_ATTACK2;
 		}
 		
-		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
+		if (TF2_GetPlayerClass(client) == TFClass_Scout && m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
 		{
 			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flChargeMeter"))
 				EquipWeaponSlot(client, 1);
