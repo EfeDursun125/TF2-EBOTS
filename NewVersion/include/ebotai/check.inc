@@ -46,8 +46,6 @@ public void CheckSlowThink(int client)
 
 			if (StrEqual(m_meleeClassName[client], "tf_weapon_wrench"))
 				m_hasWrench[client] = true;
-			else if (StrEqual(m_meleeClassName[client], "tf_weapon_robot_arm"))
-				m_hasWrench[client] = true;
 		}
 
 		if (m_meleeID[client] == 656)
@@ -141,14 +139,14 @@ public void CheckSlowThink(int client)
 			m_buttons[client] |= IN_ATTACK2;
 		}
 		
-		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
+		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
 		{
 			EquipWeaponSlot(client, 1);
 			if (IsWeaponSlotActive(client, 1))
 				m_buttons[client] |= IN_ATTACK;
 		}
 		
-		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Soldier && m_secondaryID[client] == 129 || m_secondaryID[client] == 1001 || m_secondaryID[client] == 226 || m_secondaryID[client] == 354)
+		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Soldier && m_secondaryID[client] == 129 || m_secondaryID[client] == 1001 || m_secondaryID[client] == 226 || m_secondaryID[client] == 354)
 		{
 			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flRageMeter"))
 				EquipWeaponSlot(client, 1);
