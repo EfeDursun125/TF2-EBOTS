@@ -234,6 +234,14 @@ stock bool HasCrossbow(int client)
 		return false;
 }
 
+stock bool HasSandwich(int client)
+{
+	if (IsEBot(client))
+		return m_hasSandwich[client];
+	else
+		return false;
+}
+
 stock bool GotDamageByLast(int client, float value)
 {
 	return m_damageTime[client] > GetGameTime() + value;
