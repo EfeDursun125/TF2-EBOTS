@@ -135,7 +135,7 @@ public void CheckSlowThink(int client)
 				m_buttons[client] |= IN_ATTACK2;
 		}
 		
-		if (TF2_GetPlayerClass(client) == TFClass_Scout && m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
+		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
 		{
 			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flChargeMeter"))
 				EquipWeaponSlot(client, 1);
