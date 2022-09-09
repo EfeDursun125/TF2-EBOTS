@@ -144,7 +144,7 @@ public void CheckSlowThink(int client)
 			
 		}
 		
-		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Heavy && m_secondaryID[client] == 311)
+		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Heavy && m_secondaryID[client] == 311 || m_secondaryID[client] == 159 || m_secondaryID[client] == 433)
 		{
 			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flChargeMeter"))
 				EquipWeaponSlot(client, 1);
@@ -152,7 +152,7 @@ public void CheckSlowThink(int client)
 					m_buttons[client] |= IN_ATTACK;
 		}
 		
-		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Soldier && m_secondaryID[client] == 129 || m_secondaryID[client] == 1001 || m_secondaryID[client] == 226 || m_secondaryID[client] == 354)
+		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Soldier && m_secondaryID[client] == 129 || m_secondaryID[client] == 1001 || m_secondaryID[client] == 226 || m_secondaryID[client] == 354)
 		{
 			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flRageMeter"))
 				EquipWeaponSlot(client, 1);
@@ -160,7 +160,7 @@ public void CheckSlowThink(int client)
 					m_buttons[client] |= IN_ATTACK;
 		}
 		
-		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Heavy && m_secondaryID[client] == 42 || m_secondaryID[client] == 863 || m_secondaryID[client] == 1002 || m_secondaryID[client] == 159 || m_secondaryID[client] == 433 || m_secondaryID[client] == 1190)
+		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Heavy && m_secondaryID[client] == 42 || m_secondaryID[client] == 863 || m_secondaryID[client] == 1002 || m_secondaryID[client] == 1190)
 		{
 			if (GetClientHealth(client) <= 150.0 && 100.0 == GetEntPropFloat(client, Prop_Send, "m_flChargeMeter"))
 				EquipWeaponSlot(client, 1);
@@ -196,9 +196,11 @@ public void CheckSlowThink(int client)
 					if (GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client), true) <= Squared(256))
 					{
 						EquipWeaponSlot(client, 1);
-						m_buttons[client] |= IN_ATTACK2;
 						m_lookAt[client] = GetOrigin(iProjectile);
-						m_pauseTime[client] = GetGameTime() + 2.0;
+						if (GetMetal(client) > 65.0)
+							m_buttons[client] |= IN_ATTACK2;
+						else
+							m_buttons[client] |= IN_ATTACK;
 					}
 				}
 			}
