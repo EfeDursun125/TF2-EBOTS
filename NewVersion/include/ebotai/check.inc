@@ -10,6 +10,7 @@ public void CheckSlowThink(int client)
 		m_isMedic[client] = false;
 		m_hasCrossbow[client] = false;
 		m_hasWrench[client] = false;
+		m_hasSandwich[client] = false;
 
 		int primaryWeapon = GetPlayerWeaponSlot(client, 0);
 		if (IsValidEntity(primaryWeapon))
@@ -20,8 +21,6 @@ public void CheckSlowThink(int client)
 			if (StrEqual(m_primaryClassName[client], "tf_weapon_sniperrifle"))
 				m_isSniper[client] = true;
 			else if (StrEqual(m_primaryClassName[client], "tf_weapon_sniperrifle_decap"))
-				m_isSniper[client] = true;
-			else if (StrEqual(m_primaryClassName[client], "tf_weapon_sniperrifle_classic"))
 				m_isSniper[client] = true;
 			else if (StrEqual(m_primaryClassName[client], "tf_weapon_crossbow"))
 				m_hasCrossbow[client] = true;
@@ -35,6 +34,8 @@ public void CheckSlowThink(int client)
 			
 			if (StrEqual(m_secondaryClassName[client], "tf_weapon_medigun"))
 				m_isMedic[client] = true;
+			else if (StrEqual(m_secondaryClassName[client], "tf_weapon_lunchbox"))
+				m_hasSandwich[client] = true;
 		}
 
 		int meleeWeapon = GetPlayerWeaponSlot(client, 2);
@@ -106,50 +107,45 @@ public void CheckSlowThink(int client)
 				m_buttons[client] |= IN_ATTACK2;
 		}
 		
-		if (TF2_GetPlayerClass(client) == TFClass_Sniper && (IsWeaponSlotActive(client, 1) && m_secondaryID[client] == 751))
-		{
-			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flRageMeter"))
-				m_buttons[client] |= IN_ATTACK2;
-		}
-		
-		if (TF2_GetPlayerClass(client) == TFClass_Sniper && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 752))
-		{
-			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flRageMeter"))
-				m_buttons[client] |= IN_RELOAD;
-		}
-		
-		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Soldier && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 441))
+		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Sniper && (IsWeaponSlotActive(client, 1) && m_secondaryID[client] == 751))
 		{
 			m_buttons[client] |= IN_ATTACK2;
 		}
 		
+		if (TF2_GetPlayerClass(client) == TFClass_Sniper && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 752))
+		{
+			m_buttons[client] |= IN_RELOAD;
+		}
+		
+		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Soldier && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 441))
+		{
+			int Cow = GetPlayerWeaponSlot(client, 0);
+			int clipsize = -1;
+			int AmmoTable = FindSendPropInfo("CTFWeaponBase", "m_iClip1");
+			clipsize = GetEntData(Cow, AmmoTable, 4);
+			
+			if(clipsize > 3)
+			{
+				m_buttons[client] &= ~IN_ATTACK;
+				m_buttons[client] |= IN_ATTACK2;
+			}
+		}
+		
 		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && (IsWeaponSlotActive(client, 2) && m_meleeID[client] == 44 || m_meleeID[client] == 648))
 		{	
-			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flChargeMeter"))
-				m_buttons[client] |= IN_ATTACK2;
+			m_buttons[client] |= IN_ATTACK2;
 		}
 		
 		if (TF2_GetPlayerClass(client) == TFClass_Scout && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 448))
 		{
-			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flHypeMeter"))
-				m_buttons[client] |= IN_ATTACK2;
+			m_buttons[client] |= IN_ATTACK2;
 		}
 		
 		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
 		{
-			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flChargeMeter"))
-				EquipWeaponSlot(client, 1);
-				if (IsWeaponSlotActive(client, 1))
-					m_buttons[client] |= IN_ATTACK;
-			
-		}
-		
-		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Heavy && m_secondaryID[client] == 311 || m_secondaryID[client] == 159 || m_secondaryID[client] == 433)
-		{
-			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flChargeMeter"))
-				EquipWeaponSlot(client, 1);
-				if (IsWeaponSlotActive(client, 1))
-					m_buttons[client] |= IN_ATTACK;
+			EquipWeaponSlot(client, 1);
+			if (IsWeaponSlotActive(client, 1))
+				m_buttons[client] |= IN_ATTACK;
 		}
 		
 		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Soldier && m_secondaryID[client] == 129 || m_secondaryID[client] == 1001 || m_secondaryID[client] == 226 || m_secondaryID[client] == 354)
@@ -160,11 +156,11 @@ public void CheckSlowThink(int client)
 					m_buttons[client] |= IN_ATTACK;
 		}
 		
-		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Heavy && m_secondaryID[client] == 42 || m_secondaryID[client] == 863 || m_secondaryID[client] == 1002 || m_secondaryID[client] == 1190)
+		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Heavy && m_secondaryID[client] == 42 || m_secondaryID[client] == 863 || m_secondaryID[client] == 1002 || m_secondaryID[client] == 1190 || m_secondaryID[client] == 311 || m_secondaryID[client] == 159 || m_secondaryID[client] == 433)
 		{
-			if (GetClientHealth(client) <= 150.0 && 100.0 == GetEntPropFloat(client, Prop_Send, "m_flChargeMeter"))
+			if (GetClientHealth(client) < (GetMaxHealth(client) / 1.4))
 				EquipWeaponSlot(client, 1);
-				if (IsWeaponSlotActive(client, 1))
+				if (IsWeaponSlotActive(client, 1) && (GetClientHealth(client) < (GetMaxHealth(client) / 1.4)))
 					m_buttons[client] |= IN_ATTACK;
 		}
 
