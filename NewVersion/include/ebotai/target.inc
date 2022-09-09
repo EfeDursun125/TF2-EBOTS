@@ -116,6 +116,7 @@ public void FindFriendsAndEnemiens(int client)
 
 				if (realdist < 300)
 				{
+					m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
 					EquipWeaponSlot(client, 1);
 					if (IsWeaponSlotActive(client, 1))
 						m_buttons[client] |= IN_ATTACK2;
