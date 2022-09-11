@@ -25,6 +25,8 @@ bool m_isMedic[MAXPLAYERS + 1];
 bool m_hasCrossbow[MAXPLAYERS + 1];
 bool m_hasWrench[MAXPLAYERS + 1];
 
+bool m_hasSandwich[MAXPLAYERS + 1];
+
 int m_tackEntity[MAXPLAYERS + 1];
 
 int CurrentProcess[MAXPLAYERS + 1];
@@ -1464,8 +1466,11 @@ stock float GetPercentInvisible(int client)
 stock void DisguiseAsEnemy(int client)
 {
 	ArrayList class = new ArrayList();
+	class.Push(1);
+	class.Push(2);
 	class.Push(3);
 	class.Push(4);
+	class.Push(5);
 	class.Push(6);
 	class.Push(7);
 	class.Push(8);
