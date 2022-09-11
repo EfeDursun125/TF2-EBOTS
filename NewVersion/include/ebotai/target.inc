@@ -114,10 +114,11 @@ public void FindFriendsAndEnemiens(int client)
 				m_friendDistance[client] = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
 				float realdist = m_friendDistance[client];
 
-				if (realdist < 300)
+				if (realdist < 500)
 				{
-					m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
+					MoveTo(client, GetOrigin(m_nearestFriend[client]));
 					EquipWeaponSlot(client, 1);
+					m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
 					if (IsWeaponSlotActive(client, 1))
 						m_buttons[client] |= IN_ATTACK2;
 					m_nearestFriend[client] = i;
