@@ -115,20 +115,6 @@ public void CheckSlowThink(int client)
 			m_buttons[client] |= IN_RELOAD;
 		}
 		
-		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Soldier && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 441))
-		{
-			int Cow = GetPlayerWeaponSlot(client, 0);
-			int clipsize = -1;
-			int AmmoTable = FindSendPropInfo("CTFWeaponBase", "m_iClip1");
-			clipsize = GetEntData(Cow, AmmoTable, 4);
-			
-			if(clipsize > 3)
-			{
-				m_buttons[client] &= ~IN_ATTACK;
-				m_buttons[client] |= IN_ATTACK2;
-			}
-		}
-		
 		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && (IsWeaponSlotActive(client, 2) && m_meleeID[client] == 44 || m_meleeID[client] == 648))
 		{	
 			m_buttons[client] |= IN_ATTACK2;
@@ -202,13 +188,20 @@ public void CheckSlowThink(int client)
 
 		if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
 		{
+			if (GetPlayerStickyCount(client) < 14 && m_secondaryID[client] == 130)
+				m_maxSticky[client] = true;
+			else
+				m_maxSticky[client] = false;
+				
 			if (GetPlayerStickyCount(client) < 8)
 				m_maxSticky[client] = true;
 			else
 				m_maxSticky[client] = false;
 				
-			if (m_hasEnemiesNear[client] && (100.0 == GetEntPropFloat(client, Prop_Send, "m_flChargeMeter")))
-				m_buttons[client] |= IN_ATTACK2;
+			if (m_hasEnemiesNear[client])
+			{
+				m_attack2Timer[client] = GetGameTime() + 4.0;
+			}
 			
 			int iSticky = -1;
 			while ((iSticky = FindEntityByClassname(iSticky, "tf_projectile_pipe_remote")) != INVALID_ENT_REFERENCE)
