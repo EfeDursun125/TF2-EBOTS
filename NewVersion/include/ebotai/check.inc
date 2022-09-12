@@ -188,19 +188,21 @@ public void CheckSlowThink(int client)
 
 		if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
 		{
-			if (GetPlayerStickyCount(client) < 14 && m_secondaryID[client] == 130)
-				m_maxSticky[client] = true;
-			else
-				m_maxSticky[client] = false;
-				
-			if (GetPlayerStickyCount(client) < 8)
+			if (m_secondaryID[client] == 130)
+			{
+				if (GetPlayerStickyCount(client) < 14)
+					m_maxSticky[client] = true;
+				else
+					m_maxSticky[client] = false;
+			}	
+			else if (GetPlayerStickyCount(client) < 8)
 				m_maxSticky[client] = true;
 			else
 				m_maxSticky[client] = false;
 				
 			if (m_hasEnemiesNear[client])
 			{
-				m_attack2Timer[client] = GetGameTime() + 4.0;
+				m_attack2Timer[client] = GetGameTime() + 2.0;
 			}
 			
 			int iSticky = -1;
