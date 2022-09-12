@@ -106,7 +106,7 @@ stock void AutoAttack(int client)
 		else if (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 441)
 		{
 			if (GetEntProp(GetPlayerWeaponSlot(client, 0), Prop_Send, "m_iClip1") > 3)
-				m_attack2Timer[client] = GetGameTime() + 0.4;
+				m_buttons[client] |= IN_ATTACK2;
 			else
 				m_attackTimer[client] = GetGameTime() + 0.4;
 		}
