@@ -105,7 +105,7 @@ stock void AutoAttack(int client)
 		}
 		else if (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 441)
 		{
-			if (GetEntProp(GetPlayerWeaponSlot(client, 0), Prop_Send, "m_iClip1") > 3)
+			if (GetEntProp(GetPlayerWeaponSlot(client, 0), Prop_Send, "m_iClip1") > 3 && GetRandomInt(1, 2) == 1)
 				m_buttons[client] |= IN_ATTACK2;
 			else
 				m_attackTimer[client] = GetGameTime() + 0.4;
@@ -188,9 +188,6 @@ stock void SelectBestCombatWeapon(int client)
 	if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		meleerange = 300.0;
 		
-	if (m_meleeID[client] == 44 || m_meleeID[client] == 648)
-		meleerange = 1000.0;
-		
 	if (distance <= meleerange)
 		EquipWeaponSlot(client, 2);
 	else
@@ -199,6 +196,8 @@ stock void SelectBestCombatWeapon(int client)
 		{
 			if (m_secondaryID[client] == 57 || m_secondaryID[client] == 231 || m_secondaryID[client] == 642)
 				EquipWeaponSlot(client, 0);
+			else if (1 == GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") && (distance <= Squared(512) && m_secondaryID[client] == 58 || m_secondaryID[client] == 1083 || m_secondaryID[client] == 1105))
+				EquipWeaponSlot(client, 1);
 			else if (distance <= Squared(512))
 				EquipWeaponSlot(client, 1);
 			else
@@ -222,7 +221,9 @@ stock void SelectBestCombatWeapon(int client)
 		}
 		else if (TF2_GetPlayerClass(client) == TFClass_Pyro)
 		{
-			if (!(GetEntityFlags(client) & FL_INWATER) && distance <= Squared(350))
+			if (1 == GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") && m_secondaryID[client] == 1180)
+				EquipWeaponSlot(client, 1);
+			else if (!(GetEntityFlags(client) & FL_INWATER) && distance <= Squared(350))
 				EquipWeaponSlot(client, 0);
 			else
 				EquipWeaponSlot(client, 1);
@@ -244,7 +245,11 @@ stock void SelectBestCombatWeapon(int client)
 			EquipWeaponSlot(client, 0);
 		else if (TF2_GetPlayerClass(client) == TFClass_Scout)
 		{
-			if (m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
+			if (1 == GetEntProp(GetPlayerWeaponSlot(client, 2), Prop_Send, "m_iPrimaryAmmoType") && m_meleeID[client] == 44 || m_meleeID[client] == 648)
+				EquipWeaponSlot(client, 2);
+			else if (1 == GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") && m_secondaryID[client] == 222 || m_secondaryID[client] == 812 || m_secondaryID[client] == 833 || m_secondaryID[client] == 1121)
+				EquipWeaponSlot(client, 1);
+			else if (m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
 				EquipWeaponSlot(client, 0);
 			else if (distance >= Squared(1024))
 				EquipWeaponSlot(client, 1);
