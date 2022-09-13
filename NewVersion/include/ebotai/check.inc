@@ -117,6 +117,11 @@ public void CheckSlowThink(int client)
 		
 		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && (IsWeaponSlotActive(client, 2) && m_meleeID[client] == 44 || m_meleeID[client] == 648))
 		{	
+			m_attack2Timer[client] = GetGameTime() + 2.0;
+		}
+		
+		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Pyro && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 594))
+		{	
 			m_buttons[client] |= IN_ATTACK2;
 		}
 		
@@ -148,7 +153,7 @@ public void CheckSlowThink(int client)
 					m_buttons[client] |= IN_ATTACK;
 		}
 
-		if (TF2_GetPlayerClass(client) == TFClass_Pyro)
+		if (TF2_GetPlayerClass(client) == TFClass_Pyro && m_primaryID[client] != 594)
 		{
 			int iProjectile = -1;
 			while ((iProjectile = FindEntityByClassname(iProjectile, "tf_projectile_*")) != INVALID_ENT_REFERENCE)
