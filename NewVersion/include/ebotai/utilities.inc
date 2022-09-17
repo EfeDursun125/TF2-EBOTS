@@ -25,6 +25,8 @@ bool m_isMedic[MAXPLAYERS + 1];
 bool m_hasCrossbow[MAXPLAYERS + 1];
 bool m_hasWrench[MAXPLAYERS + 1];
 
+bool m_hasSandwich[MAXPLAYERS + 1];
+
 int m_tackEntity[MAXPLAYERS + 1];
 
 int CurrentProcess[MAXPLAYERS + 1];
@@ -230,6 +232,14 @@ stock bool HasCrossbow(int client)
 {
 	if (IsEBot(client))
 		return m_hasCrossbow[client];
+	else
+		return false;
+}
+
+stock bool HasSandwich(int client)
+{
+	if (IsEBot(client))
+		return m_hasSandwich[client];
 	else
 		return false;
 }
@@ -1456,12 +1466,25 @@ stock float GetPercentInvisible(int client)
 stock void DisguiseAsEnemy(int client)
 {
 	ArrayList class = new ArrayList();
-	class.Push(3);
-	class.Push(4);
-	class.Push(6);
-	class.Push(7);
-	class.Push(8);
-	class.Push(9);
+	if (m_difficulty[client] < 3)
+	{	class.Push(1);
+		class.Push(2);
+		class.Push(3);
+		class.Push(4);
+		class.Push(5);
+		class.Push(6);
+		class.Push(7);
+		class.Push(8);
+		class.Push(9);
+	}
+	else
+	{	class.Push(3);
+		class.Push(4);
+		class.Push(6);
+		class.Push(7);
+		class.Push(8);
+		class.Push(9);
+	}
 	TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), view_as<TFClassType>(class.Get(GetRandomInt(0, class.Length - 1))));
 	delete class;
 }

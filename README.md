@@ -1,3 +1,6 @@
+Here's my little fork of the wonderful Ebots too hopefully improve on some things and add new weapon support for the bots.
+Feel free to use anything I have done Efe, I'm not much of a coder, but you may like some things I have done and I would be honered to play a part of the making of these bots.
+
 # TF2-EBOTS (NEW)
 Works with waypoints, if no waypoint file found uses (and requires) navmesh https://github.com/KitRifty/sourcepawn-navmesh
 

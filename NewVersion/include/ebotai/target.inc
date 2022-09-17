@@ -83,6 +83,47 @@ public void FindFriendsAndEnemiens(int client)
 					m_nearestFriend[client] = i;
 				}
 			}
+			else if (HasSandwich(client))
+			{
+				// no medigun no pocket
+				if (HasSandwich(client) && GetClientHealth(i) >= GetMaxHealth(i))
+					continue;
+
+				if (GameRules_GetProp("m_bPlayingMedieval") && GetClientHealth(i) >= GetMaxHealth(i))
+					continue;
+				
+				if (TF2_IsPlayerInCondition(i, TFCond_Cloaked))
+					continue;
+		
+				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && GetClientHealth(i) >= GetMaxHealth(i))
+					continue;
+		
+				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsWeaponSlotActive(i, 2) && GetClientHealth(i) >= GetMaxHealth(i))
+					continue;
+		
+				if (IsMedic(i) && GetClientHealth(i) >= GetMaxHealth(i))
+					continue;
+		
+				if (IsSniper(i) && GetClientHealth(i) >= GetMaxHealth(i))
+					continue;
+		
+				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsWeaponSlotActive(i, 5) && GetClientHealth(i) >= GetMaxHealth(i))
+					continue;
+		
+				m_friendsNearCount[client]++;
+				m_friendDistance[client] = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
+				float realdist = m_friendDistance[client];
+
+				if (realdist < 500)
+				{
+					MoveTo(client, GetOrigin(m_nearestFriend[client]));
+					EquipWeaponSlot(client, 1);
+					m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
+					if (IsWeaponSlotActive(client, 1))
+						m_buttons[client] |= IN_ATTACK2;
+					m_nearestFriend[client] = i;
+				}
+			}
 			else
 			{
 				m_friendsNearCount[client]++;
@@ -99,6 +140,16 @@ public void FindFriendsAndEnemiens(int client)
 		{
 			// avoid fighting if we active uber
 			if (IsMedic(client) && TF2_IsPlayerInCondition(client, TFCond_Ubercharged) && IsWeaponSlotActive(client, 1))
+			{
+				m_enemiesNearCount[client] = 0;
+				m_enemyDistance[client] = 0.0;
+				m_nearestEnemy[client] = -1;
+				m_hasEnemiesNear[client] = false;
+				return;
+			}
+			
+			// avoid fighting if we active bonk
+			if (TF2_IsPlayerInCondition(client, TFCond_Bonked))
 			{
 				m_enemiesNearCount[client] = 0;
 				m_enemyDistance[client] = 0.0;

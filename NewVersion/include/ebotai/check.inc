@@ -10,6 +10,7 @@ public void CheckSlowThink(int client)
 		m_isMedic[client] = false;
 		m_hasCrossbow[client] = false;
 		m_hasWrench[client] = false;
+		m_hasSandwich[client] = false;
 
 		int primaryWeapon = GetPlayerWeaponSlot(client, 0);
 		if (IsValidEntity(primaryWeapon))
@@ -17,7 +18,9 @@ public void CheckSlowThink(int client)
 			m_primaryID[client] = TF2_GetWeaponID(primaryWeapon);
 			m_primaryClassName[client] = TF2_GetWeaponClassName(primaryWeapon);
 			
-			if (StrEqual(m_secondaryClassName[client], "tf_weapon_sniperrifle*"))
+			if (StrEqual(m_primaryClassName[client], "tf_weapon_sniperrifle"))
+				m_isSniper[client] = true;
+			else if (StrEqual(m_primaryClassName[client], "tf_weapon_sniperrifle_decap"))
 				m_isSniper[client] = true;
 			else if (StrEqual(m_primaryClassName[client], "tf_weapon_crossbow"))
 				m_hasCrossbow[client] = true;
@@ -31,6 +34,8 @@ public void CheckSlowThink(int client)
 			
 			if (StrEqual(m_secondaryClassName[client], "tf_weapon_medigun"))
 				m_isMedic[client] = true;
+			else if (StrEqual(m_secondaryClassName[client], "tf_weapon_lunchbox"))
+				m_hasSandwich[client] = true;
 		}
 
 		int meleeWeapon = GetPlayerWeaponSlot(client, 2);
@@ -99,8 +104,56 @@ public void CheckSlowThink(int client)
 			if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && IsMoving(client))
 				m_buttons[client] |= IN_ATTACK2;
 		}
+		
+		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Sniper && (IsWeaponSlotActive(client, 1) && m_secondaryID[client] == 751))
+		{
+			m_buttons[client] |= IN_ATTACK2;
+		}
+		
+		if (TF2_GetPlayerClass(client) == TFClass_Sniper && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 752))
+		{
+			m_buttons[client] |= IN_RELOAD;
+		}
+		
+		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && (IsWeaponSlotActive(client, 2) && m_meleeID[client] == 44 || m_meleeID[client] == 648))
+		{	
+			m_attack2Timer[client] = GetGameTime() + 2.0;
+		}
+		
+		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Pyro && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 594))
+		{	
+			m_buttons[client] |= IN_ATTACK2;
+		}
+		
+		if (TF2_GetPlayerClass(client) == TFClass_Scout && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 448))
+		{
+			m_buttons[client] |= IN_ATTACK2;
+		}
+		
+		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
+		{
+			EquipWeaponSlot(client, 1);
+			if (IsWeaponSlotActive(client, 1))
+				m_buttons[client] |= IN_ATTACK;
+		}
+		
+		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Soldier && m_secondaryID[client] == 129 || m_secondaryID[client] == 1001 || m_secondaryID[client] == 226 || m_secondaryID[client] == 354)
+		{
+			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flRageMeter"))
+				EquipWeaponSlot(client, 1);
+				if (IsWeaponSlotActive(client, 1))
+					m_buttons[client] |= IN_ATTACK;
+		}
+		
+		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Heavy && m_secondaryID[client] == 42 || m_secondaryID[client] == 863 || m_secondaryID[client] == 1002 || m_secondaryID[client] == 1190 || m_secondaryID[client] == 311 || m_secondaryID[client] == 159 || m_secondaryID[client] == 433)
+		{
+			if (GetClientHealth(client) < (GetMaxHealth(client) / 1.4))
+				EquipWeaponSlot(client, 1);
+				if (IsWeaponSlotActive(client, 1) && (GetClientHealth(client) < (GetMaxHealth(client) / 1.4)))
+					m_buttons[client] |= IN_ATTACK;
+		}
 
-		if (TF2_GetPlayerClass(client) == TFClass_Pyro)
+		if (TF2_GetPlayerClass(client) == TFClass_Pyro && m_primaryID[client] != 594)
 		{
 			int iProjectile = -1;
 			while ((iProjectile = FindEntityByClassname(iProjectile, "tf_projectile_*")) != INVALID_ENT_REFERENCE)
@@ -117,13 +170,45 @@ public void CheckSlowThink(int client)
 				}
 			}
 		}
+		
+		if (TF2_GetPlayerClass(client) == TFClass_Engineer && m_secondaryID[client] == 528)
+		{
+			int iProjectile = -1;
+			while ((iProjectile = FindEntityByClassname(iProjectile, "tf_projectile_*")) != INVALID_ENT_REFERENCE)
+			{
+				if (IsValidEntity(iProjectile) && GetClientTeam(client) != GetTeamNumber(iProjectile))
+				{
+					if (GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client), true) <= Squared(256))
+					{
+						EquipWeaponSlot(client, 1);
+						m_lookAt[client] = GetOrigin(iProjectile);
+						if (GetMetal(client) > 65.0)
+							m_buttons[client] |= IN_ATTACK2;
+						else
+							m_buttons[client] |= IN_ATTACK;
+					}
+				}
+			}
+		}
 
 		if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
 		{
-			if (GetPlayerStickyCount(client) < 8)
+			if (m_secondaryID[client] == 130)
+			{
+				if (GetPlayerStickyCount(client) < 14)
+					m_maxSticky[client] = true;
+				else
+					m_maxSticky[client] = false;
+			}	
+			else if (GetPlayerStickyCount(client) < 8)
 				m_maxSticky[client] = true;
 			else
 				m_maxSticky[client] = false;
+				
+			if (m_hasEnemiesNear[client])
+			{
+				m_attack2Timer[client] = GetGameTime() + 2.0;
+			}
 			
 			int iSticky = -1;
 			while ((iSticky = FindEntityByClassname(iSticky, "tf_projectile_pipe_remote")) != INVALID_ENT_REFERENCE)
