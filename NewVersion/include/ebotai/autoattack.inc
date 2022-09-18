@@ -194,9 +194,7 @@ stock void SelectBestCombatWeapon(int client)
 	{
 		if (IsSniper(client))
 		{
-			if (m_secondaryID[client] == 57 || m_secondaryID[client] == 231 || m_secondaryID[client] == 642)
-				EquipWeaponSlot(client, 0);
-			else if (1 == GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") && (distance <= Squared(512) && m_secondaryID[client] == 58 || m_secondaryID[client] == 1083 || m_secondaryID[client] == 1105))
+			if (1 == GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") && m_secondaryID[client] == 58 || m_secondaryID[client] == 1083 || m_secondaryID[client] == 1105)
 				EquipWeaponSlot(client, 1);
 			else if (distance <= Squared(512))
 				EquipWeaponSlot(client, 1);
