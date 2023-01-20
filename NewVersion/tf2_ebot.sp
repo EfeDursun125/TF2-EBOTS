@@ -16,11 +16,12 @@ public Plugin myinfo =
 	name = "[TF2] E-BOT",
 	author = "EfeDursun125",
 	description = "",
-	version = "0.04",
+	version = "0.05",
 	url = "https://steamcommunity.com/id/EfeDursun91/"
 }
 
 #pragma tabsize 0
+#include <ebotai/gamemode>
 #include <ebotai/utilities>
 #include <ebotai/target>
 #include <ebotai/process>
@@ -88,12 +89,14 @@ public void OnPluginStart()
 	EBotChangeClassChance = CreateConVar("ebot_change_class_chance", "35", "", FCVAR_NONE);
 	EBotDeadChat = CreateConVar("ebot_dead_chat_chance", "30", "", FCVAR_NONE);
 	m_eBotDodgeRangeMin = CreateConVar("ebot_minimum_dodge_range", "512", "the range when enemy closer than a value, bot will start dodging enemies", FCVAR_NONE);
-	m_eBotDodgeRangeMax = CreateConVar("ebot_maximum_dodge_range", "1024", "the range when enemy closer than a value, bot will start dodging enemies", FCVAR_NONE);
+	m_eBotDodgeRangeMax = CreateConVar("ebot_maximum_dodge_range", "2048", "the range when enemy closer than a value, bot will start dodging enemies", FCVAR_NONE);
 	m_eBotDodgeRangeChance = CreateConVar("ebot_dodge_change_range_chance", "10", "the chance for change dodge range when attack process ends (1-100)", FCVAR_NONE);
 	EBotQuota = CreateConVar("ebot_quota", "-1", "", FCVAR_NONE);
 	EBotAutoWaypoint = CreateConVar("ebot_waypoint_auto", "0", "", FCVAR_NONE);
 	EBotRadius = CreateConVar("ebot_waypoint_default_radius", "0", "", FCVAR_NONE);
 	EBotDistance = CreateConVar("ebot_waypoint_auto_distance", "250.0", "", FCVAR_NONE);
+	EBotForceHuntEnemy = CreateConVar("ebot_force_hunt_enemy", "0", "", FCVAR_NONE);
+	EBotAllowAttackButtons = CreateConVar("ebot_allow_attack_buttons", "1", "", FCVAR_NONE);
 
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -118,6 +121,8 @@ public void OnMapStart()
 		SetConVarInt(FindConVar("nb_player_stop"), 1);
 	
 	GetCurrentMap(currentMap, sizeof(currentMap));
+	AutoLoadGamemode();
+
 	SetConVarInt(FindConVar("nav_generate_fencetops"), 0);
 	SetConVarInt(FindConVar("mp_waitingforplayers_cancel"), 1);
 	InitGamedata();
@@ -142,7 +147,7 @@ public void OnMapStart()
 			ammopacks++;
 	}
 	
-	if (StrContains(currentMap, "ctf_" , false) != -1)
+	if (isCTF)
 	{
 		int flag = -1;
 		while ((flag = FindEntityByClassname(flag, "item_teamflag")) != INVALID_ENT_REFERENCE)
@@ -200,7 +205,7 @@ public void EBotDeathChat(int client)
 // trigger on client put in the server
 public void OnClientPutInServer(int client)
 {
-	if (IsValidClient(client) && IsEBot(client))
+	if (IsValidClient(client))
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 
 	// delete path positions
@@ -264,6 +269,7 @@ public Action WaypointCreate(int client, int args)
 		showWaypoints = true;
 		PrintHintTextToAll("Waypoints are now enabled");
 	}
+
 	return Plugin_Handled;
 }
 
@@ -281,6 +287,7 @@ public Action WaypointDelete(int client, int args)
 		showWaypoints = true;
 		PrintHintTextToAll("Waypoints are now enabled");
 	}
+
 	return Plugin_Handled;
 }
 
@@ -326,6 +333,7 @@ public Action SetFlag(int client, int args)
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
+
 	return Plugin_Handled;
 }
 
@@ -560,6 +568,7 @@ public void OnGameFrame()
 
 	DrawWaypoints();
 	AutoWaypoint();
+	UpdateWaypoints();
 
 	if (GetConVarInt(EBotDebug) == 1)
 	{
@@ -639,11 +648,14 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 	// is client alive? if not, we can't do anything
 	if (IsPlayerAlive(client))
 	{
-		if (m_attackTimer[client] > GetGameTime())
-			buttons |= IN_ATTACK;
+		if (GetConVarBool(EBotAllowAttackButtons))
+		{
+			if (m_attackTimer[client] > GetGameTime())
+				buttons |= IN_ATTACK;
 		
-		if (m_attack2Timer[client] > GetGameTime())
-			buttons |= IN_ATTACK2;
+			if (m_attack2Timer[client] > GetGameTime())
+				buttons |= IN_ATTACK2;
+		}
 			
 		if (GetEntProp(client, Prop_Send, "m_bJumping"))
 			buttons |= IN_DUCK;
@@ -768,10 +780,10 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 				}
 				else
 				{
-					if (IsValidClient(m_lastKiller[client]) && (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Sniper || TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Engineer))
-						TF2_SetPlayerClass(client, TFClass_Spy);
-					else
-						TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1, 9)));
+					//if (IsValidClient(m_lastKiller[client]) && (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Sniper || TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Engineer))
+					//	TF2_SetPlayerClass(client, TFClass_Spy);
+					//else
+					TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1, 9)));
 				}
 
 				if (IsPlayerAlive(client))
@@ -878,6 +890,18 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 		m_lastKiller[victim] = client;
 		EBotDeathChat(victim);
 	}
+
+	if (IsValidClient(victim))
+	{
+		if (IsEBot(victim) && m_currentWaypointIndex[victim] > 0)
+			IncreaseDeaths(m_currentWaypointIndex[victim]);
+		else
+		{
+			int index = FindNearestWaypoint(GetOrigin(victim), 999999.0, victim);
+			if (index > 0)
+				IncreaseDeaths(index);
+		}
+	}
 	
 	return Plugin_Handled;
 }
@@ -942,6 +966,18 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	{
 		damage = 0.0;
 		return Plugin_Handled;
+	}
+
+	if (IsValidClient(victim))
+	{
+		if (IsEBot(victim) && m_currentWaypointIndex[victim] != -1)
+			IncreaseDamage(m_currentWaypointIndex[victim], damage);
+		else
+		{
+			int index = FindNearestWaypoint(GetOrigin(victim), 999999.0, victim);
+			if (index != -1)
+				IncreaseDamage(index, damage);
+		}
 	}
 
 	return Plugin_Continue;
