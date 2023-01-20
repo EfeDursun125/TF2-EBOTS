@@ -1,13 +1,14 @@
 // from https://github.com/EfeDursun125/CS-EBOT/blob/main/source/waypoint.cpp
 // higher version waypoints will be ignored due to updated waypoint system
 const int WaypointVersion = 2;
-const int MaxWaypoints = 4096;
+const int MaxWaypoints = 2048;
 const int MaxPathIndex = 8;
 
 int nearestIndex = -1;
 int savedIndex = -1;
 bool showWaypoints = false;
 float waypointDrawTime = 0.0;
+float waypointUpdate = 0.0;
 float nextDrawTime = 0.1;
 
 bool m_hasHealthWaypoints = false;
@@ -184,11 +185,77 @@ stock void InitializeWaypoints()
         WaypointClear(i);
 
     waypointDrawTime = 0.0;
+    waypointUpdate = 0.0;
     nextDrawTime = 0.5;
     m_hasWaypoints = false;
     m_waypointNumber = 0;
 
     WaypointLoad();
+    ResetDangerMap();
+}
+
+int deathsWPT[MaxWaypoints + 1];
+float damageWPT[MaxWaypoints + 1];
+float healWPT[MaxWaypoints + 1];
+
+stock void ResetDangerMap()
+{
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        deathsWPT[i] = 0;
+        damageWPT[i] = 0.0;
+        healWPT[i] = 0.0;
+    }
+}
+
+stock void IncreaseDamage(int waypoint, float newDamage)
+{
+    damageWPT[waypoint] += newDamage;
+}
+
+stock float GetDamage(int waypoint)
+{
+    return damageWPT[waypoint];
+}
+
+stock void IncreaseDeaths(int waypoint)
+{
+    deathsWPT[waypoint] += 1;
+}
+
+stock int GetDeaths(int waypoint)
+{
+    return deathsWPT[waypoint];
+}
+
+stock void IncreaseHeal(int waypoint, float newHeal)
+{
+    healWPT[waypoint] += newHeal;
+}
+
+stock float GetHeal(int waypoint)
+{
+    return healWPT[waypoint];
+}
+
+stock void UpdateWaypoints()
+{
+    if (waypointUpdate > GetGameTime())
+        return;
+    
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        damageWPT[i] -= 3.0;
+        healWPT[i] -= 3.0;
+
+        if (damageWPT[i] < 0.0)
+            damageWPT[i] = 0.0;
+
+        if (healWPT[i] < 0.0)
+            healWPT[i] = 0.0;
+    }
+    
+    waypointUpdate = GetGameTime() + 3.0;
 }
 
 stock void DrawWaypoints()
@@ -348,7 +415,7 @@ stock void DrawWaypoints()
         indexOrigin = m_paths[i].origin;
         indexOrigin[2] += height;
 
-        TE_SetupBeamPoints(m_paths[i].origin, indexOrigin, m_beamIndex, m_beamIndex, 0, 30, nextDrawTime + 0.02, 1.75, 1.75, 5, 0.0, color, 20);
+        TE_SetupBeamPoints(m_paths[i].origin, indexOrigin, m_beamIndex, m_beamIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.75, 1.75, 5, 0.0, color, 20);
         TE_SendToClient(m_hostEntity);
     }
 
@@ -367,9 +434,9 @@ stock void DrawWaypoints()
             indexOrigin = m_paths[nearestIndex].origin;
             indexOrigin[2] += height;
 
-            TE_SetupBeamPoints(indexOrigin, m_paths[nearestIndex].campStart, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 20);
+            TE_SetupBeamPoints(indexOrigin, m_paths[nearestIndex].campStart, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 20);
             TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(indexOrigin, m_paths[nearestIndex].campEnd, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 20);
+            TE_SetupBeamPoints(indexOrigin, m_paths[nearestIndex].campEnd, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 20);
             TE_SendToClient(m_hostEntity);
         }
 
@@ -397,12 +464,12 @@ stock void DrawWaypoints()
 
             if (IsConnected(m_paths[nearestIndex].pathIndex[i], nearestIndex)) // two way connection
             {
-                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, {255, 255, 0, 255}, 20);
+                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, {255, 255, 0, 255}, 20);
                 TE_SendToClient(m_hostEntity);
             }
             else // one way connection
             {
-                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, {255, 255, 255, 255}, 20);
+                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, {255, 255, 255, 255}, 20);
                 TE_SendToClient(m_hostEntity);
             }
         }
@@ -428,7 +495,7 @@ stock void DrawWaypoints()
                 indexOrigin2 = m_paths[i].origin;
                 indexOrigin2[2] = m_paths[i].origin[2] + height2;
 
-                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, {0, 192, 96, 255}, 20);
+                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, {0, 192, 96, 255}, 20);
                 TE_SendToClient(m_hostEntity);
             }
         }
@@ -478,21 +545,21 @@ stock void DrawWaypoints()
         if (m_paths[nearestIndex].radius > 0.0)
         {
             float root = m_paths[nearestIndex].radius;
-            TE_SetupBeamPoints(VectorWithRoot(origin, root, root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SetupBeamPoints(VectorWithRoot(origin, root, root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
             TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(VectorWithRoot(origin, root, root), VectorWithRoot(origin, root, -root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SetupBeamPoints(VectorWithRoot(origin, root, root), VectorWithRoot(origin, root, -root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
             TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, root, -root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, root, -root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
             TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
             TE_SendToClient(m_hostEntity);
         }
         else
         {
             float root = 8.0;
-            TE_SetupBeamPoints(VectorWithRoot(origin, root, -root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SetupBeamPoints(VectorWithRoot(origin, root, -root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
             TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + 0.02, 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
             TE_SendToClient(m_hostEntity);
         }
 
@@ -548,8 +615,8 @@ stock void DrawWaypoints()
         else if (m_paths[i].flags == WAYPOINT_DEMOCHARGE)
             wpflags = "Demo Charge";
         
-        SetHudTextParams(0.0, 0.0, nextDrawTime + 0.02, 255, 255, 255, 255, 2, 1.0, 0.0, 0.0);
-        ShowHudText(m_hostEntity, -1, "Nearest Waypoint Data\nIndex: %d (%d/%d)\nTeam: %s\nActive Area: %d\nFlags: %s\nRadius: %d\nOrigin: %d %d %d\nAim Start Origin: %d %d %d\nAim End Origin: %d %d %d", m_paths[i].index, m_waypointNumber, MaxWaypoints, wpteam, m_paths[i].activeArea, wpflags, m_paths[i].radius, m_paths[i].origin[0], m_paths[i].origin[1], m_paths[i].origin[2], m_paths[i].campStart[0], m_paths[i].campStart[1], m_paths[i].campStart[2], m_paths[i].campEnd[0], m_paths[i].campEnd[1], m_paths[i].campEnd[2]);
+        SetHudTextParams(0.0, 0.0, nextDrawTime + GetGameFrameTime(), 255, 255, 255, 255, 2, 1.0, 0.0, 0.0);
+        ShowHudText(m_hostEntity, -1, "Waypoint Index: %d (%d/%d)\nTeam: %s\nActive Area: %d\nFlags: %s\nRadius: %d\nOrigin: %d %d %d\nAim Start Origin: %d %d %d\nAim End Origin: %d %d %d\nDamage: %d\nDeaths: %d", m_paths[i].index, m_waypointNumber, MaxWaypoints, wpteam, m_paths[i].activeArea, wpflags, m_paths[i].radius, RoundFloat(m_paths[i].origin[0]), RoundFloat(m_paths[i].origin[1]), RoundFloat(m_paths[i].origin[2]), RoundFloat(m_paths[i].campStart[0]), RoundFloat(m_paths[i].campStart[1]), RoundFloat(m_paths[i].campStart[2]), RoundFloat(m_paths[i].campEnd[0]), RoundFloat(m_paths[i].campEnd[1]), RoundFloat(m_paths[i].campEnd[2]), RoundFloat(GetDamage(i)), GetDeaths(i));
     }
 
     waypointDrawTime = GetGameTime() + nextDrawTime;
@@ -990,6 +1057,9 @@ stock float HeuristicNormal(int start, int goal)
 
 stock float CostNormal(int current, int parent, int client)
 {
+    if (parent == -1)
+        return 1.0;
+    
     if (m_paths[current].flags == WAYPOINT_DOUBLEJUMP)
         return 0.0;
     
@@ -997,15 +1067,12 @@ stock float CostNormal(int current, int parent, int client)
     if (m_paths[current].flags == WAYPOINT_FALLDAMAGE && (m_lowHealth[client] || GetRandomInt(1, 3) == 1 || TF2_GetPlayerClass(client) == TFClass_Spy))
         return 65355.0;
     
-    if (m_hasEnemiesNear[client] && m_nearestEnemy[client] != -1 && GetVectorDistance(GetOrigin(client), m_paths[current].origin, true) <= GetVectorDistance(GetOrigin(m_nearestEnemy[client]), m_paths[current].origin, true))
-        return 65355.0;
-    
     // they don't let us jump and heavy can't jump
     if (m_paths[current].flags == WAYPOINT_JUMP && (m_hasEnemiesNear[client] || TF2_GetPlayerClass(client) == TFClass_Heavy))
         return 65355.0;
     
-    // litte randomness
-	return GetWaypointDistance(current, parent) + GetRandomFloat(0.0, float(client));
+    float cl = float(client) + 1.0;
+	return GetWaypointDistance(current, parent) + float(GetDeaths(current) + GetDeaths(parent)) + GetDamage(parent) + GetRandomFloat(-cl, cl);
 }
 
 // A* Pathfinding
@@ -1100,6 +1167,22 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
                 
                 if (m_paths[self].flags == WAYPOINT_NOSPY && TF2_GetPlayerClass(client) == TFClass_Spy)
                     continue;
+                
+                if (m_nearestEnemy[client] > 0)
+                {
+                    if (ClientViewsOrigin(m_nearestEnemy[client], m_paths[self].origin, 0.5))
+                    {
+                        float vector[3];
+                        vector = m_paths[self].origin;
+                        float enemyHeight = GetHeight(m_nearestEnemy[client]);
+                        vector[2] += enemyHeight;
+                        if (IsVisible(vector, GetEyePosition(m_nearestEnemy[client])))
+                        {
+                            if (GetVectorDistance(GetOrigin(m_nearestEnemy[client]), vector, true) - GetVectorDistance(GetOrigin(client), vector, true) <= 0.0)
+                                continue;
+                        }
+                    }
+                }
             }
             
             if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
@@ -1340,11 +1423,8 @@ stock int FindCoverWaypoint(int client = -1, float maxDistance = 99999.0)
             float origin2[3];
             origin2 = m_paths[waypointIndex[i]].origin;
             origin2[2] += height;
-
-            if (!IsVisible(origin, origin2))
-                return waypointIndex[i];
             
-            // expand the search if no hiding spots
+            // expand the search
             for (int j = 0; j < MaxPathIndex; j++)
             {
                 int expandedIndex = m_paths[waypointIndex[i]].pathIndex[j];

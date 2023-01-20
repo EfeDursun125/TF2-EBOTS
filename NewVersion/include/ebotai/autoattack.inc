@@ -194,7 +194,11 @@ stock void SelectBestCombatWeapon(int client)
 	{
 		if (IsSniper(client))
 		{
-			if (distance <= Squared(512))
+			if (m_secondaryID[client] == 57 || m_secondaryID[client] == 231 || m_secondaryID[client] == 642)
+				EquipWeaponSlot(client, 0);
+			else if ((distance <= Squared(512) && m_secondaryID[client] == 58 || m_secondaryID[client] == 1083 || m_secondaryID[client] == 1105) && (IsValidEntity(GetPlayerWeaponSlot(client, 1)) && GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") == 1))
+				EquipWeaponSlot(client, 1);
+			else if (distance <= Squared(512))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
@@ -217,7 +221,9 @@ stock void SelectBestCombatWeapon(int client)
 		}
 		else if (TF2_GetPlayerClass(client) == TFClass_Pyro)
 		{
-			if (!(GetEntityFlags(client) & FL_INWATER) && distance <= Squared(350))
+			if (m_secondaryID[client] == 1180 && IsValidEntity(GetPlayerWeaponSlot(client, 1)) && GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") == 1)
+				EquipWeaponSlot(client, 1);
+			else if (!(GetEntityFlags(client) & FL_INWATER) && distance <= Squared(350))
 				EquipWeaponSlot(client, 0);
 			else
 				EquipWeaponSlot(client, 1);
@@ -239,8 +245,10 @@ stock void SelectBestCombatWeapon(int client)
 			EquipWeaponSlot(client, 0);
 		else if (TF2_GetPlayerClass(client) == TFClass_Scout)
 		{
-			if (1 == GetEntProp(GetPlayerWeaponSlot(client, 2), Prop_Send, "m_iPrimaryAmmoType") && m_meleeID[client] == 44 || m_meleeID[client] == 648)
+			if (m_meleeID[client] == 648 || m_meleeID[client] == 44 && IsValidEntity(GetPlayerWeaponSlot(client, 1)) && GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") == 1)
 				EquipWeaponSlot(client, 2);
+			else if (m_secondaryID[client] == 812 || m_secondaryID[client] == 833 || m_secondaryID[client] == 1121 || m_secondaryID[client] == 222 && IsValidEntity(GetPlayerWeaponSlot(client, 1)) && GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") == 1)
+				EquipWeaponSlot(client, 1);
 			else if (m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
 				EquipWeaponSlot(client, 0);
 			else if (distance >= Squared(1024))
@@ -264,6 +272,7 @@ stock void SelectBestCombatWeapon(int client)
 		{
 			int clip0 = GetPrimaryClip(client, 0);
 			int clip1 = GetPrimaryClip(client, 1);
+
 			if (TF2_GetPlayerClass(client) == TFClass_Medic)
 				EquipWeaponSlot(client, 0);
 			else if (TF2_GetPlayerClass(client) == TFClass_Pyro || TF2_GetPlayerClass(client) == TFClass_Heavy)

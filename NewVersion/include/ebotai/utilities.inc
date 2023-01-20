@@ -31,7 +31,6 @@ int m_tackEntity[MAXPLAYERS + 1];
 
 int CurrentProcess[MAXPLAYERS + 1];
 
-char currentMap[PLATFORM_MAX_PATH];
 int currentActiveArea;
 float BotCheckTimer = 0.0;
 
@@ -137,6 +136,8 @@ Handle EBotAutoWaypoint;
 Handle EBotRadius;
 Handle EBotDistance;
 Handle EBotChangeClass;
+Handle EBotAllowAttackButtons;
+Handle EBotForceHuntEnemy;
 
 Handle g_hLookupBone;
 Handle g_hGetBonePosition;
