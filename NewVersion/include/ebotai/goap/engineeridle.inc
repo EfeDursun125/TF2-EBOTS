@@ -270,7 +270,7 @@ public void CheckEngineerBuildings(int client)
 	}
 	else
 	{
-		if (!WantsBuildSentryGun[client] && SentryIsMaxLevel[client] && SentryHealthIsFull[client])
+		if (!WantsBuildSentryGun[client])
 			WantsBuildDispenser[client] = true;
 		else
 		{
@@ -319,7 +319,7 @@ public void CheckEngineerBuildings(int client)
 		else
 			TeleporterExitHealthIsFull[client] = true;
 	}
-	else if (m_hasTeleporterEnterWaypoints && m_hasTeleporterExitWaypoints && !WantsBuildSentryGun[client] && !WantsBuildDispenser[client] && !WantsBuildTeleporterEnter[client] && SentryIsMaxLevel[client] && DispenserIsMaxLevel[client] && DispenserHealthIsFull[client] && SentryHealthIsFull[client])
+	else if (m_hasTeleporterEnterWaypoints && m_hasTeleporterExitWaypoints && !WantsBuildSentryGun[client] && !WantsBuildDispenser[client] && !WantsBuildTeleporterEnter[client])
 		WantsBuildTeleporterExit[client] = true;
 	else
 		WantsBuildTeleporterExit[client] = false;

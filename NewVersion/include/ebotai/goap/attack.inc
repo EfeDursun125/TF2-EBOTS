@@ -6,7 +6,7 @@ stock bool AttackRequirements(int client)
 	if (NoDodge[client] >= GetGameTime())
 		return false;
 	
-	if (m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]))
+	if (m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]) && TF2_GetPlayerClass(client) != TFClass_Scout && TF2_GetPlayerClass(client) != TFClass_Pyro)
 		return false;
 	
 	if (!(GetEntityFlags(client) & FL_ONGROUND))
@@ -38,14 +38,12 @@ stock void AttackStart(int client)
 float m_wasdTimer[MAXPLAYERS + 1];
 stock void AttackUpdate(int client)
 {
-	if (m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]))
-		FinishCurrentProcess(client, true);
-
 	if (TF2_GetPlayerClass(client) == TFClass_Spy && m_lowHealth[client] && !TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 		m_buttons[client] |= IN_ATTACK2;
 
 	if (m_isSlowThink[client] || !IsPlayerAlive(m_nearestEnemy[client]))
 		FindFriendsAndEnemiens(client);
+	
 	FindEnemyEntities(client);
 	
 	if (!m_hasEnemiesNear[client])
@@ -76,8 +74,11 @@ stock void AttackUpdate(int client)
 		}
 		else if (ClientViews(m_nearestEnemy[client], client))
 			RandomMovement(client);
+		
 		return;
 	}
+	else if (m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]))
+		FinishCurrentProcess(client, true);
 
 	if (ClientViews(m_nearestEnemy[client], client))
 	{

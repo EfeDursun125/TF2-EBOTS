@@ -104,6 +104,27 @@ public void DefaultEnd(int client)
 
 public void SelectObjective(int client)
 {
+	if (GetConVarBool(EBotForceHuntEnemy))
+	{
+		m_goalEntity[client] = FindNearestEnemy(client);
+		if (IsValidClient(m_goalEntity[client]))
+			m_goalPosition[client] = GetOrigin(m_goalEntity[client]);
+		else if (m_hasWaypoints)
+		{
+			m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
+			if (m_paths[m_goalIndex[client]].radius > 0.0)
+			{
+				m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+				m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+				m_goalPosition[client][2] = m_paths[m_goalIndex[client]].origin[2];
+			}
+			else
+				m_goalPosition[client] = m_paths[m_goalIndex[client]].origin;
+		}
+
+		return;
+	}
+	
 	if (m_hasWaypoints && m_hasSniperWaypoints && IsSniper(client))
 	{
 		int myindex = m_goalIndex[client];
@@ -163,7 +184,7 @@ public void SelectObjective(int client)
 		}
 	}
 
-	if (StrContains(currentMap, "koth_" , false) != -1 || StrContains(currentMap, "arena_" , false) != -1)
+	if (isKOTH)
 	{
 		if (m_hasWaypoints)
 		{
@@ -233,7 +254,7 @@ public void SelectObjective(int client)
 			}
 		}
 	}
-	else if (StrContains(currentMap, "pl_" , false) != -1)
+	else if (isPL)
 	{
 		if (!IsValidEntity(m_bluPayload))
 			FindPayload();
@@ -331,7 +352,7 @@ public void SelectObjective(int client)
 			}
 		}
 	}
-	else if (StrContains(currentMap, "plr_" , false) != -1)
+	else if (isPLR)
 	{
 		if (!IsValidEntity(m_bluPayload) || !IsValidEntity(m_redPayload))
 			FindPayload();
@@ -355,7 +376,7 @@ public void SelectObjective(int client)
 			m_goalEntity[client] = m_bluPayload;
 		}
 	}
-	else if (StrContains(currentMap, "ctf_" , false) != -1)
+	else if (isCTF)
 	{
 		// flag required for check status
 		int flag = -1;
@@ -366,7 +387,7 @@ public void SelectObjective(int client)
 		}
 		m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
 	}
-	else if (StrContains(currentMap, "" , false) != -1 || StrContains(currentMap, "tc_" , false) != -1 || StrContains(currentMap, "mvm_" , false) != -1)
+	else if (isMVM || isAD)
 	{
 		if (m_hasWaypoints)
 		{
@@ -461,6 +482,19 @@ public void SelectObjective(int client)
 
 stock void ObjectiveMovement(int client)
 {
+	if (GetConVarBool(EBotForceHuntEnemy))
+	{
+		if (m_hasWaypoints)
+			FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
+		else
+		{
+			m_goalPosition[client] = GetOrigin(m_goalEntity[client]);
+			FollowPath(client, m_goalPosition[client]);
+		}
+
+		return;
+	}
+
 	if (m_hasWaypoints && IsSniper(client) && m_hasSniperWaypoints)
 	{
 		int index = m_goalIndex[client];
@@ -480,7 +514,7 @@ stock void ObjectiveMovement(int client)
 			SelectObjective(client);
 		
 	}
-	else if (StrContains(currentMap, "koth_" , false) != -1)
+	else if (isKOTH)
 	{
 		if (m_hasWaypoints)
 			FollowPath(client, m_goalPosition[client]);
@@ -504,21 +538,21 @@ stock void ObjectiveMovement(int client)
 			FollowPath(client, m_goalPosition[client]);
 		}
 	}
-	else if (StrContains(currentMap, "pl_" , false) != -1)
+	else if (isPL)
 	{
 		if (m_hasWaypoints)
 			FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
 		else
 			FollowPath(client, m_goalPosition[client]);
 	}
-	else if (StrContains(currentMap, "plr_" , false) != -1)
+	else if (isPLR)
 	{
 		if (m_hasWaypoints)
 			FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
 		else
 			FollowPath(client, m_goalPosition[client]);
 	}
-	else if (StrContains(currentMap, "ctf_" , false) != -1)
+	else if (isCTF)
 	{
 		if (!IsValidEntity(m_goalEntity[client]) || !HasEntProp(m_goalEntity[client], Prop_Send, "m_nFlagStatus"))
 			SelectObjective(client);
@@ -563,7 +597,7 @@ stock void ObjectiveMovement(int client)
 			}
 		}
 	}
-	else if (StrContains(currentMap, "" , false) != -1)
+	else if (isAD)
 	{
 		if (m_hasWaypoints)
 			FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
