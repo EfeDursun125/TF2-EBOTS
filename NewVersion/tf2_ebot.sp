@@ -16,7 +16,7 @@ public Plugin myinfo =
 	name = "[TF2] E-BOT",
 	author = "EfeDursun125",
 	description = "",
-	version = "0.05",
+	version = "0.06",
 	url = "https://steamcommunity.com/id/EfeDursun91/"
 }
 
@@ -31,6 +31,7 @@ public Plugin myinfo =
 #include <ebotai/check>
 #include <ebotai/look>
 #include <ebotai/autoattack>
+#include <ebotai/voice>
 
 // Goal-Oriented Action Planning (GOAP)
 #include <ebotai/goap/defaultai>
@@ -43,6 +44,7 @@ public Plugin myinfo =
 #include <ebotai/goap/spyhunt>
 #include <ebotai/goap/spysap>
 #include <ebotai/goap/heal>
+#include <ebotai/goap/hunt>
 #include <ebotai/goap/engineeridle>
 #include <ebotai/goap/engineerbuildsentry>
 #include <ebotai/goap/engineerbuilddispenser>
@@ -83,9 +85,10 @@ public void OnPluginStart()
 	EBotMelee = CreateConVar("ebot_melee_range", "128", "", FCVAR_NONE);
 	EBotSenseMin = CreateConVar("ebot_minimum_sense_chance", "10", "Minimum 10", FCVAR_NONE);
 	EBotSenseMax = CreateConVar("ebot_maximum_sense_chance", "90", "Maximum 90", FCVAR_NONE);
-	EBotDifficulty = CreateConVar("ebot_difficulty", "2", "0 = Beginner | 1 = Easy | 2 = Normal | 3 = Hard | 4 = Expert", FCVAR_NONE);
+	EBotDifficulty = CreateConVar("ebot_difficulty", "4", "0 = Beginner | 1 = Easy | 2 = Normal | 3 = Hard | 4 = Expert", FCVAR_NONE);
 	EBotMedicFollowRange = CreateConVar("ebot_medic_follow_range", "150", "", FCVAR_NONE);
 	EBotChangeClass = CreateConVar("ebot_change_class", "1", "", FCVAR_NONE);
+	EBotChangeClassRandom = CreateConVar("ebot_change_class_random", "0", "", FCVAR_NONE);
 	EBotChangeClassChance = CreateConVar("ebot_change_class_chance", "35", "", FCVAR_NONE);
 	EBotDeadChat = CreateConVar("ebot_dead_chat_chance", "30", "", FCVAR_NONE);
 	m_eBotDodgeRangeMin = CreateConVar("ebot_minimum_dodge_range", "512", "the range when enemy closer than a value, bot will start dodging enemies", FCVAR_NONE);
@@ -106,20 +109,21 @@ public void OnPluginStart()
 		if (!IsFakeClient(i))
 			continue;
 		
-		if (GameRules_GetProp("m_bPlayingMannVsMachine") && GetClientTeam(i) != 2)
+		char namebuf[32];
+    	GetEntPropString(i, Prop_Data, "m_iName", namebuf, sizeof(namebuf));
+
+    	if (!StrEqual("ebot", namebuf))
 			continue;
 		
 		SDKHook(i, SDKHook_OnTakeDamage, OnTakeDamage);
 		m_difficulty[i] = -1;
+		m_isEBot[i] = true;
 	}
 }
 
 // trigger on map start
 public void OnMapStart()
 {
-	if (!GameRules_GetProp("m_bPlayingMannVsMachine"))
-		SetConVarInt(FindConVar("nb_player_stop"), 1);
-	
 	GetCurrentMap(currentMap, sizeof(currentMap));
 	AutoLoadGamemode();
 
@@ -155,10 +159,26 @@ public void OnMapStart()
 			if (IsValidEntity(flag))
 			{
 				if (GetTeamNumber(flag) == 2)
+				{
+					m_redFlag = flag;
 					m_redFlagCapPoint = GetOrigin(flag);
+				}
 				else if (GetTeamNumber(flag) == 3)
+				{
+					m_bluFlag = flag;
 					m_bluFlagCapPoint = GetOrigin(flag);
+				}
 			}
+		}
+	}
+
+	if (isKOTH)
+	{
+		int capturepoint;
+		if ((capturepoint = FindEntityByClassname(capturepoint, "team_control_point")) != INVALID_ENT_REFERENCE)
+		{
+			if (IsValidEntity(capturepoint))
+				m_capturePoint = capturepoint;
 		}
 	}
 
@@ -202,10 +222,29 @@ public void EBotDeathChat(int client)
     }
 }
 
-// trigger on client put in the server
+char ChosenName[MAX_NAME_LENGTH];
 public void OnClientPutInServer(int client)
 {
-	if (IsValidClient(client))
+	m_isEBot[client] = false;
+
+	int ebot = FindBotByName(ChosenName);
+	if (IsValidClient(ebot))
+	{
+		DispatchKeyValue(ebot, "targetname", "ebot");
+		DispatchSpawn(ebot);
+		ActivateEntity(ebot);
+		
+		m_isEBot[ebot] = true;
+
+		FakeClientCommand(ebot, "jointeam auto");
+
+		if (StrEqual("Rick May", ChosenName))
+			FakeClientCommandEx(ebot, "joinclass soldier");
+		else
+			FakeClientCommandEx(ebot, "joinclass auto");
+	}
+
+	if (IsValidClient(client) && IsFakeClient(client))
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 
 	// delete path positions
@@ -213,6 +252,10 @@ public void OnClientPutInServer(int client)
 	m_positions[client] = new ArrayList(3);
 	delete m_pathIndex[client];
 	m_pathIndex[client] = new ArrayList();
+	delete m_riskyWaypoints[client];
+	m_riskyWaypoints[client] = new ArrayList();
+	delete m_hidingSpots[client];
+	m_hidingSpots[client] = new ArrayList();
 	m_goalPosition[client] = NULL_VECTOR;
 	m_goalEntity[client] = -1;
 	m_nextStuckCheck[client] = GetGameTime() + 5.0;
@@ -299,13 +342,13 @@ public Action SaveWaypoint(int client, int args)
 
 public Action AddRadius(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
-		m_paths[nearestIndex].radius += 16;
-		if (m_paths[nearestIndex].radius > 128)
+		m_paths[nearestIndex].radius += 16.0;
+		if (m_paths[nearestIndex].radius > 128.0)
 			m_paths[nearestIndex].radius = 0.0;
 
-		PrintHintTextToAll("Current radius is %d", m_paths[nearestIndex].radius);
+		PrintHintTextToAll("Current radius is %d", RoundFloat(m_paths[nearestIndex].radius));
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
@@ -317,7 +360,7 @@ public Action SetFlag(int client, int args)
 {
 	char flag[32];
     GetCmdArgString(flag, sizeof(flag));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
 		int intflag = StringToInt(flag);
 		if (intflag == WAYPOINT_DEFEND || intflag == WAYPOINT_SENTRY || intflag == WAYPOINT_DEMOMANCAMP || intflag == WAYPOINT_SNIPER || intflag == WAYPOINT_TELEPORTERENTER || intflag == WAYPOINT_TELEPORTEREXIT)
@@ -341,7 +384,7 @@ public Action SetTeam(int client, int args)
 {
 	char team[32];
     GetCmdArgString(team, sizeof(team));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
 		m_paths[nearestIndex].team = StringToInt(team);
 		PrintHintTextToAll("Waypoint Team Changed: %d", view_as<TFTeam>(StringToInt(team)));
@@ -354,7 +397,7 @@ public Action SetTeam(int client, int args)
 
 public Action Select(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
 		savedIndex = nearestIndex;
 		PrintHintTextToAll("Waypoint selected %d", savedIndex);
@@ -369,7 +412,7 @@ public Action PathAdd(int client, int args)
 {
 	if (savedIndex == -1)
 		PrintHintTextToAll("Select a waypoint first");
-	else if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
+	else if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
 		AddPath(savedIndex, nearestIndex, GetVectorDistance(m_paths[savedIndex].origin, m_paths[nearestIndex].origin));
 		savedIndex = -1;
@@ -384,7 +427,7 @@ public Action PathDelete(int client, int args)
 {
 	if (savedIndex == -1)
 		PrintHintTextToAll("Select a waypoint first");
-	else if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
+	else if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
 		DeletePath(savedIndex, nearestIndex);
 		savedIndex = -1;
@@ -399,7 +442,7 @@ public Action SetArea(int client, int args)
 {
 	char area[32];
     GetCmdArgString(area, sizeof(area));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
 		m_paths[nearestIndex].activeArea = StringToInt(area);
 		PrintHintTextToAll("Waypoint Area Set: %d", StringToInt(area));
@@ -412,12 +455,12 @@ public Action SetArea(int client, int args)
 
 public Action SetAim1(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
 		float origin[3];
 		GetAimOrigin(m_hostEntity, origin);
 		m_paths[nearestIndex].campStart = origin;
-		PrintHintTextToAll("Waypoint Set Aim Start: %d %d %d", m_paths[nearestIndex].campStart[0], m_paths[nearestIndex].campStart[1], m_paths[nearestIndex].campStart[2]);
+		PrintHintTextToAll("Waypoint Set Aim Start: %d %d %d", RoundFloat(m_paths[nearestIndex].campStart[0]), RoundFloat(m_paths[nearestIndex].campStart[1]), RoundFloat(m_paths[nearestIndex].campStart[2]));
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
@@ -427,12 +470,12 @@ public Action SetAim1(int client, int args)
 
 public Action SetAim2(int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
 		float origin[3];
 		GetAimOrigin(m_hostEntity, origin);
 		m_paths[nearestIndex].campEnd = origin;
-		PrintHintTextToAll("Waypoint Set Aim End: %d %d %d", m_paths[nearestIndex].campEnd[0], m_paths[nearestIndex].campEnd[1], m_paths[nearestIndex].campEnd[2]);
+		PrintHintTextToAll("Waypoint Set Aim End: %d %d %d", RoundFloat(m_paths[nearestIndex].campEnd[0]), RoundFloat(m_paths[nearestIndex].campEnd[1]), RoundFloat(m_paths[nearestIndex].campEnd[2]));
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
@@ -475,14 +518,16 @@ public void AddEBotConsole()
 		fp.Close();
     }
 
-	char ChosenName[MAX_NAME_LENGTH] = "";
 	if (BotNames.Length > 0)
 		BotNames.GetString(GetRandomInt(0, BotNames.Length - 1), ChosenName, sizeof(ChosenName));
 	else
 		Format(ChosenName, sizeof(ChosenName), "ebot %d", GetRandomInt(0, 9999));
-
-    SetConVarInt(FindConVar("sv_cheats"), 1, false, false);
-	ServerCommand("bot -name \"%s\" -class random", ChosenName);
+	
+	if (GetRandomInt(1, 10) == 1 && !NameAlreadyTakenByPlayer("Rick May"))
+		Format(ChosenName, sizeof(ChosenName), "Rick May");
+	
+	SetConVarInt(FindConVar("sv_cheats"), 1, false, false);
+	ServerCommand("bot -name \"%s\"", ChosenName);
 }
 
 public Action KickEBot(int client, int args)
@@ -513,6 +558,7 @@ public void KickEBotConsole()
 			continue;
 		
 		KickClient(i);
+		m_isEBot[i] = false;
 		break;
 	}
 }
@@ -606,19 +652,16 @@ public void OnGameFrame()
 		SetConVarFloat(EBotFPS, 0.0333);
 }
 
-// repeat for all clients
 public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float angles[3])
 {
-	// is client valid? if not, we can't do anything
 	if (!IsValidClient(client))
 		return Plugin_Continue;
 		
-	// is client is bot? if not, we can't do anything
 	if (!IsEBot(client))
 		return Plugin_Continue;
-	
+
 	// auto backstab
-	if (TF2_GetPlayerClass(client) == TFClass_Spy && IsWeaponSlotActive(client, 2))
+	if (IsWeaponSlotActive(client, 2))
 	{
 		int melee = GetPlayerWeaponSlot(client, TFWeaponSlot_Melee);
 		if (IsValidEntity(melee) && HasEntProp(melee, Prop_Send, "m_bReadyToBackstab") && GetEntProp(melee, Prop_Send, "m_bReadyToBackstab"))
@@ -634,6 +677,8 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			m_positions[client].GetArray(m_targetNode[client], flGoPos);
 			MoveTo(client, flGoPos, !m_hasWaypoints);
 		}
+
+		buttons |= IN_DUCK;
 		buttons |= IN_JUMP;
 		DJTime[client] = GetGameTime() + 99999;
 	}
@@ -656,7 +701,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			if (m_attack2Timer[client] > GetGameTime())
 				buttons |= IN_ATTACK2;
 		}
-			
+		
 		if (GetEntProp(client, Prop_Send, "m_bJumping"))
 			buttons |= IN_DUCK;
 		
@@ -671,7 +716,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			
 			CheckSlowThink(client);
 			ThinkAI(client);
-			m_thinkTimer[client] = GetGameTime() + (GetConVarFloat(EBotFPS) + GetRandomFloat(0.001, 0.01));
+			m_thinkTimer[client] = GetGameTime() + GetConVarFloat(EBotFPS);
 		}
 		else
 		{
@@ -682,7 +727,22 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 				SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
 			
 			if (CurrentProcess[client] == PRO_BUILDDISPENSER && m_isSlowThink[client] && GetRandomInt(1, 3) == 1)
-				m_lookAt[client][1] = GetRandomFloat(1.0, 359.0);
+			{
+				if (m_hasWaypoints)
+				{
+					m_lookAt[client] = m_paths[GetRandomInt(1, m_waypointNumber)].origin;
+					m_lookAt[client][2] = GetHeight(client);
+				}
+				else
+				{
+					m_lookAt[client][0] = GetRandomFloat(1.0, 359.0);
+					m_lookAt[client][1] = GetRandomFloat(1.0, 359.0);
+					m_lookAt[client][2] = GetRandomFloat(1.0, 359.0);
+				}
+				
+				// force deploy
+				buttons |= IN_ATTACK;
+			}
 		}
 
 		if (TF2_IsPlayerInCondition(client, TFCond_Charging))
@@ -708,6 +768,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			ClampAngle(camangle);
 			m_lookAt[client] = wayorigin;
 			m_pauseTime[client] = GetGameTime() + 3.0;
+			m_stopTime[client] = GetGameTime() + 3.0;
 			SetEntPropFloat(client, Prop_Send, "m_flChargeMeter", 100.0);
 			TeleportEntity(client, NULL_VECTOR, camangle, vec);
 			buttons |= IN_ATTACK2;
@@ -723,79 +784,182 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	if (IsValidClient(client) && IsEBot(client))
 	{
+		SetFakeClientConVar(client, "cl_autowepswitch", "1");
+		SetFakeClientConVar(client, "hud_fastswitch", "1");
+		SetFakeClientConVar(client, "tf_medigun_autoheal", "0");
+		SetFakeClientConVar(client, "cl_autoreload", "1");
+
 		if (GetConVarBool(EBotChangeClass))
 		{
 			int changeclass = GetRandomInt(1, 100);
 			if (changeclass <= GetConVarInt(EBotChangeClassChance))
 			{
-				if (GameRules_GetProp("m_bPlayingMedieval"))
+				char nickname[32];
+       		 	GetClientName(client, nickname, sizeof(nickname))
+        		if (!StrEqual("Rick May", nickname))
 				{
-					int randomclass = GetRandomInt(1, 5);
-					if (randomclass == 1)
-						TF2_SetPlayerClass(client, TFClass_DemoMan);
-					else if (randomclass == 2)
-						TF2_SetPlayerClass(client, TFClass_Spy);
-					else if (randomclass == 3)
-						TF2_SetPlayerClass(client, TFClass_Sniper);
-					else if (randomclass == 4)
+					if (GameRules_GetProp("m_bPlayingMedieval"))
 					{
-						if (GetClientTeam(client) == 3)
+						int randomclass = GetRandomInt(1, 5);
+						if (randomclass == 1)
+							TF2_SetPlayerClass(client, TFClass_DemoMan);
+						else if (randomclass == 2)
+							TF2_SetPlayerClass(client, TFClass_Spy);
+						else if (randomclass == 3)
+							TF2_SetPlayerClass(client, TFClass_Sniper);
+						else if (randomclass == 4)
 						{
-							if (currentActiveArea == 1)
-								TF2_SetPlayerClass(client, TFClass_Sniper);
-							else 
-								TF2_SetPlayerClass(client, TFClass_DemoMan);
+							if (GetClientTeam(client) == 3)
+							{
+								if (currentActiveArea == 1)
+									TF2_SetPlayerClass(client, TFClass_Sniper);
+								else 
+									TF2_SetPlayerClass(client, TFClass_DemoMan);
+							}
+							else
+							{
+								randomclass = GetRandomInt(1, 2);
+								if (randomclass == 1)
+									TF2_SetPlayerClass(client, TFClass_Sniper);
+								else
+									TF2_SetPlayerClass(client, TFClass_Spy);
+							}
 						}
 						else
 						{
 							randomclass = GetRandomInt(1, 2);
 							if (randomclass == 1)
-								TF2_SetPlayerClass(client, TFClass_Sniper);
+								TF2_SetPlayerClass(client, TFClass_Medic);
 							else
-								TF2_SetPlayerClass(client, TFClass_Spy);
-						}
+							{
+								randomclass = GetRandomInt(1, 3);
+								if (randomclass == 1)
+									TF2_SetPlayerClass(client, TFClass_Heavy);
+								else if (randomclass == 2)
+									TF2_SetPlayerClass(client, TFClass_Pyro);
+								else
+								{
+									randomclass = GetRandomInt(1, 2);
+									if (randomclass == 1)
+										TF2_SetPlayerClass(client, TFClass_Scout);
+									else
+										TF2_SetPlayerClass(client, TFClass_Soldier);
+								}
+							}
+							}
 					}
 					else
 					{
-						randomclass = GetRandomInt(1, 2);
-						if (randomclass == 1)
-							TF2_SetPlayerClass(client, TFClass_Medic);
-						else
+						if (!GetConVarBool(EBotChangeClassRandom) && GetRandomInt(1, 2) == 1 && IsValidClient(m_lastKiller[client]))
 						{
-							randomclass = GetRandomInt(1, 3);
-							if (randomclass == 1)
-								TF2_SetPlayerClass(client, TFClass_Heavy);
-							else if (randomclass == 2)
-								TF2_SetPlayerClass(client, TFClass_Pyro);
-							else
+							if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Scout)
 							{
-								randomclass = GetRandomInt(1, 2);
-								if (randomclass == 1)
+								int rand = GetRandomInt(1, 3);
+								if (rand == 1)
+									TF2_SetPlayerClass(client, TFClass_Pyro);
+								else if (rand == 2)
+									TF2_SetPlayerClass(client, TFClass_Engineer);
+								else
+									TF2_SetPlayerClass(client, TFClass_Heavy);
+							}
+							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Soldier)
+							{
+								int rand = GetRandomInt(1, 3);
+								if (rand == 1)
+									TF2_SetPlayerClass(client, TFClass_Pyro);
+								else if (rand == 2)
 									TF2_SetPlayerClass(client, TFClass_Scout);
 								else
+									TF2_SetPlayerClass(client, TFClass_Sniper);
+							}
+							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Pyro)
+							{
+								int rand = GetRandomInt(1, 3);
+								if (rand == 1)
+									TF2_SetPlayerClass(client, TFClass_Sniper);
+								else if (rand == 2)
+									TF2_SetPlayerClass(client, TFClass_Engineer);
+								else
+									TF2_SetPlayerClass(client, TFClass_Heavy);
+							}
+							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_DemoMan)
+							{
+								int rand = GetRandomInt(1, 3);
+								if (rand == 1)
 									TF2_SetPlayerClass(client, TFClass_Soldier);
+								else if (rand == 2)
+									TF2_SetPlayerClass(client, TFClass_Scout);
+								else
+									TF2_SetPlayerClass(client, TFClass_Pyro);
+							}
+							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Heavy)
+							{
+								int rand = GetRandomInt(1, 3);
+								if (rand == 1)
+									TF2_SetPlayerClass(client, TFClass_Spy);
+								else if (rand == 2)
+									TF2_SetPlayerClass(client, TFClass_Sniper);
+								else
+									TF2_SetPlayerClass(client, TFClass_DemoMan);
+							}
+							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Engineer)
+							{
+								int rand = GetRandomInt(1, 3);
+								if (rand == 1)
+									TF2_SetPlayerClass(client, TFClass_Spy);
+								else if (rand == 2)
+									TF2_SetPlayerClass(client, TFClass_Medic);
+								else
+									TF2_SetPlayerClass(client, TFClass_Heavy);
+							}
+							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Sniper)
+							{
+								int rand = GetRandomInt(1, 3);
+								if (rand == 1)
+									TF2_SetPlayerClass(client, TFClass_Scout);
+								else if (rand == 2)
+									TF2_SetPlayerClass(client, TFClass_Spy);
+								else
+									TF2_SetPlayerClass(client, TFClass_Sniper);
+							}
+							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Medic)
+							{
+								int rand = GetRandomInt(1, 3);
+								if (rand == 1)
+									TF2_SetPlayerClass(client, TFClass_Pyro);
+								else if (rand == 2)
+									TF2_SetPlayerClass(client, TFClass_Scout);
+								else
+									TF2_SetPlayerClass(client, TFClass_Spy);
+							}
+							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Spy)
+							{
+								int rand = GetRandomInt(1, 3);
+								if (rand == 1)
+									TF2_SetPlayerClass(client, TFClass_Pyro);
+								else if (rand == 2)
+									TF2_SetPlayerClass(client, TFClass_Scout);
+								else
+									TF2_SetPlayerClass(client, TFClass_DemoMan);
 							}
 						}
+						else
+							FakeClientCommand(client, "joinclass auto");
 					}
-				}
-				else
-				{
-					//if (IsValidClient(m_lastKiller[client]) && (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Sniper || TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Engineer))
-					//	TF2_SetPlayerClass(client, TFClass_Spy);
-					//else
-					TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1, 9)));
-				}
 
-				if (IsPlayerAlive(client))
-				{
-					TF2_RespawnPlayer(client);
-					DeletePathNodes(client);
+					if (IsPlayerAlive(client))
+					{
+						TF2_RespawnPlayer(client);
+						DeletePathNodes(client);
+					}
 				}
 			}
 		}
 		
 		delete m_positions[client];
 		m_positions[client] = new ArrayList(3);
+		delete m_hidingSpots[client];
+		m_hidingSpots[client] = new ArrayList();
 		m_enemiesNearCount[client] = 0;
 		m_friendsNearCount[client] = 0;
 		m_hasEnemiesNear[client] = false;
@@ -806,13 +970,13 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_goalIndex[client] = -1;
 		m_goalEntity[client] = -1;
 		m_lastFailedWaypoint[client] = -1;
-		m_enterFail[client] = false;
-		m_exitFail[client] = false;
 		m_pathDelay[client] = 0.0;
 		DeletePathNodes(client);
 
 		if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 		{
+			m_enterFail[client] = false;
+			m_exitFail[client] = false;
 			m_teleEnterTriggerBlock[client] = false;
 			m_teleExitTriggerBlock[client] = false;
 			SetProcess(client, PRO_ENGINEERIDLE, 99999.0, "", true);
@@ -893,8 +1057,8 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 
 	if (IsValidClient(victim))
 	{
-		if (IsEBot(victim) && m_currentWaypointIndex[victim] > 0)
-			IncreaseDeaths(m_currentWaypointIndex[victim]);
+		if (IsEBot(victim) && m_currentIndex[victim] > 0)
+			IncreaseDeaths(m_currentIndex[victim]);
 		else
 		{
 			int index = FindNearestWaypoint(GetOrigin(victim), 999999.0, victim);
@@ -915,44 +1079,54 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 	if (!IsValidClient(client) || client == target)
 		return Plugin_Handled;
 	
-	if (!m_hasEntitiesNear[client] && IsValidEntity(target))
+	if (IsEBot(client))
 	{
-		m_damageTime[client] = GetGameTime();
-		m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.5, 5.0);
-		m_lookAt[client] = GetCenter(target);
-		m_nearestEntity[client] = target;
-		m_hasEntitiesNear[client] = true;
-	}
-	
-	if (IsEBot(client) && IsValidClient(target))
-	{
-		m_damageTime[client] = GetGameTime();
-		if (!m_hasEnemiesNear[client] || !IsPlayerAlive(m_nearestEnemy[client]))
+		if (IsValidClient(target))
 		{
-			m_lookAt[client] = GetEyePosition(target);
-			m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.5, 5.0);
-			m_nearestEnemy[client] = target;
-			m_hasEnemiesNear[client] = true;
-		}
-		
-		if (TF2_GetPlayerClass(client) == TFClass_Spy)
-		{
-			if (GetRandomInt(1, GetMaxHealth(client)) > GetClientHealth(client))
-				m_buttons[client] |= IN_ATTACK2;
-			
-			if (ChanceOf(m_eBotSenseChance[target]) && IsEBot(target))
-				m_knownSpy[target] = client;
-			else
+			m_damageTime[client] = GetGameTime();
+
+			if (TF2_IsPlayerInCondition(target, TFCond_Zoomed) && (TF2_GetPlayerClass(client) == TFClass_Scout || TF2_GetPlayerClass(client) == TFClass_Pyro))
 			{
-				for (int search = 1; search <= MaxClients; search++)
+				m_hasEnemiesNear[client] = true;
+				m_nearestEnemy[client] = target;
+				SetProcess(client, PRO_HUNTENEMY, 180.0, "trying to hunt down sniper", true);
+			}
+
+			if (!TF2_IsPlayerInCondition(client, TFCond_OnFire) && (!m_hasEnemiesNear[client] || !IsPlayerAlive(m_nearestEnemy[client])))
+			{
+				m_lookAt[client] = GetEyePosition(target);
+				m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.5, 5.0);
+				m_nearestEnemy[client] = target;
+				m_hasEnemiesNear[client] = true;
+			}
+		
+			if (TF2_GetPlayerClass(client) == TFClass_Spy)
+			{
+				if (GetRandomInt(1, GetMaxHealth(client)) > GetClientHealth(client))
+					m_buttons[client] |= IN_ATTACK2;
+			
+				if (ChanceOf(m_eBotSenseChance[target]) && IsEBot(target))
+					m_knownSpy[target] = client;
+				else
 				{
-					if (IsValidClient(search) && IsPlayerAlive(search) && search != client && GetClientTeam(client) != GetClientTeam(search))
+					for (int search = 1; search <= MaxClients; search++)
 					{
-						if (ChanceOf(m_eBotSenseChance[search]) && IsEBot(search))
-							m_knownSpy[search] = client;
+						if (IsValidClient(search) && IsPlayerAlive(search) && search != client && GetClientTeam(client) != GetClientTeam(search))
+						{
+							if (ChanceOf(m_eBotSenseChance[search]) && IsEBot(search))
+								m_knownSpy[search] = client;
+						}
 					}
 				}
 			}
+		}
+		else if (!m_hasEntitiesNear[client] && IsValidEntity(target))
+		{
+			m_damageTime[client] = GetGameTime();
+			m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.5, 5.0);
+			m_lookAt[client] = GetCenter(target);
+			m_nearestEntity[client] = target;
+			m_hasEntitiesNear[client] = true;
 		}
 	}
 
@@ -964,14 +1138,17 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 {
 	if (IsFakeClient(victim) && victim == attacker)
 	{
-		damage = 0.0;
-		return Plugin_Handled;
+		if (!m_hasRocketJumpWaypoints || m_lowHealth[victim] || TF2_GetPlayerClass(victim) != TFClass_Soldier)
+		{
+			damage = 0.0;
+			return Plugin_Handled;
+		}
 	}
 
-	if (IsValidClient(victim))
+	if (IsValidClient(victim) && victim != attacker)
 	{
-		if (IsEBot(victim) && m_currentWaypointIndex[victim] != -1)
-			IncreaseDamage(m_currentWaypointIndex[victim], damage);
+		if (IsEBot(victim) && m_currentIndex[victim] > 0)
+			IncreaseDamage(m_currentIndex[victim], damage);
 		else
 		{
 			int index = FindNearestWaypoint(GetOrigin(victim), 999999.0, victim);
