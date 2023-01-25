@@ -42,13 +42,6 @@ stock void HideUpdate(int client)
 		return;
 	}
 
-	if (m_positions[client] != null && m_positions[client].Length > 12)
-	{
-		m_lastFailedWaypoint[client] = m_coverIndex[client];
-		FinishCurrentProcess(client, false, "too far from cover waypoint");
-		return;
-	}
-
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
 	LookUpdate(client);
@@ -58,7 +51,7 @@ stock void HideUpdate(int client)
 	if (m_hasEnemiesNear[client])
 	{
 		float distance = GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true);
-		int range = Squared(256);
+		float range = Squaredf(128.0);
 		if (distance <= range)
 			BackstabMove(client, m_nearestEnemy[client], false);
 	}
@@ -69,20 +62,25 @@ stock void HideUpdate(int client)
 		SetProcess(client, PRO_IDLE, GetRandomFloat(2.0, 4.0), "", true);
 	}
 
-	if (m_currentIndex[client] == m_coverIndex[client])
+	if (m_coverIndex[client] != -1)
 	{
-		if (m_hasEnemiesNear[client]) // enemy on cover index?
-			HideStart(client);
-		else
+		if (m_currentIndex[client] == m_coverIndex[client] || GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squaredf(32.0))
 		{
 			DeletePathNodes(client);
 			FinishCurrentProcess(client, true);
-			SetProcess(client, PRO_IDLE, GetRandomFloat(2.0, 4.0), "", true);
+
+			if (!m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])
+				SetProcess(client, PRO_IDLE, GetRandomFloat(2.0, 4.0), "", true);
 		}
+	}
+	else
+	{
+		DeletePathNodes(client);
+		FinishCurrentProcess(client, true);
 	}
 }
 
 stock void HideEnd(int client)
 {
-	// nothing to do
+	m_coverIndex[client] = -1;
 }

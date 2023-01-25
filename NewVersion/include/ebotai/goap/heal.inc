@@ -2,6 +2,7 @@ public bool HealRequirements(int client)
 {
 	if (TF2_HasTheFlag(client))
 		return false;
+	
 	return true;
 }
 
@@ -30,9 +31,6 @@ public void HealUpdate(int client)
 	
 	if (m_hasFriendsNear[client])
 	{
-		if (!IsWeaponSlotActive(client, 1))
-			EquipWeaponSlot(client, 1);
-			
 		m_healTarget[client] = m_nearestFriend[client];
 		CurrentProcessTime[client] = GetGameTime() + m_difficulty[client] + 8.0; // no timeout if we have friends nearby
 	}
@@ -45,7 +43,22 @@ public void HealUpdate(int client)
 			return;
 		}
 
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(m_healTarget[client]), true) <= Squared(GetConVarInt(EBotMedicFollowRange)))
+		float distance = GetVectorDistance(GetOrigin(client), GetOrigin(m_healTarget[client]), true);
+
+		if (IsWeaponSlotActive(client, 1))
+		{
+			int medigun = GetPlayerWeaponSlot(client, 1);
+			if (IsValidEntity(medigun))
+			{
+				/*SetEntPropEnt(medigun, Prop_Send, "m_hHealingTarget", m_nearestFriend[client]);
+				SetEntPropEnt(medigun, Prop_Send, "m_hLastHealingTarget", m_nearestFriend[client]);
+				SetEntProp(medigun, Prop_Send, "m_bHealing", 1);*/
+				//SetEntProp(medigun, Prop_Send, "m_bAttacking", 1);
+				//SetEntPropFloat(medigun, Prop_Send, "m_flNextTargetCheckTime", 999999999.0);
+			}
+		}
+
+		if (distance <= Squared(GetConVarInt(EBotMedicFollowRange)))
 		{
 			if (!IsWeaponSlotActive(client, 1))
 				EquipWeaponSlot(client, 1);
@@ -72,10 +85,12 @@ public void HealUpdate(int client)
 		else
 		{
 			if (IsWeaponSlotActive(client, 1) || (m_primaryID[client] == 1079 || m_primaryID[client] == 305))
+			{
 				m_attackTimer[client] = GetGameTime() + 0.4;
-			
-			m_tackEntity[client] = m_healTarget[client];
-			m_lookAt[client] = GetEyePosition(m_healTarget[client]);
+				m_tackEntity[client] = m_healTarget[client];
+				m_lookAt[client] = GetEyePosition(m_healTarget[client]);
+			}
+
 			FollowPath(client, GetOrigin(m_healTarget[client]));
 		}
 	}

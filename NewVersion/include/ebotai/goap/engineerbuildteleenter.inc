@@ -5,6 +5,9 @@ public bool BuildTeleEnterRequirements(int client)
 	if (m_teleEnterTriggerBlock[client])
 		return false;
 	
+	if (m_enterFail[client])
+		return false;
+	
 	if (GetMetal(client) < 50.0)
 		return false;
 	

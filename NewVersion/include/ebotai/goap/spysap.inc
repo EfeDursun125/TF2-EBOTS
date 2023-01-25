@@ -53,31 +53,19 @@ public void SpySapUpdate(int client)
 		return;
 	}
 
-	if (m_hasEnemiesNear[client])
-	{
-		float distance = GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true);
-		int range = Squared(256);
-
-		if (distance <= range)
-		{
-			BackstabMove(client, m_nearestEnemy[client]);
-			return;
-		}
-	}
-
 	FollowPath(client, GetOrigin(m_goalEntity[client]));
 
 	if (HasEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") == 0)
 	{
 		float distance = GetVectorDistance(GetOrigin(client), GetCenter(m_goalEntity[client]), true);
-		int range = Squared(256);
+		float range = Squaredf(256.0);
 
 		if (distance <= range)
 		{
 			m_lookAt[client] = GetCenter(m_goalEntity[client]);
-			EquipWeaponSlot(client, 5);
-			FakeClientCommandThrottled(client, "build 3 0"); // place sapper
+			EquipWeaponSlot(client, 1);
 			m_buttons[client] |= IN_ATTACK;
+			FakeClientCommandThrottled(client, "build 3 0"); // place sapper
 		}
 	}
 
@@ -90,10 +78,13 @@ public void SpySapUpdate(int client)
 
 public void SpySapEnd(int client)
 {
-	if (IsWeaponSlotActive(client, 5))
+	if (IsWeaponSlotActive(client, 1))
 	{
 		int weapon = GetRandomInt(0, 1);
-		EquipWeaponSlot(client, weapon);
+		if (weapon == 1)
+			EquipWeaponSlot(client, 0);
+		else
+			EquipWeaponSlot(client, 1);
 	}
 	
 	m_knownSentry[client] = -1; // what if sentry is unreachable???

@@ -116,17 +116,13 @@ stock int FindAmmoWaypoint(int client)
 		// only get safe ammo packs
 		if (m_hasEnemiesNear[client])
 		{
-			float distance = GetVectorDistance(m_paths[i].origin, GetOrigin(m_nearestEnemy[client]), true);
-			if (distance <= Squared(768))
-				continue;
-		
-			if (distance <= GetVectorDistance(m_paths[i].origin, GetOrigin(client)))
+			if (GetVectorDistance(m_paths[i].origin, GetOrigin(m_nearestEnemy[client]), true) <= GetVectorDistance(m_paths[i].origin, GetOrigin(client), true))
 				continue;
 		}
 		
-		if (GetVectorDistance(m_paths[i].origin, GetOrigin(client), true) <= Squared(1024))
+		if (GetVectorDistance(m_paths[i].origin, GetOrigin(client), true) <= Squared(768))
 			NearAmmoPacks.Push(i);
-		else if (GetVectorDistance(m_paths[i].origin, GetOrigin(client), true) <= Squared(2048))
+		else if (GetVectorDistance(m_paths[i].origin, GetOrigin(client), true) <= Squared(1536))
 			MedAmmoPacks.Push(i);
 		else
 			AllAmmoPacks.Push(i);

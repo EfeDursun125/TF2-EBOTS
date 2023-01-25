@@ -14,15 +14,6 @@ public void DefaultStart(int client)
 
 public void DefaultUpdate(int client)
 {
-	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_CritOnWin))
-	{
-		LookUpdate(client);
-		FollowPath(client, GetOrigin(m_nearestEnemy[client]));
-		FindFriendsAndEnemiens(client);
-
-		return;
-	}
-
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
 
@@ -53,18 +44,8 @@ public void DefaultUpdate(int client)
 			FollowPath(client, m_goalPosition[client], -1, index);
 		}
 
-		if (index != -1 && (m_paths[index].flags == WAYPOINT_SNIPER || m_paths[index].flags == WAYPOINT_DEFEND) && GetVectorDistance(GetOrigin(client), m_paths[index].origin, true) <= Squared(128))
+		if (index != -1 && (m_paths[index].flags == WAYPOINT_DEMOMANCAMP || m_paths[index].flags == WAYPOINT_SNIPER || m_paths[index].flags == WAYPOINT_DEFEND) && GetVectorDistance(GetOrigin(client), m_paths[index].origin, true) <= Squared(128))
 		{
-			if (m_pauseTime[client] < GetGameTime())
-			{
-				if (GetRandomInt(1, 2) == 1)
-					m_lookAt[client] = m_paths[index].campStart;
-				else
-					m_lookAt[client] = m_paths[index].campEnd;
-				
-				m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.0, 7.0);
-			}
-
 			if (IsSniper(client))
 			{
 				if (m_primaryID[client] != 1098 && !TF2_IsPlayerInCondition(client, TFCond_Zoomed) && !IsMoving(client))
@@ -76,6 +57,38 @@ public void DefaultUpdate(int client)
 				LookAtEnemiens(client);
 				AutoAttack(client);
 			}
+			else
+				m_tackEntity[client] = -1;
+
+			if (TF2_GetPlayerClass(client) == TFClass_DemoMan && m_paths[index].flags == WAYPOINT_DEMOMANCAMP)
+			{
+				if (m_stickyCount[client] < 4)
+					m_lookAt[client] = m_paths[index].campStart;
+				else if (m_stickyCount[client] < 8)
+					m_lookAt[client] = m_paths[index].campEnd;
+
+				if (m_stickyCount[client] < 8)
+				{
+					if (IsWeaponSlotActive(client, 1))
+						m_buttons[client] |= IN_ATTACK;
+					else
+						EquipWeaponSlot(client, 1);
+
+					return;
+				}
+				else
+					EquipWeaponSlot(client, 0);
+			}
+
+			if (m_pauseTime[client] < GetGameTime())
+			{
+				if (GetRandomInt(1, 2) == 1)
+					m_lookAt[client] = m_paths[index].campStart;
+				else
+					m_lookAt[client] = m_paths[index].campEnd;
+				
+				m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.0, 7.0);
+			}
 
 			return;
 		}
@@ -85,6 +98,9 @@ public void DefaultUpdate(int client)
 		if (IsValidEntity(m_goalEntity[client]))
 			ObjectiveMovement(client);
 		else
+			SelectObjective(client);
+
+		if (isMVM)
 			SelectObjective(client);
 	}
 
@@ -125,7 +141,7 @@ public void SelectObjective(int client)
 		return;
 	}
 	
-	if (m_hasWaypoints && m_hasSniperWaypoints && IsSniper(client))
+	if (m_hasWaypoints && m_hasSniperWaypoints && IsSniper(client) && !TF2_HasTheFlag(client))
 	{
 		int myindex = m_goalIndex[client];
 		if (myindex != -1 && m_paths[myindex].flags == WAYPOINT_SNIPER && (m_paths[myindex].activeArea == 0 || m_paths[myindex].activeArea == currentActiveArea))
@@ -184,13 +200,72 @@ public void SelectObjective(int client)
 		}
 	}
 
+	if (m_hasWaypoints && m_hasStickyWaypoints && TF2_GetPlayerClass(client) == TFClass_DemoMan && !TF2_HasTheFlag(client))
+	{
+		int myindex = m_goalIndex[client];
+		if (myindex != -1 && m_paths[myindex].flags == WAYPOINT_DEMOMANCAMP && (m_paths[myindex].activeArea == 0 || m_paths[myindex].activeArea == currentActiveArea))
+			return;
+		
+		int index = -1;
+		ArrayList GoodSniperPoints = new ArrayList();
+		ArrayList AllSniperPoints = new ArrayList();
+		for (int i = 0; i < m_waypointNumber; i++)
+		{
+			if (m_paths[i].flags != _:WAYPOINT_DEMOMANCAMP)
+				continue;
+			
+			// blocked waypoint
+   			if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+				continue;
+
+    		// not for our team
+ 			if (m_paths[i].team == 2 && GetClientTeam(client) == 3)
+                continue;
+            else if (m_paths[i].team == 3 && GetClientTeam(client) == 2)
+                continue;
+
+			if (!IsWaypointUsed(i))
+				GoodSniperPoints.Push(i);
+			else if (m_paths[i].radius > 32.0)
+				GoodSniperPoints.Push(i);
+			else
+				AllSniperPoints.Push(i);
+		}
+
+		if (index == -1)
+		{
+			if (GoodSniperPoints.Length > 0)
+				index = GoodSniperPoints.Get(GetRandomInt(0, GoodSniperPoints.Length - 1));
+			else if (AllSniperPoints.Length > 0)
+				index = AllSniperPoints.Get(GetRandomInt(0, AllSniperPoints.Length - 1));
+		}
+
+		delete GoodSniperPoints;
+		delete AllSniperPoints;
+
+		if (index != -1)
+		{
+			m_goalIndex[client] = index;
+			if (m_paths[index].radius > 0.0)
+			{
+				m_goalPosition[client][0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				m_goalPosition[client][1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				m_goalPosition[client][2] = m_paths[index].origin[2];
+			}
+			else
+				m_goalPosition[client] = m_paths[index].origin;
+			
+			return;
+		}
+	}
+
 	if (isKOTH)
 	{
 		if (m_hasWaypoints)
 		{
 			int index = -1;
 			ArrayList GoodDefendPoints = new ArrayList();
-			ArrayList AllDefendPoints = new ArrayList();
+			
 			for (int i = 0; i < m_waypointNumber; i++)
 			{
 				// blocked waypoint
@@ -203,7 +278,7 @@ public void SelectObjective(int client)
             	else if (m_paths[i].team == 3 && GetClientTeam(client) == 2)
                 	continue;
 				
-				if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT)
+				if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT && GetClientTeam(client) != GetTeamNumber(m_capturePoint))
 				{
 					index = i
 					break;
@@ -216,20 +291,15 @@ public void SelectObjective(int client)
 					GoodDefendPoints.Push(i);
 				else if (m_paths[i].radius > 32.0)
 					GoodDefendPoints.Push(i);
-				else
-					AllDefendPoints.Push(i);
 			}
 
 			if (index == -1)
 			{
 				if (GoodDefendPoints.Length > 0)
 					index = GoodDefendPoints.Get(GetRandomInt(0, GoodDefendPoints.Length - 1));
-				else if (AllDefendPoints.Length > 0)
-					index = AllDefendPoints.Get(GetRandomInt(0, AllDefendPoints.Length - 1));
 			}
 
 			delete GoodDefendPoints;
-			delete AllDefendPoints;
 			
 			if (index != -1)
 			{
@@ -243,16 +313,20 @@ public void SelectObjective(int client)
 				else
 					m_goalPosition[client] = m_paths[index].origin;
 			}
-		}
-		else
-		{
-			int capturepoint;
-			if ((capturepoint = FindEntityByClassname(capturepoint, "team_control_point")) != INVALID_ENT_REFERENCE)
+			else
 			{
-				if (IsValidEntity(capturepoint))
-					m_goalEntity[client] = capturepoint;
+				m_goalEntity[client] = FindNearestEnemy(client);
+				if (IsValidClient(m_goalEntity[client]))
+				{
+					m_goalPosition[client] = GetOrigin(m_goalEntity[client]);
+					SetGoalIndex(client, FindNearestWaypoint(m_goalPosition[client], 999999.0, client));
+				}
+				else
+					SetGoalIndex(client, GetRandomInt(1, m_waypointNumber));
 			}
 		}
+		else
+			m_goalEntity[client] = m_capturePoint;
 	}
 	else if (isPL)
 	{
@@ -463,6 +537,12 @@ public void SelectObjective(int client)
 					m_goalPosition[client] = m_paths[m_goalIndex[client]].origin;
 			}
 		}
+		else
+		{
+			m_goalEntity[client] = FindNearestEnemy(client);
+			if (isAD)
+				m_goalPosition[client] = GetOrigin(m_goalEntity[client]);
+		}
 	}
 	else if (m_hasWaypoints)
 	{
@@ -495,7 +575,7 @@ stock void ObjectiveMovement(int client)
 		return;
 	}
 
-	if (m_hasWaypoints && IsSniper(client) && m_hasSniperWaypoints)
+	if (m_hasWaypoints && TF2_GetPlayerClass(client) == TFClass_DemoMan && m_hasStickyWaypoints)
 	{
 		int index = m_goalIndex[client];
 		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea == currentActiveArea))
@@ -512,7 +592,24 @@ stock void ObjectiveMovement(int client)
 		}
 		else
 			SelectObjective(client);
-		
+	}
+	else if (m_hasWaypoints && IsSniper(client) && m_hasSniperWaypoints)
+	{
+		int index = m_goalIndex[client];
+		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea == currentActiveArea))
+		{
+			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squared(4))
+			{
+				m_moveVel[client][0] = 0.0;
+				m_moveVel[client][1] = 0.0;
+				m_moveVel[client][2] = 0.0;
+				m_nextStuckCheck[client] = GetGameTime() + 5.0;
+			}
+			else
+				FollowPath(client, m_goalPosition[client]);
+		}
+		else
+			SelectObjective(client);
 	}
 	else if (isKOTH)
 	{

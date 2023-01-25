@@ -110,17 +110,13 @@ stock int FindHealthWaypoint(int client)
 		// only get safe health packs
 		if (m_hasEnemiesNear[client] && !GameRules_GetProp("m_bPlayingMedieval"))
 		{
-			float distance = GetVectorDistance(m_paths[i].origin, GetOrigin(m_nearestEnemy[client]), true);
-			if (distance <= Squared(768))
-				continue;
-		
-			if (distance <= GetVectorDistance(m_paths[i].origin, GetOrigin(client)))
+			if (GetVectorDistance(m_paths[i].origin, GetOrigin(m_nearestEnemy[client]), true) <= GetVectorDistance(m_paths[i].origin, GetOrigin(client), true))
 				continue;
 		}
 		
-		if (GetVectorDistance(m_paths[i].origin, GetOrigin(client), true) <= Squared(1024))
+		if (GetVectorDistance(m_paths[i].origin, GetOrigin(client), true) <= Squared(768))
 			NearHealthPacks.Push(i);
-		else if (GetVectorDistance(m_paths[i].origin, GetOrigin(client), true) <= Squared(2048))
+		else if (GetVectorDistance(m_paths[i].origin, GetOrigin(client), true) <= Squared(1536))
 			MedHealthPacks.Push(i);
 		else
 			AllHealthPacks.Push(i);

@@ -3,6 +3,9 @@ stock bool AttackRequirements(int client)
 	if (m_lowHealth[client])
 		return false;
 	
+	if (m_lowAmmo[client])
+		return false;
+	
 	if (NoDodge[client] >= GetGameTime())
 		return false;
 	
@@ -14,7 +17,7 @@ stock bool AttackRequirements(int client)
 	
 	if (GetEntProp(client, Prop_Send, "m_bJumping"))
 		return false;
-	
+		
 	if (IsWeaponSlotActive(client, 2))
 		return false;
 	
@@ -91,10 +94,37 @@ stock void RandomMovement(int client)
 {
 	if (m_wasdTimer[client] <= GetGameTime())
 	{
+		if (m_difficulty[client] >= 2)
+		{
+			if (m_nearestEnemy[client] > 0)
+			{
+				float distance = GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true);
+				if (TF2_GetPlayerClass(client) == TFClass_Pyro && IsWeaponSlotActive(client, 0) && distance <= Squaredf(512.0))
+				{
+					if (TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Pyro && GetClientHealth(client) <= GetClientHealth(m_nearestEnemy[client]))
+					{
+						MoveOut(client, GetOrigin(m_nearestEnemy[client]), true);
+						if (m_isSlowThink[client])
+							m_buttons[client] |= IN_ATTACK2;
+					}
+					else
+						BackstabMove(client, m_nearestEnemy[client], true);
+
+					m_wasdTimer[client] = GetGameTime() + GetRandomFloat(0.128, 0.512);
+					return;
+				}
+				else if ((TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Pyro || IsWeaponSlotActive(m_nearestEnemy[client], 2)) && distance <= Squaredf(512.0))
+				{
+					MoveOut(client, GetOrigin(m_nearestEnemy[client]), true);
+					m_wasdTimer[client] = GetGameTime() + GetRandomFloat(0.128, 0.512);
+					return;
+				}
+			}
+		}
+
 		float maxspeed = GetMaxSpeed(client);
-		float xmaxspeed = maxspeed * -1.0;
-		m_moveVel[client][0] = GetRandomInt(1, 2) == 1 ? xmaxspeed : maxspeed;
-		m_moveVel[client][1] = GetRandomInt(1, 2) == 1 ? xmaxspeed : maxspeed;
+		m_moveVel[client][0] = GetRandomInt(1, 2) == 1 ? -maxspeed : maxspeed;
+		m_moveVel[client][1] = GetRandomInt(1, 2) == 1 ? -maxspeed : maxspeed;
 		m_wasdTimer[client] = GetGameTime() + GetRandomFloat(0.256, 0.768);
 	}
 }

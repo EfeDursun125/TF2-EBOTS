@@ -4,8 +4,13 @@ public bool BuildTeleExitRequirements(int client)
 {
 	if (m_teleExitTriggerBlock[client])
 		return false;
+	
+	if (m_exitFail[client])
+		return false;
+
 	if (GetMetal(client) < 50.0)
 		return false;
+
 	return true;
 }
 

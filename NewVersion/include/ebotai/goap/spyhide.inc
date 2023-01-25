@@ -1,5 +1,3 @@
-int m_coverIndex[MAXPLAYERS + 1];
-
 stock bool SpyHideRequirements(int client)
 {
 	if (!m_hasWaypoints)
@@ -21,7 +19,7 @@ stock bool SpyHideRequirements(int client)
 	return false;
 }
 
-stock void HideStart(int client)
+stock void SpyHideStart(int client)
 {
 	m_hidingSpot = NULL;
 	m_findTimer.Invalidate();

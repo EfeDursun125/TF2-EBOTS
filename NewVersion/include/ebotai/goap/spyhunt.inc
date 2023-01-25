@@ -20,13 +20,6 @@ public void SpyHuntStart(int client)
 
 public void SpyHuntUpdate(int client)
 {
-	if (TF2_GetPlayerClass(client) != TFClass_Spy && m_hasEnemiesNear[client])
-	{
-		LookAtEnemiens(client);
-		SelectBestCombatWeapon(client);
-		AutoAttack(client);
-	}
-	
 	CheckHealth(client);
 	CheckAmmo(client);
 	FindFriendsAndEnemiens(client);
@@ -91,10 +84,10 @@ public void SpyHuntUpdate(int client)
 	m_victim[client] = playerThreat;
 
 	// uncloak so we can attack
-	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked))// && m_decloakTimer.IsElapsed() )
+	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 	{
-		m_buttons[client] |= IN_ATTACK2;
-		//m_decloakTimer.Start( 1.0f );
+		SetProcess(client, PRO_HIDE, 60.0, "Finding somewhere to uncloak!");
+		return;
 	}
 
 	bool isKnifeFight = false;

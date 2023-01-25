@@ -18,12 +18,12 @@ stock void IdleStart(int client)
 stock void IdleUpdate(int client)
 {
 	FindFriendsAndEnemiens(client);
-
-	if (m_hasEnemiesNear[client])
-		SetProcess(client, PRO_HIDE, 60.0, "| process started -> hiding from danger", false, false);
-	
 	FindEnemyEntities(client);
 	LookUpdate(client, false);
+	CheckHideFromDanger(client);
+
+	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+		m_buttons[client] |= IN_ATTACK2;
 }
 
 stock void IdleEnd(int client)

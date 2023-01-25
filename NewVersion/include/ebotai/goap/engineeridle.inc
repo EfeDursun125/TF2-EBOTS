@@ -32,6 +32,21 @@ public void EngineerIdleStart(int client)
 
 public void EngineerIdleUpdate(int client)
 {
+	m_eBotDodgeRange[client] = 512.0;
+
+	if (TF2_GetPlayerClass(client) != TFClass_Engineer)
+	{
+		SetProcess(client, PRO_DEFAULT, 99999.0, "", true, false);
+		CurrentProcess[client] = PRO_DEFAULT;
+		return;
+	}
+
+	if (TF2_HasTheFlag(client))
+	{
+		CurrentProcess[client] = PRO_DEFAULT;
+		return;
+	}
+
 	CheckHealth(client);
 
 	if (IsMetalLow(client))
@@ -50,22 +65,16 @@ public void EngineerIdleUpdate(int client)
 	FindEnemyEntities(client);
 	CheckEngineerBuildings(client);
 	LookUpdate(client);
-
-	if (TF2_HasTheFlag(client))
-	{
-		CurrentProcess[client] = PRO_DEFAULT;
-		return;
-	}
 	
 	if (!IsValidEntity(SentryGun[client]))
 	{
-		if (!m_enterFail[client] && WantsBuildTeleporterEnter[client] && GetRandomInt(1, 3) == 1)
+		if (WantsBuildTeleporterEnter[client] && GetRandomInt(1, 3) == 1)
 		{
 			SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
 			return;
 		}
 
-		if (!m_exitFail[client] && WantsBuildTeleporterExit[client] && GetRandomInt(1, 3) == 1)
+		if (WantsBuildTeleporterExit[client] && (GetRandomInt(1, 3) == 1 || IsValidEntity(TeleporterEnter[client])))
 		{
 			SetProcess(client, PRO_BUILDTELEPORTEREXIT, 80.0, "| process started -> trying to build teleporter exit");
 			return;
@@ -78,29 +87,27 @@ public void EngineerIdleUpdate(int client)
 		return;
 	}
 
-	if (WantsBuildDispenser[client] && IsValidEntity(SentryGun[client]) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+	if (WantsBuildDispenser[client])
 	{
 		SetProcess(client, PRO_BUILDDISPENSER, 60.0, "| process started -> trying to build dispenser");
 		return;
 	}
 
-	if (!m_exitFail[client] && WantsBuildTeleporterExit[client])
+	if (WantsBuildTeleporterExit[client])
 	{
 		SetProcess(client, PRO_BUILDTELEPORTEREXIT, 80.0, "| process started -> trying to build teleporter exit");
 		return;
 	}
 
-	if (!m_enterFail[client] && WantsBuildTeleporterEnter[client])
+	if (WantsBuildTeleporterEnter[client])
 	{
 		SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
 		return;
 	}
 
-	if (IsWeaponSlotActive(client, 5))
-		EquipWeaponSlot(client, GetRandomInt(0, 2));
-	else if (IsValidEntity(SentryGun[client]) && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
+	if (IsValidEntity(SentryGun[client]) && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
@@ -116,7 +123,7 @@ public void EngineerIdleUpdate(int client)
 	}
 	else if (IsValidEntity(Dispenser[client]) && (!DispenserIsMaxLevel[client] || !DispenserHealthIsFull[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
@@ -132,13 +139,13 @@ public void EngineerIdleUpdate(int client)
 	}
 	else if (IsValidEntity(TeleporterEnter[client]) && (!TeleporterEnterHealthIsFull[client] || !TeleporterEnterIsMaxLevel[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(TeleporterEnter[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) <= Squaredf(96.0) && IsVisible(GetEyePosition(client), GetCenter(TeleporterEnter[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
-				if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) < Squared(48))
+				if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) < Squaredf(48.0))
 					MoveOut(client, GetOrigin(TeleporterEnter[client]));
-				else if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) > Squared(56))
+				else if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) > Squaredf(56.0))
 					MoveTo(client, GetOrigin(TeleporterEnter[client]));
 				
 				m_lookAt[client] = GetCenter(TeleporterEnter[client]);
@@ -152,7 +159,7 @@ public void EngineerIdleUpdate(int client)
 	}
 	else if (WantsMoveDispenser[client] && IsValidEntity(Dispenser[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
 		{
 			MoveTo(client, GetOrigin(Dispenser[client]));
 			m_lookAt[client] = GetCenter(Dispenser[client]);
@@ -169,7 +176,7 @@ public void EngineerIdleUpdate(int client)
 	}
 	else if (IsValidEntity(SentryGun[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squared(128) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
 			if (WantsMoveSentryGun[client])
 			{
@@ -200,13 +207,16 @@ public void EngineerIdleUpdate(int client)
 	}
 	else if (!IsValidEntity(SentryGun[client]))
 		SetProcess(client, PRO_BUILDSENTRY, 40.0, "| process started -> trying to build sentry gun");
+	else if (!IsValidEntity(Dispenser[client]))
+		SetProcess(client, PRO_BUILDDISPENSER, 40.0, "| process started -> trying to build dispenser");
 	else
-		SetProcess(client, PRO_DEFAULT, 999999.0, "| process started -> default due we don't have wrench");
+		SetProcess(client, PRO_SPYLURK, 999999.0, "| process started -> spy behavior due we don't have wrench");
 }
 
 public void EngineerIdleEnd(int client)
 {
-	// :(
+	// reset battle range
+	m_eBotDodgeRange[client] = -1;
 }
 
 public void CheckEngineerBuildings(int client)

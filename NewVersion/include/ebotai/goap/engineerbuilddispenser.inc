@@ -1,6 +1,6 @@
 public bool BuildDispenserRequirements(int client)
 {
-	if (SentryGun[client] == -1)
+	if (!IsValidEntity(SentryGun[client]))
 		return false;
 		
 	if (!SentryHealthIsFull[client])

@@ -2,6 +2,10 @@ public bool BuildSentryRequirements(int client)
 {
 	if (GetMetal(client) < 130.0)
 		return false;
+	
+	if (IsValidEntity(SentryGun[client]))
+		return false;
+		
 	return true;
 }
 

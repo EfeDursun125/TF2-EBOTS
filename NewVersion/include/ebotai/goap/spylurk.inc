@@ -10,15 +10,16 @@ public void SpyLurkStart(int client)
 {
 	if (!IsValidClient(m_goalEntity[client]) || !IsValidEntity(m_goalEntity[client]))
 		SelectObjective(client);
-	
-	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked))
-		m_buttons[client] |= IN_ATTACK2;
 }
 
 public void SpyLurkUpdate(int client)
 {
-	if (TF2_GetPlayerClass(client) != TFClass_Spy && m_hasEnemiesNear[client])
-		AutoAttack(client);
+	if (TF2_GetPlayerClass(client) != TFClass_Spy)
+	{
+		SetProcess(client, PRO_DEFAULT, 99999.0, "", true, false);
+		CurrentProcess[client] = PRO_DEFAULT;
+		return;
+	}
 
 	CurrentProcessTime[client] = GetGameTime() + 9999.0; // no timeout
 
@@ -30,7 +31,7 @@ public void SpyLurkUpdate(int client)
 	
 	if (IsValidEntity(m_knownSentry[client]))
 	{
-		if (HasEntProp(m_nearestEntity[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_knownSentry[client], Prop_Send, "m_bHasSapper") == 0)
+		if (HasEntProp(m_knownSentry[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_knownSentry[client], Prop_Send, "m_bHasSapper") == 0)
 		{
 			SetProcess(client, PRO_SPYSAP, GetRandomFloat(40.0, 80.0), "| process started -> try to sap buildings");
 			return;
