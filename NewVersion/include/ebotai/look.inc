@@ -165,6 +165,7 @@ stock void LookAtEnemiens(int client)
 float m_searchTime[MAXPLAYERS + 1];
 stock void LookAround(int client)
 {
+	m_tackEntity[client] = -1;
 	if (m_pauseTime[client] >= GetGameTime())
 		return;
 
@@ -325,4 +326,7 @@ stock void LookAround(int client)
 			}
 		}
 	}
+
+	if (m_cosError[client] > 0.98)
+		m_itAimStart[client] = GetGameTime();
 }

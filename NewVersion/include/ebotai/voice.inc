@@ -1,4 +1,43 @@
-enum VOICEMENU
+float m_voiceTimer[MAXPLAYERS + 1];
+char m_lastVoice[MAXPLAYERS + 1][32];
+
+stock void CallVoiceCommand(int client, const char[] voicecommand)
 {
-	Help = "voicemenu 2 0";
+	if (StrEqual(m_lastVoice[client], voicecommand))
+		return;
+	
+	FakeClientCommandThrottled(client, voicecommand);
+	Format(m_lastVoice[client], 32, voicecommand);
+}
+
+stock void UseVoiceCommand(int client)
+{
+	if (m_voiceTimer[client] < GetGameTime())
+	{
+		m_voiceTimer[client] = GetGameTime() + GetRandomFloat(10.0, 20.0);
+
+		if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Spy && ChanceOf(m_eBotSenseChance[client]))
+		{
+			CallVoiceCommand(client, "voicemenu 1 1");
+			return;
+		}
+		
+		if (TF2_GetNumberOfHealers(client) >= 1 && ChanceOf(m_eBotSenseChance[client]))
+		{
+			CallVoiceCommand(client, "voicemenu 0 1");
+			return;
+		}
+		
+		if (m_hasEnemiesNear[client] && (m_lowAmmo[client] || CurrentProcess[client] == PRO_HIDE) && ChanceOf(m_eBotSenseChance[client]))
+		{
+			CallVoiceCommand(client, "voicemenu 2 0");
+			return;
+		}
+		
+		if (m_lowHealth[client] && ChanceOf(m_eBotSenseChance[client]))
+		{
+			CallVoiceCommand(client, "voicemenu 0 0");
+			return;
+		}
+	}
 }

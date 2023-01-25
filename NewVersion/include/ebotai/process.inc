@@ -62,6 +62,8 @@ public void StartProcess(int client, int process)
 			BuildTeleExitStart(client);
 		case PRO_HIDE:
 			HideStart(client);
+		case PRO_HUNTENEMY:
+			HuntStart(client);
 	}
 }
 
@@ -103,6 +105,8 @@ public void EndProcess(int client, int process)
 			BuildTeleExitEnd(client);
 		case PRO_HIDE:
 			HideEnd(client);
+		case PRO_HUNTENEMY:
+			HuntEnd(client);
 	}
 }
 
@@ -150,6 +154,8 @@ public void UpdateProcess(int client)
 			BuildTeleExitUpdate(client);
 		case PRO_HIDE:
 			HideUpdate(client);
+		case PRO_HUNTENEMY:
+			HuntUpdate(client);
 	}
 
 	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
@@ -222,6 +228,8 @@ public bool IsReadyForTheProcess(int client, int process)
 			return BuildTeleExitRequirements(client);
 		case PRO_HIDE:
 			return HideRequirements(client);
+		case PRO_HUNTENEMY:
+			return HuntRequirements(client);
 	}
 
 	return true;
@@ -264,6 +272,8 @@ stock char[] GetProcessName(int process)
 			string = "BUILD_TELE_EXIT";
 		case PRO_HIDE:
 			string = "HIDE";
+		case PRO_HUNTENEMY:
+			string = "HUNT ENEMY";
 	}
 	return string;
 }

@@ -193,53 +193,41 @@ public void CheckSlowThink(int client)
 
 		if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
 		{
-			if (m_secondaryID[client] == 130)
-			{
-				if (GetPlayerStickyCount(client) < 14)
-					m_maxSticky[client] = true;
-				else
-					m_maxSticky[client] = false;
-			}	
-			else if (GetPlayerStickyCount(client) < 8)
-				m_maxSticky[client] = true;
-			else
-				m_maxSticky[client] = false;
-				
-			if (m_hasEnemiesNear[client])
-			{
-				m_attack2Timer[client] = GetGameTime() + 2.0;
-			}
+			m_stickyCount[client] = GetPlayerStickyCount(client);
 			
-			int iSticky = -1;
-			while ((iSticky = FindEntityByClassname(iSticky, "tf_projectile_pipe_remote")) != INVALID_ENT_REFERENCE)
+			if (m_stickyCount[client] > 0)
 			{
-				if (!IsValidEntity(iSticky))
-					continue;
-				
-				if (GetEntityThrower(iSticky) != client)
-					continue;
-				
-				for (int search = 1; search <= MaxClients; search++)
+				int iSticky = -1;
+				while ((iSticky = FindEntityByClassname(iSticky, "tf_projectile_pipe_remote")) != INVALID_ENT_REFERENCE)
 				{
-					if (search == client)
+					if (!IsValidEntity(iSticky))
 						continue;
-					
-					if (!IsValidClient(search))
+
+					if (GetEntityThrower(iSticky) != client)
 						continue;
-					
-					if (!IsPlayerAlive(search))
-						continue;
-					
-					if (TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
-						continue;
+
+					for (int search = 1; search <= MaxClients; search++)
+					{
+						if (search == client)
+							continue;
+
+						if (!IsValidClient(search))
+							continue;
+
+						if (!IsPlayerAlive(search))
+							continue;
+
+						if (TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
+							continue;
+
+						if (GetClientTeam(client) == GetClientTeam(search))
+							continue;
 						
-					if (GetClientTeam(client) == GetClientTeam(search))
-						continue;
+						if (GetVectorDistance(GetOrigin(iSticky), GetOrigin(search), true) > Squared(120))
+							continue;
 						
-					if (GetVectorDistance(GetOrigin(iSticky), GetOrigin(search), true) > Squared(80))
-						continue;
-						
-					m_buttons[client] |= IN_ATTACK2;
+						m_buttons[client] |= IN_ATTACK2;
+					}
 				}
 			}
 		}
@@ -282,15 +270,14 @@ public void CheckSlowThink(int client)
 			{
 				int cloak = FindSendPropInfo("CTFPlayer", "m_flCloakMeter");
 				SetEntDataFloat(client, cloak, 100.0);
-
-				if (CurrentProcess[client] != PRO_HIDE && !m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])
-					m_buttons[client] |= IN_ATTACK2;
 			}
 			
 			if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]) && HasEntProp(m_nearestEntity[client], Prop_Send, "m_bHasSapper")) // remember sappable things
 				m_knownSentry[client] = m_nearestEntity[client];
 		}
 
+		UseVoiceCommand(client);
+		
 		m_checkTimer[client] = GetGameTime() + GetRandomFloat(0.95, 1.05);
 	}
 	else
@@ -302,11 +289,17 @@ public void CheckHideFromDanger(int client)
 {
 	if (!m_hasWaypoints)
 		return;
-	
-	if (!m_hasEnemiesNear[client])
+
+	if (m_hasEntitiesNear[client])
+	{
+		SetProcess(client, PRO_HIDE, 60.0, "| process started -> hiding from danger", false, false);
+		return;
+	}
+
+	if (!m_isSlowThink[client])
 		return;
 	
-	if (!m_isSlowThink[client])
+	if (!m_hasEnemiesNear[client])
 		return;
 	
 	bool musthide = false;
@@ -314,12 +307,16 @@ public void CheckHideFromDanger(int client)
 	if (!GameRules_GetProp("m_bPlayingMedieval") && m_enemiesNearCount[client] > m_friendsNearCount[client] + 2)
 		musthide = true;
 	
+	if (TF2_GetPlayerClass(client) == TFClass_Medic && m_friendsNearCount[client] <= 0)
+		musthide = true;
 	if (TF2_GetPlayerClass(client) == TFClass_Spy && m_meleeID[client] == 356)
 	{
 		if (GetClientHealth(client) <= 55.0)
 			musthide = true;
 	}
 	else if (GetClientHealth(client) <= (GetMaxHealth(client) / 1.4))
+		musthide = true;
+	else if (IsValidClient(m_nearestEnemy[client]) && TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Heavy && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) <= Squaredf(768.0))
 		musthide = true;
 	
 	if (musthide)

@@ -223,7 +223,7 @@ stock void SelectBestCombatWeapon(int client)
 		{
 			if (m_secondaryID[client] == 1180 && IsValidEntity(GetPlayerWeaponSlot(client, 1)) && GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") == 1)
 				EquipWeaponSlot(client, 1);
-			else if (!(GetEntityFlags(client) & FL_INWATER) && distance <= Squared(350))
+			else if (!(GetEntityFlags(client) & FL_FLY) && distance <= Squared(350))
 				EquipWeaponSlot(client, 0);
 			else
 				EquipWeaponSlot(client, 1);

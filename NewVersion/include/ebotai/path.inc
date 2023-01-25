@@ -2,9 +2,27 @@ float pathdelayer;
 
 stock void FollowPath(int client, float targetposition[3], int entity = -1, int index = -1)
 {
+	if (IsNullVector(targetposition))
+		return;
+	
+	if (m_stopTime[client] > GetGameTime() && !TF2_IsPlayerInCondition(client, TFCond_OnFire))
+	{
+		if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && (m_hasEnemiesNear[client] || m_hasEntitiesNear[client]))
+			m_stopTime[client] = GetGameTime() + 10.0;
+		
+		return;
+	}
+
+	if (!m_hasWaypoints && GetVectorDistance(GetOrigin(client), targetposition, true) <= Squaredf(128.0))
+	{
+		DeletePathNodes(client);
+		MoveTo(client, targetposition, true);
+		return;
+	}
+
 	if (m_positions[client] != null)
 	{
-		if (m_targetNode[client] > 0 && m_targetNode[client] <= m_positions[client].Length)
+		if (m_targetNode[client] >= 0 && m_targetNode[client] < m_positions[client].Length)
 		{
 			if (m_hasWaypoints)
 				m_currentIndex[client] = m_pathIndex[client].Get(m_currentWaypointIndex[client]);
@@ -47,13 +65,21 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 					m_nextStuckCheck[client] = GetGameTime() + 5.0;
 				}
 			}
-			else if (m_hasWaypoints && m_currentIndex[client] == m_goalIndex[client] && (m_paths[m_goalIndex[client]].flags == WAYPOINT_SNIPER || m_paths[m_goalIndex[client]].flags == WAYPOINT_DEFEND))
+			else if (m_hasWaypoints && m_currentIndex[client] == m_goalIndex[client] && (m_paths[m_goalIndex[client]].flags == WAYPOINT_SNIPER || m_paths[m_goalIndex[client]].flags == WAYPOINT_DEMOMANCAMP || m_paths[m_goalIndex[client]].flags == WAYPOINT_DEFEND))
 			{
 				m_nextStuckCheck[client] = GetGameTime() + 5.0;
 				MoveToWaypoint(client, flGoPos, targetposition);
 			}
 			else
+			{
+				if (!m_hasWaypoints || (m_goalIndex[client] != -1 && m_paths[m_goalIndex[client]].flags != WAYPOINT_SNIPER))
+				{
+					if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && (m_hasEnemiesNear[client] || m_hasEntitiesNear[client]))
+						m_stopTime[client] = GetGameTime() + 10.0;
+				}
+
 				MoveTo(client, flGoPos, m_hasWaypoints ? m_hasEntitiesNear[client] : true);
+			}
 			
 			flGoPos[2] = flPos[2];
 
@@ -81,15 +107,35 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 				{
 					if (m_paths[m_currentIndex[client]].flags == WAYPOINT_ROCKETJUMP)
 					{
-						m_pauseTime[client] = GetGameTime() + 1.0;
-						m_buttons[client] |= IN_JUMP;
+						float vec[3];
+						float camangle[3];
+						float wayorigin[3];
+						wayorigin = m_paths[m_currentIndex[client]].origin;
+						m_nextStuckCheck[client] = GetGameTime() + 5.0;
+						m_currentWaypointIndex[client]--;
+						m_targetNode[client]--;
+						m_currentIndex[client] = m_pathIndex[client].Get(m_currentWaypointIndex[client]);
+						wayorigin[0] += ((wayorigin[0] - m_paths[m_currentIndex[client]].origin[0]) / 3.0);
+						wayorigin[1] += ((wayorigin[1] - m_paths[m_currentIndex[client]].origin[1]) / 3.0);
+						wayorigin[2] -= GetHeight(client);
+						MakeVectorFromPoints(wayorigin, GetEyePosition(client), vec);
+						GetVectorAngles(vec, camangle);
+						camangle[0] *= -1.0;
+						camangle[1] += 180.0;
+						ClampAngle(camangle);
 						m_lookAt[client] = m_paths[m_currentIndex[client]].origin;
+						m_pauseTime[client] = GetGameTime() + 1.0;
+						TeleportEntity(client, NULL_VECTOR, camangle, vec);
+						m_buttons[client] |= IN_DUCK;
+						m_buttons[client] |= IN_JUMP;
 						m_buttons[client] |= IN_ATTACK;
 					}
-
-					m_nextStuckCheck[client] = GetGameTime() + 5.0;
-					m_currentWaypointIndex[client]--;
-					m_targetNode[client]--;
+					else
+					{
+						m_nextStuckCheck[client] = GetGameTime() + 5.0;
+						m_currentWaypointIndex[client]--;
+						m_targetNode[client]--;
+					}
 
 					if (m_paths[m_currentIndex[client]].flags == WAYPOINT_JUMP || m_paths[m_currentIndex[client]].flags == WAYPOINT_DOUBLEJUMP)
 					{
@@ -110,7 +156,7 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 			else
 			{
 				float flNodeDist = GetVectorDistance(flGoPos, flPos, true);
-				float value = 54.0 + (GetConVarFloat(EBotFPS) * speed);
+				float value = 24.0 + (GetConVarFloat(EBotFPS) * speed);
 				if (flNodeDist <= Squaredf(value))
 				{
 					m_nextStuckCheck[client] = GetGameTime() + 5.0;
@@ -140,7 +186,7 @@ stock void FindPath(int client, float targetposition2[3], int entity = -1, int i
 {
 	if (m_hasWaypoints)
 	{
-		if (StrContains(currentMap, "plr_" , false) != -1 || (StrContains(currentMap, "pl_" , false) != -1 && GetClientTeam(client) == 3))
+		if (isPLR || (isPL && GetClientTeam(client) == 3))
 			SelectObjective(client);
 
 		if (index == -1)

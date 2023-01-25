@@ -52,13 +52,19 @@ char m_meleeClassName[MAXPLAYERS + 1][64];
 
 float m_redFlagCapPoint[3];
 float m_bluFlagCapPoint[3];
+int m_redFlag;
+int m_bluFlag;
+int m_capturePoint;
 
 int m_targetNode[MAXPLAYERS + 1];
 int m_currentWaypointIndex[MAXPLAYERS + 1];
 float m_nextStuckCheck[MAXPLAYERS + 1];
 ArrayList m_positions[MAXPLAYERS + 1];
 ArrayList m_pathIndex[MAXPLAYERS + 1];
+ArrayList m_riskyWaypoints[MAXPLAYERS + 1];
+ArrayList m_hidingSpots[MAXPLAYERS + 1];
 float m_pauseTime[MAXPLAYERS + 1];
+float m_stopTime[MAXPLAYERS + 1];
 
 int m_buttons[MAXPLAYERS + 1];
 float m_thinkTimer[MAXPLAYERS + 1];
@@ -99,7 +105,7 @@ int m_eBotSenseChance[MAXPLAYERS + 1];
 int m_eBotDodgeRange[MAXPLAYERS + 1];
 
 int m_knownSpy[MAXPLAYERS + 1];
-int m_maxSticky[MAXPLAYERS + 1];
+int m_stickyCount[MAXPLAYERS + 1];
 int m_knownSentry[MAXPLAYERS + 1];
 int m_healTarget[MAXPLAYERS + 1];
 
@@ -119,6 +125,9 @@ int m_bluPayload = -1;
 float m_damageTime[MAXPLAYERS + 1];
 int m_lastKiller[MAXPLAYERS + 1];
 
+float m_itAimStart[MAXPLAYERS + 1];
+float m_cosError[MAXPLAYERS + 1];
+
 Handle EBotDebug;
 Handle EBotFPS;
 Handle EBotMelee;
@@ -136,6 +145,7 @@ Handle EBotAutoWaypoint;
 Handle EBotRadius;
 Handle EBotDistance;
 Handle EBotChangeClass;
+Handle EBotChangeClassRandom;
 Handle EBotAllowAttackButtons;
 Handle EBotForceHuntEnemy;
 
@@ -149,23 +159,13 @@ Handle g_hCustomTaunt;
 Handle gH_RestartTimer = null;
 int gI_RestartTimerIteration = 0;
 
-enum tfclassnames
-{
-	scout = 1,
-	soldier = 2,
-	pyro = 3,
-	demoman = 4,
-	heavy = 5,
-	engineer = 7,
-	medic = 7,
-	sniper = 8,
-	spy = 9
-};
+bool m_isEBot[MAXPLAYERS + 1];
 
 stock bool IsEBot(int bot)
 {
-	if (!GameRules_GetProp("m_bPlayingMannVsMachine"))
-		return IsFakeClient(bot);
+	if (m_isEBot[bot])
+		return true;
+	
 	return false;
 }
 
@@ -265,25 +265,39 @@ stock void FindPayload()
 	}
 }
 
-// repeat all clients and get host entity
 stock void FindHostEntity()
 {
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MaxClients; i++)
 	{
-		// if not a bot
 		if (IsValidClient(i) && !IsFakeClient(i))
 		{
-			// set host entity
 			m_hostEntity = i;
 			m_hasHostEntity = true;
+			break;
 		}
 	}
+}
+
+stock int FindBotByName(const char[] name)
+{
+	for (int i = 1; i < MaxClients; i++)
+	{
+		if (IsValidClient(i) && IsFakeClient(i))
+		{
+			char buffer[MAX_NAME_LENGTH];
+			GetClientName(i, buffer, sizeof(buffer));
+			if (StrEqual(name, buffer))
+				return i;
+		}
+	}
+
+	return -1;
 }
 
 stock int GetTeamsCount(int team)
 {
 	int count = 0;
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MaxClients; i++)
 		if (IsValidClient(i) && GetClientTeam(i) == team)
 			count++;
 	return count;
@@ -292,7 +306,7 @@ stock int GetTeamsCount(int team)
 stock int GetBotCount()
 {
 	int count = 0;
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MaxClients; i++)
 		if (IsValidClient(i) && IsEBot(i))
 			count++;
 	return count;
@@ -301,7 +315,7 @@ stock int GetBotCount()
 stock int GetPlayersCount()
 {
 	int count = 0;
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MaxClients; i++)
 		if (IsValidClient(i) && !IsEBot(i) && GetClientTeam(i) != 1)
 			count++;
 	return count;
@@ -310,7 +324,7 @@ stock int GetPlayersCount()
 stock int GetPlayersCountRed()
 {
 	int count = 0;
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MaxClients; i++)
 		if (IsValidClient(i) && GetClientTeam(i) == 2)
 			count++;
 	return count;
@@ -319,7 +333,7 @@ stock int GetPlayersCountRed()
 stock int GetPlayersCountBlu()
 {
 	int count = 0;
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MaxClients; i++)
 		if (IsValidClient(i) && GetClientTeam(i) == 3)
 			count++;
 	return count;
@@ -328,7 +342,7 @@ stock int GetPlayersCountBlu()
 stock int GetTotalPlayersCount()
 {
 	int count = 0;
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MaxClients; i++)
 		if (IsValidClient(i) && GetClientTeam(i) != 1)
 			count++;
 	return count;
@@ -513,7 +527,7 @@ stock int FindNearestEnemy(int client, float flMaxDistance = 9999999999.0)
 {
 	float flBestDistance = Squaredf(flMaxDistance);
 	int iBestTarget = -1;
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MaxClients; i++)
 	{
 		if (client == i)
 			continue;
@@ -524,14 +538,27 @@ stock int FindNearestEnemy(int client, float flMaxDistance = 9999999999.0)
 		if (!IsPlayerAlive(i))
 			continue;
 		
-		if (TF2_IsPlayerInCondition(i, TFCond_HalloweenGhostMode))
-			continue;
-		
 		if (GetClientTeam(i) == GetClientTeam(client))
 			continue;
 		
-		if (TF2_GetPlayerClass(i) == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
+		if (TF2_IsPlayerInCondition(i, TFCond_HalloweenGhostMode))
 			continue;
+		
+		if (TF2_IsPlayerInCondition(i, TFCond_Ubercharged))
+			continue;
+		
+		if (TF2_IsPlayerInCondition(i, TFCond_Cloaked))
+			continue;
+		
+		if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && !IsRevealedSpyByTarget(i, client))
+			continue;
+		
+		// this is important!!!
+		if (TF2_HasTheFlag(i))
+		{
+			iBestTarget = i;
+			break;
+		}
 		
 		float flDistance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
 		if (flDistance < flBestDistance)
@@ -546,8 +573,14 @@ stock int FindNearestEnemy(int client, float flMaxDistance = 9999999999.0)
 
 stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3], int trackEntity = -1)
 {
-	float flAimSpeed = 0.5;
-	flAimSpeed -= GetConVarFloat(EBotFPS);
+	float frametime = GetGameFrameTime();
+	if (frametime < 0.00001)
+		return;
+	
+	float fps = GetConVarFloat(EBotFPS);
+
+	float flAimSpeed = 1.0;
+	flAimSpeed -= fps;
 
 	float tempGoal[3];
 	tempGoal = flGoal;
@@ -556,26 +589,48 @@ stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3], int tra
 	{
 		float flVel[3];
 		GetEntPropVector(trackEntity, Prop_Data, "m_vecAbsVelocity", flVel);
-
 		float time = GetGameTime() - m_thinkTimer[client];
-		tempGoal[0] += flVel[0] * time;
-		tempGoal[1] += flVel[1] * time;
+		tempGoal[0] += flVel[0] * time + fps;
+		tempGoal[1] += flVel[1] * time + fps;
+		tempGoal[2] += flVel[2] * time + fps;
 		trackEntity = -1;
 	}
 
-	float flPos[3];
-	GetClientEyePosition(client, flPos);
-	
-	// get normalised direction from target to client
-	float desired_dir[3];
-	MakeVectorFromPoints(flPos, tempGoal, desired_dir);
-	GetVectorAngles(desired_dir, desired_dir);
-	
-	// ease the current direction to the target direction
-	eye_ang[0] += AngleNormalize(desired_dir[0] - eye_ang[0]) * flAimSpeed;
-	eye_ang[1] += AngleNormalize(desired_dir[1] - eye_ang[1]) * flAimSpeed;
+	float eye_to_target[3];
+	SubtractVectors(tempGoal, GetEyePosition(client), eye_to_target);
 
-	SnapEyeAngles(client, eye_ang);
+	float punch_angle[3];
+	GetEntPropVector(client, Prop_Send, "m_vecPunchAngle", punch_angle);
+	AddVectors(eye_ang, punch_angle, eye_ang);
+	
+	NormalizeVector(eye_to_target, eye_to_target);
+	
+	float ang_to_target[3];
+	GetVectorAngles(eye_to_target, ang_to_target);
+	
+	float eye_vec[3];
+	GetAngleVectors(eye_ang, eye_vec, NULL_VECTOR, NULL_VECTOR);
+	
+	m_cosError[client] = GetVectorDotProduct(eye_to_target, eye_vec);
+	
+	float max_angvel = 1024.0 + (1024.0 * fps);
+	
+	if (m_cosError[client] > 0.7)
+		max_angvel *= Sine((3.14 / 2.0) * (1.0 + ((-49.0 / 15.0) * (m_cosError[client] - 0.7))));
+	
+	if (m_itAimStart[client] != -1 && (GetGameTime() - m_itAimStart[client] < 0.25))
+		max_angvel *= 4.0 * (GetGameTime() - m_itAimStart[client]);
+	
+	float new_eye_angle[3];
+	new_eye_angle[0] = ApproachAngle(ang_to_target[0], eye_ang[0], (max_angvel * frametime) * flAimSpeed);
+	new_eye_angle[1] = ApproachAngle(ang_to_target[1], eye_ang[1], (max_angvel * frametime) * (flAimSpeed * 1.5));
+	
+	SubtractVectors(new_eye_angle, punch_angle, new_eye_angle);
+	new_eye_angle[0] = AngleNormalize(new_eye_angle[0]);
+	new_eye_angle[1] = AngleNormalize(new_eye_angle[1]);
+	new_eye_angle[2] = 0.0;
+	
+	SnapEyeAngles(client, new_eye_angle);
 }
 
 stock float AngleNormalize(float angle)
@@ -895,11 +950,13 @@ stock int GetActiveWeaponSlot(int client)
 	int active = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 	if (active == -1)
 		return -1;
+
 	for (int i = 0; i < 5; i++)
 	{
 		if (GetPlayerWeaponSlot(client, i) == active)
 			return i;
 	}
+	
 	return -1;
 }
 
@@ -915,12 +972,24 @@ stock int GetMetal(int client)
 
 stock bool TF2_HasTheFlag(int client)
 {
-    int ent = -1;
-    while ((ent = FindEntityByClassname(ent, "item_teamflag")) != -1)
-    {
-        if (GetEntPropEnt(ent, Prop_Data, "m_hOwnerEntity") == client)
-            return true;
-    }
+	if (isCTF)
+	{
+		if (IsValidEntity(m_redFlag) && GetEntPropEnt(m_redFlag, Prop_Data, "m_hOwnerEntity") == client)
+			return true;
+	
+		if (IsValidEntity(m_bluFlag) && GetEntPropEnt(m_bluFlag, Prop_Data, "m_hOwnerEntity") == client)
+			return true;
+	}
+	else if (isMVM)
+	{
+		int ent = -1;
+    	while ((ent = FindEntityByClassname(ent, "item_teamflag")) != -1)
+    	{
+        	if (GetEntPropEnt(ent, Prop_Data, "m_hOwnerEntity") == client)
+            	return true;
+    	}
+	}
+
     return false;
 }
 
@@ -1008,7 +1077,7 @@ stock bool IsResupply(int entity, int team)
 
 stock bool IsAttacking(int client)
 {
-	if (GetClientButtons(client) & (IN_ATTACK | IN_ATTACK2))
+	if (GetClientButtons(client) & IN_ATTACK)
 		return true;
 	return false;
 }
@@ -1496,9 +1565,9 @@ stock bool AvoidBumpingEnemies(int client, float out[3])
 		return false;
 	
 	int ClosestPlayer = 0;
-	float flClosestDistance = Squaredf(192.0);
+	float flClosestDistance = Squaredf(256.0);
 	
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MaxClients; i++)
 	{
 		if (!IsValidClient(i))
 			continue;
@@ -1649,12 +1718,12 @@ stock bool ClientViewsOrigin(int Viewer, float fTargetPos[3], float fThreshold =
 
 stock bool NameAlreadyTakenByPlayer(const char[] name)
 {
-	char buffer[MAX_NAME_LENGTH];
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MaxClients; i++)
 	{
 		if (!IsValidClient(i))
 			continue;
 		
+		char buffer[MAX_NAME_LENGTH];
 		GetClientName(i, buffer, sizeof(buffer));
 		if (StrEqual(name, buffer))
 			return true;
@@ -1992,4 +2061,17 @@ stock int GetNearestDefendableControlPoint(int client)
 	}
 	
 	return NearestControlPoint;
+}
+
+stock FindEntityByTargetname(const String:targetname[], const String:classname[])
+{
+  decl String:namebuf[32];
+  new index = -1;
+  namebuf[0] = '\0';
+ 
+  while(strcmp(namebuf, targetname) != 0
+    && (index = FindEntityByClassname(index, classname)) != -1)
+    GetEntPropString(index, Prop_Data, "m_iName", namebuf, sizeof(namebuf));
+ 
+  return(index);
 }

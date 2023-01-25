@@ -119,8 +119,10 @@ public void FindFriendsAndEnemiens(int client)
 					MoveTo(client, GetOrigin(m_nearestFriend[client]));
 					EquipWeaponSlot(client, 1);
 					m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
+					
 					if (IsWeaponSlotActive(client, 1))
 						m_buttons[client] |= IN_ATTACK2;
+
 					m_nearestFriend[client] = i;
 				}
 			}
@@ -164,15 +166,22 @@ public void FindFriendsAndEnemiens(int client)
 				m_enemiesNearCount[client] = 1;
 				m_enemyDistance[client] = edict_distance;
 				m_nearestEnemy[client] = i;
-				m_hasEnemiesNear[client] = false;
-
-				if (m_hasEnemiesNear[client])
-					m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+				m_hasEnemiesNear[client] = true;
+				m_lastEnemy[client] = m_nearestEnemy[client];
+				m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
 				
 				return;
 			}
-			
-			if (edict_distance > Squared(80))
+
+			if (GameRules_GetProp("m_bPlayingMannVsMachine"))
+			{
+				if (TF2_IsPlayerInCondition(i, TFCond_Ubercharged))
+					continue;
+
+				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && TF2_GetPlayerClass(i) == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
+					continue;
+			}
+			else if (edict_distance > Squared(80))
 			{
 				if (!IsAttacking(i) && !TF2_IsPlayerInCondition(client, TFCond_Disguised) && !ClientViews(client, i))
 					continue;
@@ -190,9 +199,8 @@ public void FindFriendsAndEnemiens(int client)
 					m_nearestEnemy[client] = i;
 					m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
 					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
-
-					if (m_hasEnemiesNear[client])
-						m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+					m_lastEnemy[client] = m_nearestEnemy[client];
+					m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
 					
 					return;
 				}
@@ -203,9 +211,8 @@ public void FindFriendsAndEnemiens(int client)
 					m_nearestEnemy[client] = i;
 					m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
 					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
-
-					if (m_hasEnemiesNear[client])
-						m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+					m_lastEnemy[client] = m_nearestEnemy[client];
+					m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
 					
 					return;
 				}
@@ -216,9 +223,8 @@ public void FindFriendsAndEnemiens(int client)
 					m_nearestEnemy[client] = i;
 					m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
 					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
-
-					if (m_hasEnemiesNear[client])
-						m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+					m_lastEnemy[client] = m_nearestEnemy[client];
+					m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
 					
 					return;
 				}
@@ -248,11 +254,14 @@ public void FindEnemyEntities(int client)
 	if (!m_isSlowThink[client])
 		return;
 	
+	if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]) && GetEntProp(m_nearestEntity[client], Prop_Data, "m_iHealth") > 0 && IsVisible(GetEyePosition(client), GetCenter(m_nearestEntity[client])))
+		return;
+
 	m_hasEntitiesNear[client] = false;
 	int m_hasEntitiesNearCount = 0;
 	float nearestDistance = -1.0;
 	
-	for (int i = 1; i <= GetEntityCount(); i++)
+	for (int i = 1; i <= GetMaxEntities(); i++)
 	{
 		if (!IsValidEntity(i))
 			continue;
@@ -262,7 +271,7 @@ public void FindEnemyEntities(int client)
 		
 		char class[64];
 		GetEntityClassname(i, class, sizeof(class));
-		if (StrContains(class, "obj_", false) == -1 && !StrEqual(class, "tf_zombie", false) && !StrEqual(class, "tank_boss", false) && !StrEqual(class, "merasmus", false) && !StrEqual(class, "eyeball_boss", false) && !StrEqual(class, "headless_hatman", false) && !StrEqual(class, "tf_robot_destruction_robot", false))
+		if (StrContains(class, "obj_", false) == -1 && !StrEqual(class, "tf_projectile_pipe_remote", false) && !StrEqual(class, "tf_zombie", false) && !StrEqual(class, "tank_boss", false) && !StrEqual(class, "merasmus", false) && !StrEqual(class, "eyeball_boss", false) && !StrEqual(class, "headless_hatman", false) && !StrEqual(class, "tf_robot_destruction_robot", false))
 			continue;
 		
 		if (GetEntProp(i, Prop_Data, "m_iHealth") <= 0)
