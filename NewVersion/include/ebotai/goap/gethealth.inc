@@ -75,7 +75,7 @@ stock void GetHealthUpdate(int client)
 	{
 		FindNearestHealthPack(client);
 		// check again
-		if (!IsValidEntity(m_goalEntity[client])) // no avaliable health packs.
+		if (!IsValidEntity(m_goalEntity[client])) // no avaliable health packs
 			SetFailedProcess(client, true);
 	}
 }

@@ -32,7 +32,7 @@ public void EngineerIdleStart(int client)
 
 public void EngineerIdleUpdate(int client)
 {
-	m_eBotDodgeRange[client] = 512.0;
+	m_eBotDodgeRange[client] = 500;
 
 	if (TF2_GetPlayerClass(client) != TFClass_Engineer)
 	{

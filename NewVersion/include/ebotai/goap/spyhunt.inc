@@ -92,7 +92,7 @@ public void SpyHuntUpdate(int client)
 
 	bool isKnifeFight = false;
 
-	if (TF2_IsPlayerInCondition(client, TFCond_Disguised) || TF2_IsPlayerInCondition(client, TFCond_Disguising) || TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+	if (TF2_IsPlayerInCondition(client, TFCond_Disguised) || TF2_IsPlayerInCondition(client, TFCond_Disguising))
 		isKnifeFight = true;
 
 	float playerThreatForward[3];
@@ -154,7 +154,7 @@ public void SpyHuntUpdate(int client)
 
 	if (IsWeaponSlotActive(client, 2))
 	{
-		const float circleStrafeRange = 256.0;
+		const float circleStrafeRange = 200.0;
 
 		if (threatRange <= Squaredf(circleStrafeRange) && IsVisible(GetEyePosition(client), GetEyePosition(playerThreat)))
 		{
@@ -177,9 +177,9 @@ public void SpyHuntUpdate(int client)
 			}
 
 			// don't continue to close in if we're already very close so we don't bump them and give ourselves away
-			if (threatRange < Squaredf(70.0)) 
+			if (threatRange < Squaredf(72.0)) 
 				m_moveVel[client][0] = -300.0;
-			else if (threatRange > Squaredf(80.0))
+			else if (threatRange > Squaredf(84.0))
 				m_moveVel[client][0] = 300.0;
 		}
 
@@ -197,12 +197,15 @@ public void SpyHuntUpdate(int client)
 			else
 			{
 				// we're exposed - stab! stab! stab!
-				m_buttons[client] |= IN_ATTACK;
+				if (!m_lowHealth[client] || !m_lowAmmo[client])
+					m_buttons[client] |= IN_ATTACK;
+				else if (!TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+					m_buttons[client] |= IN_ATTACK2;
 			}
 		}
 	}
-	else
-		m_attackTimer[client] = GetGameTime() + 0.25;
+	else if (IsWeaponSlotActive(client, 0))
+		m_attackTimer[client] = GetGameTime() + 0.20;
 
 	if (isMovingTowardVictim)
 	{
