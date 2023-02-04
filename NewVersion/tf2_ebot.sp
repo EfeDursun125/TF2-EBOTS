@@ -1,3 +1,5 @@
+const int TFMaxPlayers = 34;
+
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
@@ -8,8 +10,8 @@
 
 float autoupdate = 0.0;
 
-float DJTime[MAXPLAYERS + 1];
-float NoDodge[MAXPLAYERS + 1];
+float DJTime[TFMaxPlayers];
+float NoDodge[TFMaxPlayers];
 
 public Plugin myinfo = 
 {
@@ -79,6 +81,7 @@ public void OnPluginStart()
 	HookEvent("teamplay_point_unlocked", PointUnlocked, EventHookMode_Post);
 	HookEvent("teamplay_point_captured", PointCaptured, EventHookMode_Post);
 	HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Post);
+	HookEventEx("nav_blocked", NavAreaBlocked);
 	//HookEvent("teamplay_waiting_ends", PlayAnimation, EventHookMode_Post);
 	EBotDebug = CreateConVar("ebot_debug", "0", "", FCVAR_NONE);
 	EBotFPS = CreateConVar("ebot_run_fps", "0.1", "0.0333 = 30 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS | 0.2 = 5 FPS", FCVAR_NONE);
@@ -121,7 +124,53 @@ public void OnPluginStart()
 	}
 }
 
-// trigger on map start
+public void NavAreaBlocked(Event event, const char[] name, bool dB)
+{
+	if (!m_hasWaypoints || !NavMesh_Exists())
+		return;
+
+	int iAreaID = event.GetInt("area");
+	CNavArea iAreaIndex = NavMesh_FindAreaByID(iAreaID);
+	if (iAreaIndex != INVALID_NAV_AREA)
+	{
+		bool bBlocked = view_as<bool>(event.GetInt("blocked"));
+		for (int i = 0; i < m_waypointNumber; i++)
+		{
+			if (m_paths[i].activeArea > 0)
+				continue;
+			
+			if (iAreaIndex.IsOverlappingPoint(m_paths[i].origin))
+				m_paths[i].activeArea = bBlocked ? -1 : 0;
+		}
+	}
+}
+
+/*public void OnNavMeshLoaded()
+{
+	CreateTimer(2.0, AddWaypoints);
+}*/
+
+public Action AddWaypoints(Handle timer)
+{
+    if (!m_hasWaypoints)
+	{
+		for (int i = 0; i < MaxWaypoints; i++)
+		{
+			CNavArea area = NavMesh_FindAreaByID(i);
+			if (area != INVALID_NAV_AREA)
+			{
+				float areaCenter[3];
+				area.GetCenter(areaCenter);
+				WaypointAdd(areaCenter, false);
+			}
+		}
+
+		m_hasWaypoints = true;
+	}
+
+	return Plugin_Handled;
+}
+
 public void OnMapStart()
 {
 	GetCurrentMap(currentMap, sizeof(currentMap));
@@ -138,7 +187,6 @@ public void OnMapStart()
 	currentActiveArea = GetBluControlPointCount() + 1;
 	healthpacks = 0;
 	ammopacks = 0;
-	pathdelayer = 0.0;
 	BotCheckTimer = 0.0;
 	autoupdate = 0.0;
 
@@ -252,8 +300,6 @@ public void OnClientPutInServer(int client)
 	m_positions[client] = new ArrayList(3);
 	delete m_pathIndex[client];
 	m_pathIndex[client] = new ArrayList();
-	delete m_riskyWaypoints[client];
-	m_riskyWaypoints[client] = new ArrayList();
 	delete m_hidingSpots[client];
 	m_hidingSpots[client] = new ArrayList();
 	m_goalPosition[client] = NULL_VECTOR;
@@ -265,7 +311,6 @@ public void OnClientPutInServer(int client)
 	m_hasFriendsNear[client] = false;
 	m_lowAmmo[client] = false;
 	m_lowHealth[client] = false;
-	m_pathDelay[client] = 0.0;
 	DJTime[client] = 0.0;
 	m_attack2Timer[client] = 0.0;
 	m_attackTimer[client] = 0.0;
@@ -750,7 +795,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 
 		vel = m_moveVel[client];
 
-		if (m_paths[m_currentIndex[client]].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) == TFClass_DemoMan)
+		if (m_currentIndex[client] > 0 && m_paths[m_currentIndex[client]].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) == TFClass_DemoMan)
 		{
 			m_currentWaypointIndex[client]--;
 			m_targetNode[client]--;
@@ -955,7 +1000,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 				}
 			}
 		}
-		
+
 		delete m_positions[client];
 		m_positions[client] = new ArrayList(3);
 		delete m_hidingSpots[client];
@@ -970,7 +1015,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_goalIndex[client] = -1;
 		m_goalEntity[client] = -1;
 		m_lastFailedWaypoint[client] = -1;
-		m_pathDelay[client] = 0.0;
+		m_currentIndex[client] = -1;
 		DeletePathNodes(client);
 
 		if (TF2_GetPlayerClass(client) == TFClass_Engineer)
