@@ -1,7 +1,7 @@
-int FailedProcess[MAXPLAYERS + 1];
-int RememberedProcess[MAXPLAYERS + 1];
-float CurrentProcessTime[MAXPLAYERS + 1];
-float RememberedProcessTime[MAXPLAYERS + 1];
+int FailedProcess[TFMaxPlayers];
+int RememberedProcess[TFMaxPlayers];
+float CurrentProcessTime[TFMaxPlayers];
+float RememberedProcessTime[TFMaxPlayers];
 
 stock void SetProcess(int client, int process, float time = 9999.0, const char[] debugnote = "clear", bool ignoredebug = false, bool remember = true)
 {

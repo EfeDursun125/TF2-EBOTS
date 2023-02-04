@@ -1,6 +1,6 @@
-int m_botSquad[MAXPLAYERS + 1][6];
-int m_squadThreat[MAXPLAYERS + 1];
-float m_squadGoal[MAXPLAYERS + 1][3];
+int m_botSquad[TFMaxPlayers][6];
+int m_squadThreat[TFMaxPlayers];
+float m_squadGoal[MTFMaxPlayers][3];
 
 stock void JoinToSquad(int client)
 {
@@ -30,10 +30,7 @@ stock bool RequestToJoin(int client, int member)
 {
 	int count = GetSquadCount(member);
 	if (count > 6)
-	{
-		// nah
 		return false;
-	}
 	else
 	{
 		JoinToSquad(member);

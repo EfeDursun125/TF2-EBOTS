@@ -1,5 +1,5 @@
-float m_voiceTimer[MAXPLAYERS + 1];
-char m_lastVoice[MAXPLAYERS + 1][32];
+float m_voiceTimer[TFMaxPlayers];
+char m_lastVoice[TFMaxPlayers][32];
 
 stock void CallVoiceCommand(int client, const char[] voicecommand)
 {

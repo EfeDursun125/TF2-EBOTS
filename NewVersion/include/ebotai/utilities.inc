@@ -19,17 +19,17 @@ enum
 	PRO_HIDE
 }
 
-bool m_isSniper[MAXPLAYERS + 1];
-bool m_isMedic[MAXPLAYERS + 1];
+bool m_isSniper[TFMaxPlayers];
+bool m_isMedic[TFMaxPlayers];
 
-bool m_hasCrossbow[MAXPLAYERS + 1];
-bool m_hasWrench[MAXPLAYERS + 1];
+bool m_hasCrossbow[TFMaxPlayers];
+bool m_hasWrench[TFMaxPlayers];
 
-bool m_hasSandwich[MAXPLAYERS + 1];
+bool m_hasSandwich[TFMaxPlayers];
 
-int m_tackEntity[MAXPLAYERS + 1];
+int m_tackEntity[TFMaxPlayers];
 
-int CurrentProcess[MAXPLAYERS + 1];
+int CurrentProcess[TFMaxPlayers];
 
 int currentActiveArea;
 float BotCheckTimer = 0.0;
@@ -42,13 +42,13 @@ int m_beamIndex = -1;
 int m_hostEntity = -1;
 bool m_hasHostEntity = false;
 
-int m_primaryID[MAXPLAYERS + 1];
-int m_secondaryID[MAXPLAYERS + 1];
-int m_meleeID[MAXPLAYERS + 1];
+int m_primaryID[TFMaxPlayers];
+int m_secondaryID[TFMaxPlayers];
+int m_meleeID[TFMaxPlayers];
 
-char m_primaryClassName[MAXPLAYERS + 1][64];
-char m_secondaryClassName[MAXPLAYERS + 1][64];
-char m_meleeClassName[MAXPLAYERS + 1][64];
+char m_primaryClassName[TFMaxPlayers][64];
+char m_secondaryClassName[TFMaxPlayers][64];
+char m_meleeClassName[TFMaxPlayers][64];
 
 float m_redFlagCapPoint[3];
 float m_bluFlagCapPoint[3];
@@ -56,77 +56,76 @@ int m_redFlag;
 int m_bluFlag;
 int m_capturePoint;
 
-int m_targetNode[MAXPLAYERS + 1];
-int m_currentWaypointIndex[MAXPLAYERS + 1];
-float m_nextStuckCheck[MAXPLAYERS + 1];
-ArrayList m_positions[MAXPLAYERS + 1];
-ArrayList m_pathIndex[MAXPLAYERS + 1];
-ArrayList m_riskyWaypoints[MAXPLAYERS + 1];
-ArrayList m_hidingSpots[MAXPLAYERS + 1];
-float m_pauseTime[MAXPLAYERS + 1];
-float m_stopTime[MAXPLAYERS + 1];
+int m_targetNode[TFMaxPlayers];
+int m_currentWaypointIndex[TFMaxPlayers];
+float m_nextStuckCheck[TFMaxPlayers];
+ArrayList m_positions[TFMaxPlayers];
+ArrayList m_pathIndex[TFMaxPlayers];
+ArrayList m_hidingSpots[TFMaxPlayers];
+float m_pauseTime[TFMaxPlayers];
+float m_stopTime[TFMaxPlayers];
 
-int m_buttons[MAXPLAYERS + 1];
-float m_thinkTimer[MAXPLAYERS + 1];
-float m_lookAt[MAXPLAYERS + 1][3];
-float m_pathAhead[MAXPLAYERS + 1][3];
-float m_moveVel[MAXPLAYERS + 1][3];
+int m_buttons[TFMaxPlayers];
+float m_thinkTimer[TFMaxPlayers];
+float m_lookAt[TFMaxPlayers][3];
+float m_pathAhead[TFMaxPlayers][3];
+float m_moveVel[TFMaxPlayers][3];
 
-int m_goalEntity[MAXPLAYERS + 1];	
-float m_goalPosition[MAXPLAYERS + 1][3];
-int m_goalIndex[MAXPLAYERS + 1];
-int m_currentIndex[MAXPLAYERS + 1];
+int m_goalEntity[TFMaxPlayers];	
+float m_goalPosition[TFMaxPlayers][3];
+int m_goalIndex[TFMaxPlayers];
+int m_currentIndex[TFMaxPlayers];
 
-float m_attackTimer[MAXPLAYERS + 1];
-float m_attack2Timer[MAXPLAYERS + 1];
+float m_attackTimer[TFMaxPlayers];
+float m_attack2Timer[TFMaxPlayers];
 
-bool m_isSlowThink[MAXPLAYERS + 1];
+bool m_isSlowThink[TFMaxPlayers];
 
-bool m_hasEnemiesNear[MAXPLAYERS + 1];
-bool m_hasFriendsNear[MAXPLAYERS + 1];
-bool m_hasEntitiesNear[MAXPLAYERS + 1];
+bool m_hasEnemiesNear[TFMaxPlayers];
+bool m_hasFriendsNear[TFMaxPlayers];
+bool m_hasEntitiesNear[TFMaxPlayers];
 
-int m_enemiesNearCount[MAXPLAYERS + 1];
-int m_friendsNearCount[MAXPLAYERS + 1];
+int m_enemiesNearCount[TFMaxPlayers];
+int m_friendsNearCount[TFMaxPlayers];
 
-int m_nearestEnemy[MAXPLAYERS + 1];
-int m_nearestFriend[MAXPLAYERS + 1];
-int m_nearestEntity[MAXPLAYERS + 1];
-int m_lastEnemy[MAXPLAYERS + 1];
-float m_lastEnemyOrigin[MAXPLAYERS + 1][3];
+int m_nearestEnemy[TFMaxPlayers];
+int m_nearestFriend[TFMaxPlayers];
+int m_nearestEntity[TFMaxPlayers];
+int m_lastEnemy[TFMaxPlayers];
+float m_lastEnemyOrigin[TFMaxPlayers][3];
 
-float m_enemyDistance[MAXPLAYERS + 1];
-float m_friendDistance[MAXPLAYERS + 1];
+float m_enemyDistance[TFMaxPlayers];
+float m_friendDistance[TFMaxPlayers];
 
-bool m_lowHealth[MAXPLAYERS + 1];
-bool m_lowAmmo[MAXPLAYERS + 1];
+bool m_lowHealth[TFMaxPlayers];
+bool m_lowAmmo[TFMaxPlayers];
 
-int m_eBotSenseChance[MAXPLAYERS + 1];
-int m_eBotDodgeRange[MAXPLAYERS + 1];
+int m_eBotSenseChance[TFMaxPlayers];
+int m_eBotDodgeRange[TFMaxPlayers];
 
-int m_knownSpy[MAXPLAYERS + 1];
-int m_stickyCount[MAXPLAYERS + 1];
-int m_knownSentry[MAXPLAYERS + 1];
-int m_healTarget[MAXPLAYERS + 1];
+int m_knownSpy[TFMaxPlayers];
+int m_stickyCount[TFMaxPlayers];
+int m_knownSentry[TFMaxPlayers];
+int m_healTarget[TFMaxPlayers];
 
-bool WantsBuildSentryGun[MAXPLAYERS + 1];
-bool WantsBuildDispenser[MAXPLAYERS + 1];
-bool WantsBuildTeleporterEnter[MAXPLAYERS + 1];
-bool WantsBuildTeleporterExit[MAXPLAYERS + 1];
-bool m_enterFail[MAXPLAYERS + 1];
-bool m_exitFail[MAXPLAYERS + 1];
+bool WantsBuildSentryGun[TFMaxPlayers];
+bool WantsBuildDispenser[TFMaxPlayers];
+bool WantsBuildTeleporterEnter[TFMaxPlayers];
+bool WantsBuildTeleporterExit[TFMaxPlayers];
+bool m_enterFail[TFMaxPlayers];
+bool m_exitFail[TFMaxPlayers];
 
-int m_lastFailedEntity[MAXPLAYERS + 1];
-int m_difficulty[MAXPLAYERS + 1];
+int m_lastFailedEntity[TFMaxPlayers];
+int m_difficulty[TFMaxPlayers];
 
 int m_redPayload = -1;
 int m_bluPayload = -1;
 
-float m_damageTime[MAXPLAYERS + 1];
-int m_lastKiller[MAXPLAYERS + 1];
+float m_damageTime[TFMaxPlayers];
+int m_lastKiller[TFMaxPlayers];
 
-float m_itAimStart[MAXPLAYERS + 1];
-float m_cosError[MAXPLAYERS + 1];
+float m_itAimStart[TFMaxPlayers];
+float m_cosError[TFMaxPlayers];
 
 Handle EBotDebug;
 Handle EBotFPS;
@@ -154,12 +153,12 @@ Handle g_hGetBonePosition;
 Handle g_hSnapEyeAngles;
 Handle g_hCustomTaunt;
 
-//bool isAFK[MAXPLAYERS + 1];
+//bool isAFK[TFMaxPlayers];
 
 Handle gH_RestartTimer = null;
 int gI_RestartTimerIteration = 0;
 
-bool m_isEBot[MAXPLAYERS + 1];
+bool m_isEBot[TFMaxPlayers];
 
 stock bool IsEBot(int bot)
 {
@@ -436,7 +435,7 @@ stock void EquipWeapon(int client, int weapon)
 	FakeClientCommandThrottled(client, class);
 }
 
-float g_flNextCommand[MAXPLAYERS + 1];
+float g_flNextCommand[TFMaxPlayers];
 stock bool FakeClientCommandThrottled(int client, const char[] command)
 {
 	if (g_flNextCommand[client] > GetGameTime())
@@ -680,9 +679,10 @@ stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
 	float flVel[3];
 	GetEntPropVector(client, Prop_Data, "m_vecAbsVelocity", flVel);
 
+	float fps = GetConVarFloat(EBotFPS);
 	float time = GetGameTime() - m_thinkTimer[client];
-	flPos[0] += flVel[0] * time;
-	flPos[1] += flVel[1] * time;
+	flPos[0] += flVel[0] * time + fps;
+	flPos[1] += flVel[1] * time + fps;
 	
 	float fAng[3];
 	GetClientEyeAngles(client, fAng);
@@ -867,7 +867,7 @@ stock bool IsVisibleWaypoint(float start[3], float end[3])
 	fend[1] = end[1];
 	fend[2] = end[2] + 18.0;
 
-	TR_TraceRayFilter(fstart, fend, MASK_CUSTOM, RayType_EndPoint, TraceEntityFilterStuff);
+	TR_TraceRayFilter(fstart, fend, MASK_CUSTOM, RayType_EndPoint, WaypointFilter);
 	return TR_GetFraction() >= 0.9;
 }
 
@@ -1403,19 +1403,65 @@ stock bool CheckForward(int client)
 
 	if (flFraction >= 1.0) 
 		return !(flFraction == 0.0);
+	
 	return false;
 }
 
 stock void ClampAngle(float fAngles[3])
 {
-	while(fAngles[0] > 89.0)
+	while (fAngles[0] > 89.0)
 		fAngles[0]-=360.0;
-	while(fAngles[0] < -89.0)
+	while (fAngles[0] < -89.0)
 		fAngles[0]+=360.0;
-	while(fAngles[1] > 180.0)
+	while (fAngles[1] > 180.0)
 		fAngles[1]-=360.0;
-	while(fAngles[1] <-180.0)
+	while (fAngles[1] <-180.0)
 		fAngles[1]+=360.0;
+}
+
+public bool WaypointFilter(int entity, int mask)
+{
+	char sClass[64];
+	GetEntityClassname(entity, sClass, sizeof(sClass));
+	
+	if (!strcmp(sClass, "worldspawn"))
+		return false;
+	
+	if (!strcmp(sClass, "player"))
+		return false;
+	
+	int iFlags = GetEntityFlags(entity);
+	
+	if (!strcmp(sClass, "func_door*"))
+		return (iFlags & WALK_THRU_PROP_DOORS) ? true : false;
+	
+	if (!strcmp(sClass, "prop_door*"))
+		return (iFlags & WALK_THRU_PROP_DOORS) ? true : false;
+	
+	if (!strcmp(sClass, "func_brush"))
+	{
+		int iSolidity = GetEntProp(entity, Prop_Data, "m_iSolidity");
+		
+		switch (iSolidity)
+		{
+			case 2: // BRUSHSOLID_ALWAYS
+				return false;
+			case 1: // BRUSHSOLID_NEVER
+				return true;
+			case 0: // BRUSHSOLID_TOGGLE
+				return (iFlags & WALK_THRU_TOGGLE_BRUSHES) ? true : false;
+		}
+		
+		return (iFlags & WALK_THRU_PROP_DOORS) ? true : false;
+	}
+	
+	if (!strcmp(sClass, "func_breakable") && GetEntProp(entity, Prop_Data, "m_iHealth") && GetEntProp(entity, Prop_Data, "m_takedamage") == 2) // DAMAGE_YES
+		return (iFlags & WALK_THRU_BREAKABLES) ? true : false;
+	
+	if (!strcmp(sClass, "func_playerinfected_clip"))
+		return true;
+
+	return entity <= MaxClients;
 }
 
 public bool RocketFilter(int entity, int mask)
@@ -1425,17 +1471,6 @@ public bool RocketFilter(int entity, int mask)
 	if (StrEqual(class, "func_respawnroomvisualizer"))
 		return false;
 	else if (StrContains(class, "tf_projectile_", false) != -1)
-		return false;
-	else if (StrEqual(class, "entity_revive_marker"))
-		return false;
-	return entity > MaxClients;
-}
-
-public bool WayzoneFilter(int entity, int mask)
-{
-	char class[64];
-	GetEntityClassname(entity, class, sizeof(class));
-	if (StrContains(class, "tf_projectile_", false) != -1)
 		return false;
 	else if (StrEqual(class, "entity_revive_marker"))
 		return false;

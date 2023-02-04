@@ -1,7 +1,7 @@
 // from https://github.com/EfeDursun125/CS-EBOT/blob/main/source/waypoint.cpp
 // higher version waypoints will be ignored due to updated waypoint system
 const int WaypointVersion = 2;
-const int MaxWaypoints = 2048;
+const int MaxWaypoints = 4096;
 const int MaxPathIndex = 8;
 
 int nearestIndex = -1;
@@ -21,8 +21,7 @@ bool m_hasTeleporterEnterWaypoints = false;
 bool m_hasTeleporterExitWaypoints = false;
 bool m_hasRocketJumpWaypoints = false;
 
-float m_pathDelay[MAXPLAYERS + 1];
-int m_lastFailedWaypoint[MAXPLAYERS + 1];
+int m_lastFailedWaypoint[TFMaxPlayers];
 
 char m_aboutTheWaypoint[192] = "";
 
@@ -57,7 +56,6 @@ enum struct AStar_t
     int parent;
     AStarState_t state;
 }
-AStar_t astar[MaxWaypoints];
 
 enum struct WaypointHeader
 {
@@ -100,81 +98,10 @@ enum struct PathOLD
 	int campEnd[3];
 }
 
-methodmap Queue < Handle
+enum struct SearchNode
 {
-    public Queue(int size = 32)
-    {
-        ArrayList data = new ArrayList(1, size + 3);
-        data.Set(0, 0);
-        data.Set(1, 0);
-        data.Set(2, size);
-        return view_as<Queue>(data);
-    }
-
-    property int Tail
-    {
-        public get()
-        {
-            return view_as<ArrayList>(this).Get(0);
-        }
-        public set(const int value)
-        {
-            view_as<ArrayList>(this).Set(0, value);
-        }
-    }
-
-    property int Head
-    {
-        public get()
-        {
-            return view_as<ArrayList>(this).Get(1);
-        }
-        public set(const int value)
-        {
-            view_as<ArrayList>(this).Set(1, value);
-        }
-    }
-    property int Size
-    {
-        public get()
-        {
-            return view_as<ArrayList>(this).Get(2);
-        }
-    }
-
-    property bool isEmpty
-    {
-        public get()
-        {
-            return this.Head == this.Tail;
-        }
-    }
-
-    property bool isFull
-    {
-        public get()
-        {
-            return ((this.Head + 1) % this.Size) == this.Tail;
-        }
-    }
-
-    public void Push(const int value)
-    {
-        view_as<ArrayList>(this).Set(this.Head + 3, value);
-        this.Head = (this.Head + 1) % this.Size;
-    }
-
-    public int Pop()
-    {
-        int tmp = view_as<ArrayList>(this).Get(this.Tail + 3);
-        this.Tail = (this.Tail + 1) % this.Size;
-        return tmp;
-    }
-
-    public int Front()
-    {
-        return view_as<ArrayList>(this).Get(this.Tail+3);
-    }
+    float cost;
+    int index;
 }
 
 bool m_hasWaypoints;
@@ -198,7 +125,6 @@ stock void InitializeWaypoints()
 
 int deathsWPT[MaxWaypoints + 1];
 float damageWPT[MaxWaypoints + 1];
-float healWPT[MaxWaypoints + 1];
 
 stock void ResetDangerMap()
 {
@@ -206,7 +132,6 @@ stock void ResetDangerMap()
     {
         deathsWPT[i] = 0;
         damageWPT[i] = 0.0;
-        healWPT[i] = 0.0;
     }
 }
 
@@ -230,16 +155,6 @@ stock int GetDeaths(int waypoint)
     return deathsWPT[waypoint] + 1;
 }
 
-stock void IncreaseHeal(int waypoint, float newHeal)
-{
-    healWPT[waypoint] += newHeal;
-}
-
-stock float GetHeal(int waypoint)
-{
-    return healWPT[waypoint];
-}
-
 stock void UpdateWaypoints()
 {
     if (waypointUpdate > GetGameTime())
@@ -248,13 +163,8 @@ stock void UpdateWaypoints()
     for (int i = 0; i < m_waypointNumber; i++)
     {
         damageWPT[i] -= 12.0;
-        healWPT[i] -= 12.0;
-
         if (damageWPT[i] < 0.0)
             damageWPT[i] = 0.0;
-
-        if (healWPT[i] < 0.0)
-            healWPT[i] = 0.0;
     }
     
     waypointUpdate = GetGameTime() + 10.0;
@@ -680,7 +590,7 @@ stock bool IsWaypointReachable(float start[3], float goal[3])
         return false;
 
     // if waypoint is visible from current position
-    if (IsVisible(src, destination))
+    if (IsVisibleWaypoint(src, destination))
     {
         // is dest node higher than src? (45 is max jump height)
         if (destination[2] > src[2] + 44.0)
@@ -691,7 +601,7 @@ stock bool IsWaypointReachable(float start[3], float goal[3])
             destinationNew = destination;
             destinationNew[2] = destinationNew[2] - 50.0; // straight down 50 units
 
-            Handle tr = TR_TraceRayFilterEx(sourceNew, destinationNew, MASK_PLAYERSOLID, RayType_EndPoint, TraceEntityFilterStuff);
+            Handle tr = TR_TraceRayFilterEx(sourceNew, destinationNew, MASK_PLAYERSOLID, RayType_EndPoint, WaypointFilter);
             float fr = TR_GetFraction(tr);
             CloseHandle(tr);
 
@@ -712,7 +622,7 @@ stock bool IsWaypointReachable(float start[3], float goal[3])
 
         down[2] = down[2] - 1000.0; // straight down 1000 units
 
-        Handle tr = TR_TraceRayFilterEx(check, down, MASK_PLAYERSOLID, RayType_EndPoint, TraceEntityFilterStuff);
+        Handle tr = TR_TraceRayFilterEx(check, down, MASK_PLAYERSOLID, RayType_EndPoint, WaypointFilter);
 
         float lastHeight = TR_GetFraction(tr) * 1000.0; // height from ground
         distance = GetVectorDistance(destination, check); // distance from goal
@@ -729,7 +639,7 @@ stock bool IsWaypointReachable(float start[3], float goal[3])
             down = check;
             down[2] = down[2] - 1000.0; // straight down 1000 units
 
-            Handle tr2 = TR_TraceRayFilterEx(check, down, MASK_PLAYERSOLID, RayType_EndPoint, TraceEntityFilterStuff);
+            Handle tr2 = TR_TraceRayFilterEx(check, down, MASK_PLAYERSOLID, RayType_EndPoint, WaypointFilter);
 
             float height = TR_GetFraction(tr2) * 1000.0; // height from ground
             
@@ -755,7 +665,10 @@ stock void AutoWaypoint()
         return;
 
     if (!IsValidClient(m_hostEntity))
-		FindHostEntity();
+    {
+        FindHostEntity();
+        return;
+    }
 
     if (!(GetEntityFlags(m_hostEntity) & FL_ONGROUND))
         return;
@@ -779,11 +692,13 @@ stock void AutoWaypoint()
         WaypointAdd(GetOrigin(m_hostEntity));
 }
 
-stock void WaypointAdd(float origin[3])
+stock void WaypointAdd(float origin[3], bool cdebug = true)
 {
     if (m_waypointNumber >= MaxWaypoints)
     {
-        PrintHintTextToAll("Maximum number of waypoints reached (%d/%d)", MaxWaypoints, MaxWaypoints);
+        if (cdebug)
+            PrintHintTextToAll("Maximum number of waypoints reached (%d/%d)", MaxWaypoints, MaxWaypoints);
+
         return;
     }
 
@@ -824,17 +739,16 @@ stock void WaypointAdd(float origin[3])
     }
 
     //CalculateWayzone(index);
-    PrintHintTextToAll("Waypoint added to %d %d %d", m_paths[index].origin[0], m_paths[index].origin[1], m_paths[index].origin[2]);
+    if (cdebug)
+        PrintHintTextToAll("Waypoint added to %d %d %d", m_paths[index].origin[0], m_paths[index].origin[1], m_paths[index].origin[2]);
 }
 
 /*stock void CalculateWayzone(int index)
 {
     float start[3];
     float direction[3];
-
     TraceResult tr;
     bool wayBlocked = false;
-
     for (int i = 0; i < MaxPathIndex; i++)
     {
         if (m_paths[index].pathIndex[i] != -1)
@@ -843,70 +757,51 @@ stock void WaypointAdd(float origin[3])
             return;
         }
     }
-
     for (float scanDistance = 16.0; scanDistance < 144.0; scanDistance += 16.0)
     {
         start = VectorAsFloat(m_paths[index].origin);
         MakeVectors(nullvec);
-
         direction = g_pGlobals->v_forward * scanDistance;
         direction = direction.ToAngles();
-
         m_paths[index].radius = scanDistance;
-
         for (float circleRadius = 0.0f; circleRadius < 180.0f; circleRadius += 5.0f)
         {
             MakeVectors(direction);
-
             Vector radiusStart = start - g_pGlobals->v_forward * scanDistance;
             Vector radiusEnd = start + g_pGlobals->v_forward * scanDistance;
-
             TraceHull(radiusStart, radiusEnd, true, head_hull, null, &tr);
-
             Vector dropStart = start + (g_pGlobals->v_forward * scanDistance);
             Vector dropEnd = dropStart - Vector(0.0f, 0.0f, scanDistance + 60.0f);
-
             TraceHull(dropStart, dropEnd, true, head_hull, null, &tr);
-
             if (tr.flFraction >= 1.0f)
             {
                 wayBlocked = true;
                 path->radius -= 16.0f;
-
                 break;
             }
-
             dropStart = start - (g_pGlobals->v_forward * scanDistance);
             dropEnd = dropStart - Vector(0.0f, 0.0f, scanDistance + 60.0f);
-
             TraceHull(dropStart, dropEnd, true, head_hull, null, &tr);
-
             if (tr.flFraction >= 1.0f)
             {
                 wayBlocked = true;
                 path->radius -= 16.0f;
                 break;
             }
-
             radiusEnd.z += 34.0f;
             TraceHull(radiusStart, radiusEnd, true, head_hull, null, &tr);
-
             if (tr.flFraction < 1.0f)
             {
                 wayBlocked = true;
                 path->radius -= 16.0f;
                 break;
             }
-
             direction.y = AngleNormalize(direction.y + circleRadius);
         }
-
         if (wayBlocked)
             break;
     }
-
     path->radius -= 16.0f;
-
     if (path->radius < 0.0f)
         path->radius = 0.0f;
 }*/
@@ -1063,7 +958,7 @@ stock float CostNormal(int current, int parent, int client)
         return 1.0;
     
     if (m_paths[current].flags == WAYPOINT_DOUBLEJUMP)
-        return 0.0;
+        return 1.0;
     
     // low health or don't want take any damage
     if (m_paths[current].flags == WAYPOINT_FALLDAMAGE && (m_lowHealth[client] || GetRandomInt(1, 3) == 1 || TF2_GetPlayerClass(client) == TFClass_Spy))
@@ -1073,6 +968,9 @@ stock float CostNormal(int current, int parent, int client)
     if (m_paths[current].flags == WAYPOINT_JUMP && (m_hasEnemiesNear[client] || TF2_GetPlayerClass(client) == TFClass_Heavy))
         return 65355.0;
     
+    if (m_paths[current].flags == WAYPOINT_NOSPY && TF2_GetPlayerClass(client) == TFClass_Spy)
+        return 65355.0;
+    
     float cl = float(client) + 1.0;
 	return GetWaypointDistance(current, parent) + float(GetDeaths(current) * GetDeaths(parent)) + GetDamage(current) + GetDamage(parent) + GetRandomFloat(-cl, cl);
 }
@@ -1080,6 +978,9 @@ stock float CostNormal(int current, int parent, int client)
 // A* Pathfinding
 stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetposition[3] = NULL_VECTOR)
 {
+    if (!IsValidClient(client))
+        return;
+
 	if (destIndex == -1)
     {
         if (GetConVarInt(EBotDebug) == 1)
@@ -1091,21 +992,14 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
 
         return;
     }
-	
-    if (m_pathDelay[client] > GetGameTime())
-        return;
-    
-	if (srcIndex <= 0)
+
+	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
 		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
     
     if (srcIndex == destIndex)
 		return;
-	
-    if (CurrentProcess[client] == PRO_HEAL)
-        m_pathDelay[client] = GetGameTime() + GetRandomFloat(0.35, 0.55);
-    else
-        m_pathDelay[client] = GetGameTime() + GetRandomFloat(0.55, 1.0);
 
+    AStar_t astar[MaxWaypoints];
     for (int i = 0; i < m_waypointNumber; i++)
     {
         astar[i].g = 0.0;
@@ -1117,16 +1011,32 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
     astar[srcIndex].g = CostNormal(srcIndex, -1, client);
     astar[srcIndex].f = astar[srcIndex].g + HeuristicNormal(srcIndex, destIndex);
     astar[srcIndex].state = OPEN;
+    
+    if (m_hidingSpots[client] == null)
+    {
+        delete m_hidingSpots[client];
+        m_hidingSpots[client] = new ArrayList();
+    }
+    
+    if (m_hidingSpots[client] != null)
+        m_hidingSpots[client].Clear();
 
-    Queue openList = new Queue();
-    openList.Push(srcIndex);
-    while (!openList.isEmpty)
+    SearchNode start;
+    start.index = srcIndex;
+    start.cost = astar[srcIndex].f;
+
+    ArrayList openList = new ArrayList(2);
+    openList.PushArray(start, 2);
+    while (openList.Length > 0)
     {
         // set current node to the node with the lowest f value
-        int currentIndex = openList.Pop();
-		
+        SearchNode currentIndex;
+        openList.Sort(Sort_Ascending, Sort_Float);
+        openList.GetArray(0, currentIndex, 2);
+        openList.Erase(0);
+
         // is the current node the goal node?
-        if (currentIndex == destIndex)
+        if (currentIndex.index == destIndex)
         {
             DeletePathNodes(client);
             
@@ -1139,84 +1049,32 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
             }
 
             // build the complete path
-            while (currentIndex != -1)
+            while (currentIndex.index != -1)
             {
-				AddToPath(currentIndex, client);
-                currentIndex = astar[currentIndex].parent;
+				AddToPath(currentIndex.index, client);
+                currentIndex.index = astar[currentIndex.index].parent;
 			}
 
+            delete openList;
             return;
         }
 
-        if (astar[currentIndex].state != OPEN)
+        if (astar[currentIndex.index].state != OPEN)
             continue;
 
         // put current node into CLOSED list
-        astar[currentIndex].state = CLOSED;
+        astar[currentIndex.index].state = CLOSED;
 
         // now expand the current node
         for (int i = 0; i < MaxPathIndex; i++)
         {
-            int self = m_paths[currentIndex].pathIndex[i];
+            int self = m_paths[currentIndex.index].pathIndex[i];
             if (self == -1)
                 continue;
             
-            if (destIndex != self)
-            {
-                // blocked waypoint
-                if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
-                    continue;
-                
-                if (m_paths[self].flags == WAYPOINT_NOSPY && TF2_GetPlayerClass(client) == TFClass_Spy)
-                    continue;
-                
-                if (IsValidClient(m_nearestEnemy[client]))
-                {
-                    if (m_riskyWaypoints[client] == null)
-	                {
-	                	delete m_riskyWaypoints[client];
-		                m_riskyWaypoints[client] = new ArrayList();
-	                }
-
-	                if (m_riskyWaypoints[client] != null)
-	                	m_riskyWaypoints[client].Clear();
-                    
-                    if (m_hidingSpots[client] == null)
-	                {
-	                	delete m_hidingSpots[client];
-		                m_hidingSpots[client] = new ArrayList();
-	                }
-
-	                if (m_hidingSpots[client] != null)
-	                	m_hidingSpots[client].Clear();
-
-                    if (ClientViewsOrigin(m_nearestEnemy[client], m_paths[self].origin, 0.5))
-                    {
-                        float vector[3];
-                        vector = m_paths[self].origin;
-                        float enemyHeight = GetHeight(m_nearestEnemy[client]);
-                        vector[2] += enemyHeight;
-                        if (IsVisible(vector, GetEyePosition(m_nearestEnemy[client])))
-                        {
-                            if (GetVectorDistance(GetOrigin(m_nearestEnemy[client]), vector, true) - GetVectorDistance(GetOrigin(client), vector, true) <= 0.0)
-                            {
-                                m_riskyWaypoints[client].Push(self);
-                                continue;
-                            }
-                        }
-                        else
-                            m_hidingSpots[client].Push(self);
-                    }
-                }
-                else if (m_riskyWaypoints[client] != null && m_riskyWaypoints[client].Length > 0)
-                {
-                    for (int array = m_riskyWaypoints[client].Length - 1; array > 0; array--)
-	                {
-	                	if (m_riskyWaypoints[client].Get(array) == self)
-                            continue;
-	                }
-                }
-            }
+            // blocked waypoint
+            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
+                continue;
             
             if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
                 continue;
@@ -1236,22 +1094,48 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
                 }
             }
 
+            if (self != destIndex)
+            {
+                if (IsValidClient(m_nearestEnemy[client]))
+                {
+                    if (ClientViewsOrigin(m_nearestEnemy[client], m_paths[self].origin, 0.55))
+                    {
+                        float vector[3];
+                        vector = m_paths[self].origin;
+                        float enemyHeight = GetHeight(m_nearestEnemy[client]);
+                        vector[2] += enemyHeight;
+                        if (IsVisible(vector, GetEyePosition(m_nearestEnemy[client])))
+                        {
+                            if (GetVectorDistance(GetOrigin(m_nearestEnemy[client]), vector, true) - GetVectorDistance(GetOrigin(client), vector, true) <= 0.0)
+                                continue;
+                        }
+                    }
+                    else
+                        m_hidingSpots[client].Push(self);
+                }
+            }
+
             // calculate the F value as F = G + H
-            float g = astar[currentIndex].g + CostNormal(self, currentIndex, client);
+            float g = astar[currentIndex.index].g + CostNormal(self, currentIndex.index, client);
             float h = HeuristicNormal(self, destIndex);
             float f = g + h;
 
             if (astar[self].state == NEW || astar[self].f > f)
             {
                 // put the current child into open list
-                astar[self].parent = currentIndex;
+                astar[self].parent = currentIndex.index;
                 astar[self].state = OPEN;
                 astar[self].g = g;
                 astar[self].f = f;
-                openList.Push(self);
+                SearchNode next;
+                next.index = self;
+                next.cost = astar[self].f;
+                openList.PushArray(next, 2);
             }
         }
     }
+
+    delete openList;
 
     m_lastFailedWaypoint[client] = destIndex;
     AStarFindShortestPath(srcIndex, destIndex, client, targetposition);
@@ -1271,18 +1155,14 @@ stock void AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
 
         return;
     }
-
-    if (destIndex == m_lastFailedWaypoint[client])
-        m_lastFailedWaypoint[client] = -1;
     
-	if (srcIndex <= 0)
+	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
 		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
     
     if (srcIndex == destIndex)
 		return;
-	
-    m_pathDelay[client] = GetGameTime() + GetRandomFloat(0.55, 1.0);
-
+    
+    AStar_t astar[MaxWaypoints];
     for (int i = 0; i < m_waypointNumber; i++)
     {
         astar[i].g = 0.0;
@@ -1294,15 +1174,22 @@ stock void AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
     astar[srcIndex].f = GetWaypointDistance(srcIndex, destIndex);
     astar[srcIndex].state = OPEN;
     
-    Queue openList = new Queue();
-    openList.Push(srcIndex);
-    while (!openList.isEmpty)
+    SearchNode start;
+    start.index = srcIndex;
+    start.cost = astar[srcIndex].f;
+
+    ArrayList openList = new ArrayList(2);
+    openList.PushArray(start, 2);
+    while (openList.Length > 0)
     {
         // set current node to the node with the lowest f value
-        int currentIndex = openList.Pop();
+        openList.Sort(Sort_Ascending, Sort_Float);
+        SearchNode currentIndex;
+        openList.GetArray(0, currentIndex, 2);
+        openList.Erase(0);
 		
         // is the current node the goal node?
-        if (currentIndex == destIndex)
+        if (currentIndex.index == destIndex)
         {
             DeletePathNodes(client);
 
@@ -1315,29 +1202,27 @@ stock void AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
             }
 
             // build the complete path
-            while (currentIndex != -1)
+            while (currentIndex.index != -1)
             {
-				AddToPath(currentIndex, client);
-                currentIndex = astar[currentIndex].parent;
+				AddToPath(currentIndex.index, client);
+                currentIndex.index = astar[currentIndex.index].parent;
 			}
+
+            delete openList;
             return;
         }
 
-        if (astar[currentIndex].state != OPEN)
+        if (astar[currentIndex.index].state != OPEN)
             continue;
 
         // put current node into CLOSED list
-        astar[currentIndex].state = CLOSED;
+        astar[currentIndex.index].state = CLOSED;
 
         // now expand the current node
         for (int i = 0; i < MaxPathIndex; i++)
         {
-            int self = m_paths[currentIndex].pathIndex[i];
+            int self = m_paths[currentIndex.index].pathIndex[i];
             if (self == -1)
-                continue;
-            
-            // blocked waypoint
-            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
                 continue;
             
             if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
@@ -1350,16 +1235,21 @@ stock void AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
             if (astar[self].state == NEW || astar[self].f > f)
             {
                 // put the current child into open list
-                astar[self].parent = currentIndex;
+                astar[self].parent = currentIndex.index;
                 astar[self].state = OPEN;
                 astar[self].f = f;
-                openList.Push(self);
+                SearchNode next;
+                next.index = self;
+                next.cost = astar[self].f;
+                openList.PushArray(next, 2);
             }
         }
     }
 
     // if still failing try to go random point
+    delete openList;
     destIndex = GetRandomInt(1, m_waypointNumber);
+    m_lastFailedWaypoint[client] = -1;
 }
 
 stock int FindCoverWaypoint(int client = -1, float maxDistance = 99999.0)
@@ -1387,7 +1277,7 @@ stock int FindCoverWaypoint(int client = -1, float maxDistance = 99999.0)
     }
 
     // do not move to a position near to the enemy
-    float distance = GetVectorDistance(GetOrigin(client), m_lastEnemyOrigin[client], true);
+    /*float distance = GetVectorDistance(GetOrigin(client), m_lastEnemyOrigin[client], true);
     if (maxDistance > distance)
         maxDistance = distance;
 
@@ -1504,7 +1394,7 @@ stock int FindCoverWaypoint(int client = -1, float maxDistance = 99999.0)
                 }
             }
         }
-    }
+    }*/
 
     return -1;
 }
@@ -1855,7 +1745,6 @@ stock void WaypointSave()
 {
     if (m_analyzeWaypoints == false)
         return;
-
     if (m_waypointNumber > 0)
     {
         for (int i = 0; i < m_waypointNumber; i++)
@@ -1863,121 +1752,92 @@ stock void WaypointSave()
             if (i != -1)
             {
                 Vector WayVec = g_waypoint->GetPath(i)->origin;
-
                 Vector Start;
-
                 float ran = sypbm_analyze_distance.GetFloat();
-
                 Start.x = (WayVec.x + engine->RandomFloat(((-ran) - 5.0f), (ran + 5.0f)));
                 Start.y = (WayVec.y + engine->RandomFloat(((-ran) - 5.0f), (ran + 5.0f)));
                 Start.z = (WayVec.z + engine->RandomFloat(1, ran));
-
                 TraceResult tr;
                 TraceResult tr2;
-
                 TraceLine(WayVec, Start, true, g_hostEntity, &tr);
                 TraceLine(tr.vecEndPos, Vector(tr.vecEndPos.x, tr.vecEndPos.y, -9999.0f), true, false, g_hostEntity, &tr2);
-
                 float lastwaypointaddtime = 0.0f;
-
                 if (tr.flFraction == 1.0f)
                 {
                     int startindex = g_waypoint->FindNearest(tr.vecEndPos, ran);
-
                     if (!IsValidWaypoint(startindex))
                     {
                         if (tr2.flFraction != 1.0f)
                         {
                             int endindex = g_waypoint->FindNearest(tr2.vecEndPos, ran);
-
                             if (!IsValidWaypoint(endindex))
                             {
                                 TraceResult tr3;
                                 TraceResult tr4;
                                 TraceResult tr5;
                                 TraceResult tr6;
-
                                 Vector TargetPosition = Vector(tr2.vecEndPos.x, tr2.vecEndPos.y, (tr2.vecEndPos.z + 36.0f));
-
                                 TraceLine(TargetPosition, (TargetPosition + (g_pGlobals->v_forward * sypbm_analyze_wall_check_distance.GetFloat())), true, false, g_hostEntity, &tr3); // forward
                                 TraceLine(TargetPosition, (TargetPosition - (g_pGlobals->v_forward * sypbm_analyze_wall_check_distance.GetFloat())), true, false, g_hostEntity, &tr4); // backward
                                 TraceLine(TargetPosition, (TargetPosition + (g_pGlobals->v_right * sypbm_analyze_wall_check_distance.GetFloat())), true, false, g_hostEntity, &tr5); // right
                                 TraceLine(TargetPosition, (TargetPosition - (g_pGlobals->v_right * sypbm_analyze_wall_check_distance.GetFloat())), true, false, g_hostEntity, &tr6); // left
-
                                 // if we dont hit wall, put waypoint here
                                 if (tr3.flFraction == 1.0f && tr4.flFraction == 1.0f && tr5.flFraction == 1.0f && tr6.flFraction == 1.0f)
                                 {
                                     edict_t* ent = null;
-
                                     while (!FNullEnt(ent = FIND_ENTITY_BY_CLASSNAME(ent, "hostage_entity")))
                                     {
                                         // if already saved || moving skip it
                                         if ((ent->v.effects & EF_NODRAW) && (ent->v.speed > 0))
                                             continue;
-
                                         TraceResult vis;
-
                                         TraceLine(TargetPosition, GetEntityOrigin(ent), true, false, g_hostEntity, &vis);
-
                                         if (vis.flFraction == 1.0f && GetDistanceSquared(TargetPosition, GetEntityOrigin(ent)) <= Squared(sypbm_analyze_goal_check_distance.GetFloat()))
                                         {
                                             lastwaypointaddtime = engine->GetTime();
                                             Add(100, TargetPosition);
                                         }
                                     }
-
                                     while (!FNullEnt(ent = FIND_ENTITY_BY_CLASSNAME(ent, "func_bomb_target")))
                                     {
                                         TraceResult vis;
-
                                         TraceLine(TargetPosition, GetEntityOrigin(ent), true, false, g_hostEntity, &vis);
-
                                         if (vis.flFraction == 1.0f && GetDistanceSquared(TargetPosition, GetEntityOrigin(ent)) <= Squared(sypbm_analyze_goal_check_distance.GetFloat()))
                                         {
                                             lastwaypointaddtime = engine->GetTime();
                                             Add(100, TargetPosition);
                                         }
                                     }
-
                                     while (!FNullEnt(ent = FIND_ENTITY_BY_CLASSNAME(ent, "info_bomb_target")))
                                     {
                                         TraceResult vis;
-
                                         TraceLine(TargetPosition, GetEntityOrigin(ent), true, false, g_hostEntity, &vis);
-
                                         if (vis.flFraction == 1.0f && GetDistanceSquared(TargetPosition, GetEntityOrigin(ent)) <= Squared(sypbm_analyze_goal_check_distance.GetFloat()))
                                         {
                                             lastwaypointaddtime = engine->GetTime();
                                             Add(100, TargetPosition);
                                         }
                                     }
-
                                     int doublecheckindex = g_waypoint->FindNearest(TargetPosition, ran);
-
                                     if (!IsValidWaypoint(doublecheckindex))
                                     {
                                         TraceResult trf;
                                         TraceResult trb;
                                         TraceResult trr;
                                         TraceResult trl;
-
                                         TraceLine(TargetPosition, (TargetPosition + (g_pGlobals->v_forward * sypbm_analyze_wall_check_distance.GetFloat())), true, false, g_hostEntity, &trf); // forward
                                         TraceLine(TargetPosition, (TargetPosition - (g_pGlobals->v_forward * sypbm_analyze_wall_check_distance.GetFloat())), true, false, g_hostEntity, &trb); // backward
                                         TraceLine(TargetPosition, (TargetPosition + (g_pGlobals->v_right * sypbm_analyze_wall_check_distance.GetFloat())), true, false, g_hostEntity, &trr); // right
                                         TraceLine(TargetPosition, (TargetPosition - (g_pGlobals->v_right * sypbm_analyze_wall_check_distance.GetFloat())), true, false, g_hostEntity, &trl); // left
-
                                         // double check
                                         if (trf.flFraction == 1.0f && trb.flFraction == 1.0f && trr.flFraction == 1.0f && trl.flFraction == 1.0f)
                                         {
                                             g_analyzeputrequirescrouch = false;
-
                                             TraceResult upcheck;
                                             Vector TargetPosition2 = Vector(tr2.vecEndPos.x, tr2.vecEndPos.y, (tr2.vecEndPos.z + 69.0f));
                                             TraceLine(TargetPosition, TargetPosition2, true, false, g_hostEntity, &upcheck);
-
                                             if (upcheck.flFraction != 1.0f)
                                                 g_analyzeputrequirescrouch = true;
-
                                             lastwaypointaddtime = engine->GetTime();
                                             Add(-1, g_analyzeputrequirescrouch ? Vector(tr2.vecEndPos.x, tr2.vecEndPos.y, (tr2.vecEndPos.z + 18.0f)) : TargetPosition);
                                         }

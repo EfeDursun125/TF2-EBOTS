@@ -1,4 +1,4 @@
-float m_checkTimer[MAXPLAYERS + 1];
+float m_checkTimer[TFMaxPlayers];
 
 public void CheckSlowThink(int client)
 {

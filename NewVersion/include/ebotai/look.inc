@@ -162,7 +162,7 @@ stock void LookAtEnemiens(int client)
 	}
 }
 
-float m_searchTime[MAXPLAYERS + 1];
+float m_searchTime[TFMaxPlayers];
 stock void LookAround(int client)
 {
 	m_tackEntity[client] = -1;
