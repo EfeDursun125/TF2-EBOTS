@@ -1,4 +1,4 @@
-bool m_teleEnterTriggerBlock[MAXPLAYERS + 1];
+bool m_teleEnterTriggerBlock[TFMaxPlayers];
 
 public bool BuildTeleEnterRequirements(int client)
 {

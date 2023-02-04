@@ -3,9 +3,6 @@ stock bool GetHealthRequirements(int client)
 	if (healthpacks <= 0)
 		return false;
 
-	if (pathdelayer >= GetGameTime())
-		return false;
-
 	if (!m_lowHealth[client])
 		return false;
 

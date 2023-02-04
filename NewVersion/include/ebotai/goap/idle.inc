@@ -2,8 +2,10 @@ stock bool IdleRequirements(int client)
 {
 	if (TF2_HasTheFlag(client))
 		return false;
+
 	if (m_hasEnemiesNear[client])
 		return false;
+
 	return true;
 }
 

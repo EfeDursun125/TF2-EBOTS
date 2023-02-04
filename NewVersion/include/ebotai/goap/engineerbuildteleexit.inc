@@ -1,4 +1,4 @@
-bool m_teleExitTriggerBlock[MAXPLAYERS + 1];
+bool m_teleExitTriggerBlock[TFMaxPlayers];
 
 public bool BuildTeleExitRequirements(int client)
 {

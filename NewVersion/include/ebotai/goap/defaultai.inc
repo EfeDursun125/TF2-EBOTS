@@ -391,6 +391,7 @@ public void SelectObjective(int client)
 				}
 				else if (IsValidEntity(m_bluPayload))
 				{
+					m_goalEntity[client] = m_bluPayload;
 					m_goalPosition[client] = GetOrigin(m_bluPayload);
 					m_goalPosition[client][0] += GetRandomFloat(-768.0, 768.0);
 					m_goalPosition[client][1] += GetRandomFloat(-768.0, 768.0);
@@ -400,6 +401,7 @@ public void SelectObjective(int client)
 			}
 			else if (IsValidEntity(m_bluPayload))
 			{
+				m_goalEntity[client] = m_bluPayload;
 				m_goalPosition[client] = GetOrigin(m_bluPayload);
 				m_goalPosition[client][0] += GetRandomFloat(-64.0, 64.0);
 				m_goalPosition[client][1] += GetRandomFloat(-64.0, 64.0);

@@ -3,9 +3,6 @@ stock bool GetAmmoRequirements(int client)
 	if (ammopacks <= 0)
 		return false;
 	
-	if (pathdelayer >= GetGameTime())
-		return false;
-	
 	if (m_lowHealth[client])
 		return false;
 	

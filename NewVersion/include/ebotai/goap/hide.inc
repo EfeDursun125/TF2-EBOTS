@@ -1,4 +1,4 @@
-int m_coverIndex[MAXPLAYERS + 1];
+int m_coverIndex[TFMaxPlayers];
 
 stock bool HideRequirements(int client)
 {

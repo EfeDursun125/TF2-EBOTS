@@ -1,24 +1,24 @@
-int SentryGun[MAXPLAYERS + 1];
-int Dispenser[MAXPLAYERS + 1];
-int TeleporterEnter[MAXPLAYERS + 1];
-int TeleporterExit[MAXPLAYERS + 1];
+int SentryGun[TFMaxPlayers];
+int Dispenser[TFMaxPlayers];
+int TeleporterEnter[TFMaxPlayers];
+int TeleporterExit[TFMaxPlayers];
 
-bool SentryHealthIsFull[MAXPLAYERS + 1];
-bool SentryIsMaxLevel[MAXPLAYERS + 1];
+bool SentryHealthIsFull[TFMaxPlayers];
+bool SentryIsMaxLevel[TFMaxPlayers];
 
-bool DispenserHealthIsFull[MAXPLAYERS + 1];
-bool DispenserIsMaxLevel[MAXPLAYERS + 1];
+bool DispenserHealthIsFull[TFMaxPlayers];
+bool DispenserIsMaxLevel[TFMaxPlayers];
 
-bool TeleporterEnterHealthIsFull[MAXPLAYERS + 1];
-bool TeleporterEnterIsMaxLevel[MAXPLAYERS + 1];
+bool TeleporterEnterHealthIsFull[TFMaxPlayers];
+bool TeleporterEnterIsMaxLevel[TFMaxPlayers];
 
-bool TeleporterExitHealthIsFull[MAXPLAYERS + 1];
-bool TeleporterExitIsMaxLevel[MAXPLAYERS + 1];
+bool TeleporterExitHealthIsFull[TFMaxPlayers];
+bool TeleporterExitIsMaxLevel[TFMaxPlayers];
 
-float EngineerMoveSentryTimer[MAXPLAYERS + 1];
-bool WantsMoveSentryGun[MAXPLAYERS + 1];
-float EngineerMoveDispenserTimer[MAXPLAYERS + 1];
-bool WantsMoveDispenser[MAXPLAYERS + 1];
+float EngineerMoveSentryTimer[TFMaxPlayers];
+bool WantsMoveSentryGun[TFMaxPlayers];
+float EngineerMoveDispenserTimer[TFMaxPlayers];
+bool WantsMoveDispenser[TFMaxPlayers];
 
 public bool EngineerIdleRequirements(int client)
 {

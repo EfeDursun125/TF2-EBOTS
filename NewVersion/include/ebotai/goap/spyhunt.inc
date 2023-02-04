@@ -1,5 +1,5 @@
-int m_victim[MAXPLAYERS + 1];
-bool m_isCoverBlown[MAXPLAYERS + 1];
+int m_victim[TFMaxPlayers];
+bool m_isCoverBlown[TFMaxPlayers];
 
 public bool SpyHuntRequirements(int client)
 {
