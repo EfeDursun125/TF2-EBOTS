@@ -13,6 +13,8 @@ float autoupdate = 0.0;
 float DJTime[TFMaxPlayers];
 float NoDodge[TFMaxPlayers];
 
+char PlayerName[TFMaxPlayers][64];
+
 public Plugin myinfo = 
 {
 	name = "[TF2] E-BOT",
@@ -73,6 +75,7 @@ public void OnPluginStart()
 	RegConsoleCmd("ebot_waypoint_set_aim_end", SetAim2);
 	RegConsoleCmd("ebot_addbot", AddEBot);
 	RegConsoleCmd("ebot_kickbot", KickEBot);
+	RegConsoleCmd("sm_afk", Command_Afk);
 	CreateDirectory("addons/sourcemod/ebot", 3);
 	HookEvent("player_hurt", BotHurt, EventHookMode_Post);
 	HookEvent("player_spawn", BotSpawn, EventHookMode_Post);
@@ -145,15 +148,16 @@ public void NavAreaBlocked(Event event, const char[] name, bool dB)
 	}
 }
 
-/*public void OnNavMeshLoaded()
+public void OnNavMeshLoaded()
 {
 	CreateTimer(2.0, AddWaypoints);
-}*/
+}
 
 public Action AddWaypoints(Handle timer)
 {
     if (!m_hasWaypoints)
 	{
+		// add waypoints
 		for (int i = 0; i < MaxWaypoints; i++)
 		{
 			CNavArea area = NavMesh_FindAreaByID(i);
@@ -165,9 +169,69 @@ public Action AddWaypoints(Handle timer)
 			}
 		}
 
+		for (int x = 0; x <= GetMaxEntities(); x++)
+		{
+			if (IsValidHealthPack(x))
+				WaypointAdd(GetOrigin(x), false, 7);
+		
+			if (IsValidAmmoPack(x))
+				WaypointAdd(GetOrigin(x), false, 6);
+		}
+
+		CreateTimer(0.2, DeleteWaypoints);
 		m_hasWaypoints = true;
 	}
 
+	return Plugin_Handled;
+}
+
+public Action DeleteWaypoints(Handle timer)
+{
+	// remove useless waypoints
+	for (int c = 0; c < MaxPathIndex; c++)
+	{
+		for (int i = 0; i < m_waypointNumber; i++)
+		{
+			bool deleted = false;
+			int oneway = 0;
+			for (int x = 0; x < MaxPathIndex; x++)
+			{
+				int n = m_paths[i].pathIndex[x];
+				if (n != -1)
+				{
+					oneway++;
+
+					if (!deleted)
+					{
+						int from = 0;
+						for (int j = 0; j < MaxPathIndex; j++)
+						{
+							if (m_paths[n].pathIndex[j] != -1 && m_paths[n].pathIndex[j] == i)
+								from++;
+						}
+
+						if (from <= 0)
+						{
+							DeleteWaypointIndex(i);
+							deleted = true;
+						}
+					}
+				}
+			}
+
+			if (oneway <= 1)
+				DeleteWaypointIndex(i);
+		}
+	}
+
+	CreateTimer(0.2, SaveWaypoints);
+
+	return Plugin_Handled;
+}
+
+public Action SaveWaypoints(Handle timer)
+{
+	WaypointSaveNAV();
 	return Plugin_Handled;
 }
 
@@ -232,6 +296,89 @@ public void OnMapStart()
 
 	InitializeWaypoints();
 }
+
+public Action Command_Afk(int client, int args)
+{
+	if (args != 0 && args != 2)
+	{
+		ReplyToCommand(client, "[E-BOT] Usage: sm_afk <target> [0/1]");
+		return Plugin_Handled;
+	}
+	
+	if (args == 0) // For People
+	{
+		if (!m_isAFK[client])
+		{
+			PrintToChat(client, "[E-BOT] AFK-BOT is enabled.");
+			m_isAFK[client] = true;
+			GetClientName(client, PlayerName[client], 64);
+			char afkName[64];
+			Format(afkName, sizeof(afkName), "%s (AFK)", PlayerName[client]);
+			SetClientName(client, afkName);
+		}
+		else
+		{
+			PrintToChat(client, "[E-BOT] AFK-BOT is disabled.");
+			PrintCenterText(client, "Your AFK Mode is now disabled.");
+			m_isAFK[client] = false;
+			SetClientName(client, PlayerName[client]);
+		}
+		
+		return Plugin_Handled;
+	}
+	
+	else if (args == 2)
+	{
+		char arg1[PLATFORM_MAX_PATH];
+		GetCmdArg(1, arg1, sizeof(arg1));
+		char arg2[8];
+		GetCmdArg(2, arg2, sizeof(arg2));
+		
+		int value = StringToInt(arg2);
+		if (value != 0 && value != 1)
+		{
+			ReplyToCommand(client, "[E-BOT] Usage: sm_afk <target> [0/1]");
+			return Plugin_Handled;
+		}
+		
+		char target_name[MAX_TARGET_LENGTH];
+		int target_list[TFMaxPlayers];
+		int target_count;
+		bool tn_is_ml;
+		if ((target_count = ProcessTargetString(arg1, client, target_list, TFMaxPlayers, 0, target_name, sizeof(target_name), tn_is_ml)) <= 0)
+		{
+			ReplyToTargetError(client, target_count);
+			return Plugin_Handled;
+		}
+		
+		for (int i = 0; i < target_count; i++)
+		{
+			if (IsValidClient(target_list[i]))
+			{
+				if (value == 0)
+				{
+					if (CheckCommandAccess(client, "sm_afk_access", ADMFLAG_ROOT))
+					{
+						PrintToChat(target_list[i], "[E-BOT] AFK-BOT is disabled.");
+						PrintCenterText(target_list[i], "Your AFK Mode is now disabled.");
+						m_isAFK[target_list[i]] = false;
+					}
+				}
+				else
+				{
+					if (CheckCommandAccess(client, "sm_afk_access", ADMFLAG_ROOT))
+					{
+						PrintToChat(target_list[i], "[E-BOT] AFK-BOT is enabled.");
+						m_isAFK[target_list[i]] = true;
+					}
+				}
+			}
+		}
+	}
+
+	return Plugin_Handled;
+}
+
 
 public void EBotDeathChat(int client)
 {
@@ -648,6 +795,12 @@ public void OnGameFrame()
 			{
 				if (!IsValidClient(search))
 					continue;
+				
+				if (!IsEBot(search))
+					continue;
+				
+				if (CurrentProcess[search] != PRO_DEFAULT)
+					continue;
 
 				SelectObjective(search);
 				DeletePathNodes(search);
@@ -664,7 +817,10 @@ public void OnGameFrame()
 	if (GetConVarInt(EBotDebug) == 1)
 	{
 		if (!IsValidClient(m_hostEntity))
+		{
 			FindHostEntity();
+			return;
+		}
 		
 		if (hudtext < GetGameTime())
 		{
@@ -702,7 +858,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 	if (!IsValidClient(client))
 		return Plugin_Continue;
 		
-	if (!IsEBot(client))
+	if (!IsEBot(client) && !m_isAFK[client])
 		return Plugin_Continue;
 
 	// auto backstab
@@ -725,7 +881,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 
 		buttons |= IN_DUCK;
 		buttons |= IN_JUMP;
-		DJTime[client] = GetGameTime() + 99999;
+		DJTime[client] = GetGameTime() + 999999.0;
 	}
 	
 	// check if client pressing any buttons and set them
@@ -827,7 +983,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if (IsValidClient(client) && IsEBot(client))
+	if (IsValidClient(client) && (IsEBot(client) || m_isAFK[client]))
 	{
 		SetFakeClientConVar(client, "cl_autowepswitch", "1");
 		SetFakeClientConVar(client, "hud_fastswitch", "1");
@@ -1081,7 +1237,7 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 	int victim = GetClientOfUserId(GetEventInt(event, "userid"));
 	int client = GetClientOfUserId(GetEventInt(event, "attacker"));
 	
-	if (IsValidClient(client) && IsEBot(client) && IsValidClient(victim))
+	if (IsValidClient(client) && (IsEBot(client) || m_isAFK[client]) && IsValidClient(victim))
 	{
 		if (TF2_GetPlayerClass(client) == TFClass_Spy)
 			TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), TF2_GetPlayerClass(victim), victim);
@@ -1094,7 +1250,7 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 		}
 	}
 
-	if (IsValidClient(client) && IsEBot(victim))
+	if (IsValidClient(client) && (IsEBot(victim) || m_isAFK[victim]))
 	{
 		m_lastKiller[victim] = client;
 		EBotDeathChat(victim);
@@ -1102,7 +1258,7 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 
 	if (IsValidClient(victim))
 	{
-		if (IsEBot(victim) && m_currentIndex[victim] > 0)
+		if ((IsEBot(victim) || m_isAFK[victim]) && m_currentIndex[victim] > 0)
 			IncreaseDeaths(m_currentIndex[victim]);
 		else
 		{
@@ -1124,7 +1280,7 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 	if (!IsValidClient(client) || client == target)
 		return Plugin_Handled;
 	
-	if (IsEBot(client))
+	if (IsEBot(client) || m_isAFK[client])
 	{
 		if (IsValidClient(target))
 		{
@@ -1192,7 +1348,7 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 
 	if (IsValidClient(victim) && victim != attacker)
 	{
-		if (IsEBot(victim) && m_currentIndex[victim] > 0)
+		if ((IsEBot(victim) || m_isAFK[victim]) && m_currentIndex[victim] > 0)
 			IncreaseDamage(m_currentIndex[victim], damage);
 		else
 		{
@@ -1231,7 +1387,7 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 		if (!IsValidClient(client))
 			continue;
 		
-		if (!IsEBot(client))
+		if (!IsEBot(client) && !m_isAFK[client])
 			continue;
 		
 		if (!IsPlayerAlive(client))
@@ -1366,6 +1522,13 @@ public Action PointCaptured(Handle event, char[] name, bool dontBroadcast)
 			if (!IsValidClient(search))
 				continue;
 
+			if (!IsEBot(search) && !m_isAFK[search])
+				continue;
+
+			if (CurrentProcess[search] != PRO_DEFAULT)
+				continue;
+
+			SelectObjective(search);
 			DeletePathNodes(search);
 		}
 	}
