@@ -34,7 +34,11 @@ stock void AutoLoadGamemode()
 		isMVM = true;
 	else if (StrContains(currentMap, "cp_" , false) != -1 || StrContains(currentMap, "tc_" , false) != -1)
 	{
-		isCP = true;
-		isAD = true;
+		if (GetBluControlPointCount() > 0)
+			isCP = true;
+		else
+			isAD = true;
 	}
+	else
+		isDM = true;
 }

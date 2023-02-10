@@ -162,12 +162,12 @@ stock void UpdateWaypoints()
     
     for (int i = 0; i < m_waypointNumber; i++)
     {
-        damageWPT[i] -= 12.0;
+        damageWPT[i] -= 10.0;
         if (damageWPT[i] < 0.0)
             damageWPT[i] = 0.0;
     }
     
-    waypointUpdate = GetGameTime() + 10.0;
+    waypointUpdate = GetGameTime() + m_waypointNumber > 1024 ? 100.0 : 10.0;
 }
 
 stock void DrawWaypoints()
@@ -176,10 +176,15 @@ stock void DrawWaypoints()
         return;
     
     if (!IsValidClient(m_hostEntity))
+    {
         FindHostEntity();
+        return;
+    }
 
     if (waypointDrawTime > GetGameTime())
         return;
+    
+    float frame = 0.05;
     
     m_lastFailedWaypoint[m_hostEntity] = -1;
 
@@ -187,13 +192,219 @@ stock void DrawWaypoints()
     float nearestDistance = 999999999.0;
     float range = 768.0;
 
+    if (m_waypointNumber > 1024)
+        range = 512.0;
+    
+    // draw a paths, camplines and danger directions for nearest waypoint
+    if (nearestIndex != -1 && GetVectorDistance(GetEyePosition(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(range) && IsVisibleWaypointDebug(GetEyePosition(m_hostEntity), m_paths[nearestIndex].origin))
+    {
+        // draw the camplines
+        if (m_paths[nearestIndex].flags == WAYPOINT_SNIPER || m_paths[nearestIndex].flags == WAYPOINT_DEFEND || m_paths[nearestIndex].flags == WAYPOINT_SENTRY || m_paths[nearestIndex].flags == WAYPOINT_DEMOMANCAMP || m_paths[nearestIndex].flags == WAYPOINT_TELEPORTERENTER || m_paths[nearestIndex].flags == WAYPOINT_TELEPORTEREXIT)
+        {
+            float height = 72.0;
+            if (m_paths[nearestIndex].flags == WAYPOINT_CROUCH)
+                height = 36.0;
+
+            // convert int to float
+            float indexOrigin[3];
+            indexOrigin = m_paths[nearestIndex].origin;
+            indexOrigin[2] += height;
+
+            TE_SetupBeamPoints(indexOrigin, m_paths[nearestIndex].campStart, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + frame, 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 20);
+            TE_SendToClient(m_hostEntity);
+            TE_SetupBeamPoints(indexOrigin, m_paths[nearestIndex].campEnd, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + frame, 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 20);
+            TE_SendToClient(m_hostEntity);
+        }
+
+        // draw the connections
+        for (int i = 0; i < MaxPathIndex; i++)
+        {
+            if (m_paths[nearestIndex].pathIndex[i] == -1)
+                continue;
+
+            float height = 36.0;
+            if (m_paths[nearestIndex].flags == WAYPOINT_CROUCH)
+                height = 18.0;
+            
+            float height2 = 36.0;
+            if (m_paths[m_paths[nearestIndex].pathIndex[i]].flags == WAYPOINT_CROUCH)
+                height2 = 18.0;
+            
+            float indexOrigin[3];
+            indexOrigin = m_paths[nearestIndex].origin;
+            indexOrigin[2] = m_paths[nearestIndex].origin[2] + height;
+
+            float indexOrigin2[3];
+            indexOrigin2 = m_paths[m_paths[nearestIndex].pathIndex[i]].origin;
+            indexOrigin2[2] = m_paths[m_paths[nearestIndex].pathIndex[i]].origin[2] + height2;
+
+            if (IsConnected(m_paths[nearestIndex].pathIndex[i], nearestIndex)) // two way connection
+            {
+                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + frame, 1.0, 1.0, 5, 0.0, {255, 255, 0, 255}, 20);
+                TE_SendToClient(m_hostEntity);
+            }
+            else // one way connection
+            {
+                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + frame, 1.0, 1.0, 5, 0.0, {255, 255, 255, 255}, 20);
+                TE_SendToClient(m_hostEntity);
+            }
+        }
+
+        // now look for oneway incoming connections
+        for (int i = 0; i < m_waypointNumber; i++)
+        {
+            if (IsConnected(m_paths[i].index, m_paths[nearestIndex].index) && !IsConnected(m_paths[nearestIndex].index, m_paths[i].index))
+            {
+                float height = 36.0;
+                if (m_paths[nearestIndex].flags == WAYPOINT_CROUCH)
+                    height = 18.0;
+                
+                float height2 = 36.0;
+                if (m_paths[i].flags == WAYPOINT_CROUCH)
+                    height2 = 18.0;
+
+                float indexOrigin[3];
+                indexOrigin = m_paths[nearestIndex].origin;
+                indexOrigin[2] = m_paths[nearestIndex].origin[2] + height;
+
+                float indexOrigin2[3];
+                indexOrigin2 = m_paths[i].origin;
+                indexOrigin2[2] = m_paths[i].origin[2] + height2;
+
+                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + frame, 1.0, 1.0, 5, 0.0, {0, 192, 96, 255}, 20);
+                TE_SendToClient(m_hostEntity);
+            }
+        }
+
+        // if radius is nonzero, draw a square
+        int color[4] = {0, 0, 255, 255};
+        float origin[3];
+        origin = m_paths[nearestIndex].origin;
+        float height = 18.0;
+
+        if (m_paths[nearestIndex].flags == WAYPOINT_CROUCH)
+            height = 9.0;
+        
+        origin[2] += height;
+
+        if (m_paths[nearestIndex].team == 2)
+        {
+            color[0] = 255;
+            color[1] = 0;
+            color[2] = 0;
+        }
+        else if (m_paths[nearestIndex].team == 3)
+        {
+            color[0] = 0;
+            color[1] = 0;
+            color[2] = 255;
+        }
+        else if (m_paths[nearestIndex].team == 4)
+        {
+            color[0] = 0;
+            color[1] = 255;
+            color[2] = 0;
+        }
+        else if (m_paths[nearestIndex].team == 5)
+        {
+            color[0] = 255;
+            color[1] = 255;
+            color[2] = 0;
+        }
+        else
+        {
+            color[0] = 255;
+            color[1] = 255;
+            color[2] = 255;
+        }
+
+        if (m_paths[nearestIndex].radius > 0.0)
+        {
+            float root = m_paths[nearestIndex].radius;
+            TE_SetupBeamPoints(VectorWithRoot(origin, root, root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SendToClient(m_hostEntity);
+            TE_SetupBeamPoints(VectorWithRoot(origin, root, root), VectorWithRoot(origin, root, -root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SendToClient(m_hostEntity);
+            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, root, -root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SendToClient(m_hostEntity);
+            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SendToClient(m_hostEntity);
+        }
+        else
+        {
+            float root = 8.0;
+            TE_SetupBeamPoints(VectorWithRoot(origin, root, -root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SendToClient(m_hostEntity);
+            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
+            TE_SendToClient(m_hostEntity);
+        }
+
+        int i = nearestIndex;
+        char wpteam[128] = "All";
+
+        if (m_paths[i].team == 2)
+            wpteam = "Red Only";
+        else if (m_paths[i].team == 3)
+            wpteam = "Blu Only";
+        else if (m_paths[i].team == 4)
+            wpteam = "Green Only";
+        else if (m_paths[i].team == 5)
+            wpteam = "Yellow Only";
+        
+        char wpflags[128] = "None";
+        if (m_paths[i].flags == WAYPOINT_AMMO)
+            wpflags = "Ammo";
+        else if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT)
+            wpflags = "Capture";
+        else if (m_paths[i].flags == WAYPOINT_CROUCH)
+            wpflags = "Crouch";
+        else if (m_paths[i].flags == WAYPOINT_DEMOMANCAMP)
+            wpflags = "Demoman Sticky Trap";
+        else if (m_paths[i].flags == WAYPOINT_ROUTE)
+            wpflags = "Route";
+        else if (m_paths[i].flags == WAYPOINT_DOUBLEJUMP)
+            wpflags = "Double Jump";
+        else if (m_paths[i].flags == WAYPOINT_JUMP)
+            wpflags = "Jump";
+        else if (m_paths[i].flags == WAYPOINT_HEALTH)
+            wpflags = "Health";
+        else if (m_paths[i].flags == WAYPOINT_DEFEND)
+            wpflags = "Defend";
+        else if (m_paths[i].flags == WAYPOINT_FALLDAMAGE)
+            wpflags = "Fall Damage";
+        else if (m_paths[i].flags == WAYPOINT_RESUPPLY)
+            wpflags = "Resupply";
+        else if (m_paths[i].flags == WAYPOINT_ROCKETJUMP)
+            wpflags = "Rocket Jump";
+        else if (m_paths[i].flags == WAYPOINT_SENTRY)
+            wpflags = "Sentry";
+        else if (m_paths[i].flags == WAYPOINT_SNIPER)
+            wpflags = "Sniper";
+        else if (m_paths[i].flags == WAYPOINT_TELEPORTERENTER)
+            wpflags = "Teleporter Enter";
+        else if (m_paths[i].flags == WAYPOINT_TELEPORTEREXIT)
+            wpflags = "Teleporter Exit";
+        else if (m_paths[i].flags == WAYPOINT_NOSTRAFE)
+            wpflags = "No Strafe (Safe Movement)";
+        else if (m_paths[i].flags == WAYPOINT_NOSPY)
+            wpflags = "No Spy";
+        else if (m_paths[i].flags == WAYPOINT_DEMOCHARGE)
+            wpflags = "Demo Charge";
+        
+        SetHudTextParams(0.0, 0.0, nextDrawTime + GetGameFrameTime(), 255, 255, 255, 255, 2, 1.0, 0.0, 0.0);
+        ShowHudText(m_hostEntity, -1, "Waypoint Index: %d (%d/%d)\nTeam: %s\nActive Area: %d\nFlags: %s\nRadius: %d\nOrigin: %d %d %d\nAim Start Origin: %d %d %d\nAim End Origin: %d %d %d\nDamage: %d\nDeaths: %d", m_paths[i].index, m_waypointNumber, MaxWaypoints, wpteam, m_paths[i].activeArea, wpflags, RoundFloat(m_paths[i].radius), RoundFloat(m_paths[i].origin[0]), RoundFloat(m_paths[i].origin[1]), RoundFloat(m_paths[i].origin[2]), RoundFloat(m_paths[i].campStart[0]), RoundFloat(m_paths[i].campStart[1]), RoundFloat(m_paths[i].campStart[2]), RoundFloat(m_paths[i].campEnd[0]), RoundFloat(m_paths[i].campEnd[1]), RoundFloat(m_paths[i].campEnd[2]), RoundFloat(GetDamage(i)), (GetDeaths(i) - 1));
+    }
+
     for (int i = 0; i < m_waypointNumber; i++)
     {
-        float distance = GetVectorDistance(m_paths[i].origin, GetOrigin(m_hostEntity), true);
-        if (distance > Squaredf(range))
+        float distance = GetVectorDistance(m_paths[i].origin, GetOrigin(m_hostEntity));
+        if (distance > range)
             continue;
         
-        if (distance > Squaredf(75.0) && !ClientViewsOrigin(m_hostEntity, m_paths[i].origin, 0.6))
+        if (distance > 64.0 && !ClientViewsOrigin(m_hostEntity, m_paths[i].origin, 0.6))
+            continue;
+
+        if (IsVisibleWaypointIndex(FindNearestWaypoint(GetOrigin(m_hostEntity)), i, GetHeight(m_hostEntity), 72.0))
             continue;
 
         // check the distance
@@ -331,206 +542,6 @@ stock void DrawWaypoints()
         TE_SendToClient(m_hostEntity);
     }
 
-    // draw a paths, camplines and danger directions for nearest waypoint
-    if (nearestIndex != -1 && GetVectorDistance(GetEyePosition(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(range) && IsVisibleWaypoint(GetEyePosition(m_hostEntity), m_paths[nearestIndex].origin))
-    {
-        // draw the camplines
-        if (m_paths[nearestIndex].flags == WAYPOINT_SNIPER || m_paths[nearestIndex].flags == WAYPOINT_DEFEND || m_paths[nearestIndex].flags == WAYPOINT_SENTRY || m_paths[nearestIndex].flags == WAYPOINT_DEMOMANCAMP || m_paths[nearestIndex].flags == WAYPOINT_TELEPORTERENTER || m_paths[nearestIndex].flags == WAYPOINT_TELEPORTEREXIT)
-        {
-            float height = 72.0;
-            if (m_paths[nearestIndex].flags == WAYPOINT_CROUCH)
-                height = 36.0;
-
-            // convert int to float
-            float indexOrigin[3];
-            indexOrigin = m_paths[nearestIndex].origin;
-            indexOrigin[2] += height;
-
-            TE_SetupBeamPoints(indexOrigin, m_paths[nearestIndex].campStart, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 20);
-            TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(indexOrigin, m_paths[nearestIndex].campEnd, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, {255, 0, 0, 255}, 20);
-            TE_SendToClient(m_hostEntity);
-        }
-
-        // draw the connections
-        for (int i = 0; i < MaxPathIndex; i++)
-        {
-            if (m_paths[nearestIndex].pathIndex[i] == -1)
-                continue;
-
-            float height = 36.0;
-            if (m_paths[nearestIndex].flags == WAYPOINT_CROUCH)
-                height = 18.0;
-            
-            float height2 = 36.0;
-            if (m_paths[m_paths[nearestIndex].pathIndex[i]].flags == WAYPOINT_CROUCH)
-                height2 = 18.0;
-            
-            float indexOrigin[3];
-            indexOrigin = m_paths[nearestIndex].origin;
-            indexOrigin[2] = m_paths[nearestIndex].origin[2] + height;
-
-            float indexOrigin2[3];
-            indexOrigin2 = m_paths[m_paths[nearestIndex].pathIndex[i]].origin;
-            indexOrigin2[2] = m_paths[m_paths[nearestIndex].pathIndex[i]].origin[2] + height2;
-
-            if (IsConnected(m_paths[nearestIndex].pathIndex[i], nearestIndex)) // two way connection
-            {
-                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, {255, 255, 0, 255}, 20);
-                TE_SendToClient(m_hostEntity);
-            }
-            else // one way connection
-            {
-                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, {255, 255, 255, 255}, 20);
-                TE_SendToClient(m_hostEntity);
-            }
-        }
-
-        // now look for oneway incoming connections
-        for (int i = 0; i < m_waypointNumber; i++)
-        {
-            if (IsConnected(m_paths[i].index, m_paths[nearestIndex].index) && !IsConnected(m_paths[nearestIndex].index, m_paths[i].index))
-            {
-                float height = 36.0;
-                if (m_paths[nearestIndex].flags == WAYPOINT_CROUCH)
-                    height = 18.0;
-                
-                float height2 = 36.0;
-                if (m_paths[i].flags == WAYPOINT_CROUCH)
-                    height2 = 18.0;
-
-                float indexOrigin[3];
-                indexOrigin = m_paths[nearestIndex].origin;
-                indexOrigin[2] = m_paths[nearestIndex].origin[2] + height;
-
-                float indexOrigin2[3];
-                indexOrigin2 = m_paths[i].origin;
-                indexOrigin2[2] = m_paths[i].origin[2] + height2;
-
-                TE_SetupBeamPoints(indexOrigin, indexOrigin2, m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, {0, 192, 96, 255}, 20);
-                TE_SendToClient(m_hostEntity);
-            }
-        }
-
-        // if radius is nonzero, draw a square
-        int color[4] = {0, 0, 255, 255};
-        float origin[3];
-        origin = m_paths[nearestIndex].origin;
-        float height = 18.0;
-
-        if (m_paths[nearestIndex].flags == WAYPOINT_CROUCH)
-            height = 9.0;
-        
-        origin[2] += height;
-
-        if (m_paths[nearestIndex].team == 2)
-        {
-            color[0] = 255;
-            color[1] = 0;
-            color[2] = 0;
-        }
-        else if (m_paths[nearestIndex].team == 3)
-        {
-            color[0] = 0;
-            color[1] = 0;
-            color[2] = 255;
-        }
-        else if (m_paths[nearestIndex].team == 4)
-        {
-            color[0] = 0;
-            color[1] = 255;
-            color[2] = 0;
-        }
-        else if (m_paths[nearestIndex].team == 5)
-        {
-            color[0] = 255;
-            color[1] = 255;
-            color[2] = 0;
-        }
-        else
-        {
-            color[0] = 255;
-            color[1] = 255;
-            color[2] = 255;
-        }
-
-        if (m_paths[nearestIndex].radius > 0.0)
-        {
-            float root = m_paths[nearestIndex].radius;
-            TE_SetupBeamPoints(VectorWithRoot(origin, root, root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
-            TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(VectorWithRoot(origin, root, root), VectorWithRoot(origin, root, -root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
-            TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, root, -root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
-            TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
-            TE_SendToClient(m_hostEntity);
-        }
-        else
-        {
-            float root = 8.0;
-            TE_SetupBeamPoints(VectorWithRoot(origin, root, -root), VectorWithRoot(origin, -root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
-            TE_SendToClient(m_hostEntity);
-            TE_SetupBeamPoints(VectorWithRoot(origin, -root, -root), VectorWithRoot(origin, root, root), m_laserIndex, m_laserIndex, 0, 30, nextDrawTime + GetGameFrameTime(), 1.0, 1.0, 5, 0.0, color, 20);
-            TE_SendToClient(m_hostEntity);
-        }
-
-        int i = nearestIndex;
-        char wpteam[128] = "All";
-
-        if (m_paths[i].team == 2)
-            wpteam = "Red Only";
-        else if (m_paths[i].team == 3)
-            wpteam = "Blu Only";
-        else if (m_paths[i].team == 4)
-            wpteam = "Green Only";
-        else if (m_paths[i].team == 5)
-            wpteam = "Yellow Only";
-        
-        char wpflags[128] = "None";
-        if (m_paths[i].flags == WAYPOINT_AMMO)
-            wpflags = "Ammo";
-        else if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT)
-            wpflags = "Capture";
-        else if (m_paths[i].flags == WAYPOINT_CROUCH)
-            wpflags = "Crouch";
-        else if (m_paths[i].flags == WAYPOINT_DEMOMANCAMP)
-            wpflags = "Demoman Sticky Trap";
-        else if (m_paths[i].flags == WAYPOINT_ROUTE)
-            wpflags = "Route";
-        else if (m_paths[i].flags == WAYPOINT_DOUBLEJUMP)
-            wpflags = "Double Jump";
-        else if (m_paths[i].flags == WAYPOINT_JUMP)
-            wpflags = "Jump";
-        else if (m_paths[i].flags == WAYPOINT_HEALTH)
-            wpflags = "Health";
-        else if (m_paths[i].flags == WAYPOINT_DEFEND)
-            wpflags = "Defend";
-        else if (m_paths[i].flags == WAYPOINT_FALLDAMAGE)
-            wpflags = "Fall Damage";
-        else if (m_paths[i].flags == WAYPOINT_RESUPPLY)
-            wpflags = "Resupply";
-        else if (m_paths[i].flags == WAYPOINT_ROCKETJUMP)
-            wpflags = "Rocket Jump";
-        else if (m_paths[i].flags == WAYPOINT_SENTRY)
-            wpflags = "Sentry";
-        else if (m_paths[i].flags == WAYPOINT_SNIPER)
-            wpflags = "Sniper";
-        else if (m_paths[i].flags == WAYPOINT_TELEPORTERENTER)
-            wpflags = "Teleporter Enter";
-        else if (m_paths[i].flags == WAYPOINT_TELEPORTEREXIT)
-            wpflags = "Teleporter Exit";
-        else if (m_paths[i].flags == WAYPOINT_NOSTRAFE)
-            wpflags = "No Strafe (Safe Movement)";
-        else if (m_paths[i].flags == WAYPOINT_NOSPY)
-            wpflags = "No Spy";
-        else if (m_paths[i].flags == WAYPOINT_DEMOCHARGE)
-            wpflags = "Demo Charge";
-        
-        SetHudTextParams(0.0, 0.0, nextDrawTime + GetGameFrameTime(), 255, 255, 255, 255, 2, 1.0, 0.0, 0.0);
-        ShowHudText(m_hostEntity, -1, "Waypoint Index: %d (%d/%d)\nTeam: %s\nActive Area: %d\nFlags: %s\nRadius: %d\nOrigin: %d %d %d\nAim Start Origin: %d %d %d\nAim End Origin: %d %d %d\nDamage: %d\nDeaths: %d", m_paths[i].index, m_waypointNumber, MaxWaypoints, wpteam, m_paths[i].activeArea, wpflags, RoundFloat(m_paths[i].radius), RoundFloat(m_paths[i].origin[0]), RoundFloat(m_paths[i].origin[1]), RoundFloat(m_paths[i].origin[2]), RoundFloat(m_paths[i].campStart[0]), RoundFloat(m_paths[i].campStart[1]), RoundFloat(m_paths[i].campStart[2]), RoundFloat(m_paths[i].campEnd[0]), RoundFloat(m_paths[i].campEnd[1]), RoundFloat(m_paths[i].campEnd[2]), RoundFloat(GetDamage(i)), (GetDeaths(i) - 1));
-    }
-
     waypointDrawTime = GetGameTime() + nextDrawTime;
 }
 
@@ -545,7 +556,7 @@ stock bool IsVisibleWaypointIndex(int start, int end, float startheight = 18.0, 
 	fstart = m_paths[end].origin;
 	fend[2] += endheight;
 
-	Handle trace = TR_TraceRayFilterEx(fstart, fend, MASK_CUSTOM, RayType_EndPoint, TraceEntityFilterStuff);
+	Handle trace = TR_TraceRayFilterEx(fstart, fend, MASK_PLAYERSOLID, RayType_EndPoint, TraceEntityFilterStuff);
 	float flFraction = TR_GetFraction(trace);
 	delete trace;
 
@@ -580,13 +591,13 @@ stock bool IsWaypointReachable(float start[3], float goal[3])
     destination[2] += 32.0;
 
     // unable to reach with walking
-    if ((destination[2] - src[2]) > 72.0)
+    if ((destination[2] - src[2]) > 63.0)
         return false;
 
-    float distance = GetVectorDistance(destination, src);
+    float distance = GetVectorDistance(destination, src, true);
 
     // is the destination not close enough?
-    if (distance > 333)
+    if (distance > Squaredf(400.0))
         return false;
 
     // if waypoint is visible from current position
@@ -629,7 +640,7 @@ stock bool IsWaypointReachable(float start[3], float goal[3])
 
         CloseHandle(tr);
 
-        while (distance > 10.0)
+        while (distance > Squaredf(10.0))
         {
             // move 10 units closer to the goal...
             check[0] = check[0] + (direction[0] * 10.0);
@@ -639,7 +650,7 @@ stock bool IsWaypointReachable(float start[3], float goal[3])
             down = check;
             down[2] = down[2] - 1000.0; // straight down 1000 units
 
-            Handle tr2 = TR_TraceRayFilterEx(check, down, MASK_PLAYERSOLID, RayType_EndPoint, WaypointFilter);
+            Handle tr2 = TR_TraceRayFilterEx(check, down, MASK_PLAYERSOLID, RayType_EndPoint, WaypointFilter)
 
             float height = TR_GetFraction(tr2) * 1000.0; // height from ground
             
@@ -650,7 +661,7 @@ stock bool IsWaypointReachable(float start[3], float goal[3])
                 return false; // can't get there without jumping...
 
             lastHeight = height;
-            distance = GetVectorDistance(destination, check); // distance from goal
+            distance = GetVectorDistance(destination, check, true); // distance from goal
         }
 
         return true;
@@ -692,7 +703,7 @@ stock void AutoWaypoint()
         WaypointAdd(GetOrigin(m_hostEntity));
 }
 
-stock void WaypointAdd(float origin[3], bool cdebug = true)
+stock void WaypointAdd(float origin[3], bool cdebug = true, int flags = 0)
 {
     if (m_waypointNumber >= MaxWaypoints)
     {
@@ -707,7 +718,7 @@ stock void WaypointAdd(float origin[3], bool cdebug = true)
     
     m_paths[index].index = index;
     m_paths[index].activeArea = 0;
-    m_paths[index].flags = 0;
+    m_paths[index].flags = flags;
     m_paths[index].radius = GetConVarFloat(EBotRadius);
     m_paths[index].team = 0;
 
@@ -731,24 +742,27 @@ stock void WaypointAdd(float origin[3], bool cdebug = true)
 
         // check if the waypoint is reachable from the new one (one-way)
         if (IsWaypointReachable(m_paths[index].origin, m_paths[i].origin))
-            AddPath(index, i, GetVectorDistance(m_paths[index].origin, m_paths[i].origin));
+            AddPath(index, i, GetVectorDistance2D(m_paths[index].origin, m_paths[i].origin));
 
         // check if the new one is reachable from the waypoint (other way)
         if (IsWaypointReachable(m_paths[i].origin, m_paths[index].origin))
-            AddPath(i, index, GetVectorDistance(m_paths[i].origin, m_paths[index].origin));
+            AddPath(i, index, GetVectorDistance2D(m_paths[i].origin, m_paths[index].origin));
     }
 
     //CalculateWayzone(index);
+
     if (cdebug)
-        PrintHintTextToAll("Waypoint added to %d %d %d", m_paths[index].origin[0], m_paths[index].origin[1], m_paths[index].origin[2]);
+        PrintHintTextToAll("Waypoint added to %d %d %d", RoundFloat(m_paths[index].origin[0]), RoundFloat(m_paths[index].origin[1]), RoundFloat(m_paths[index].origin[2]));
 }
 
 /*stock void CalculateWayzone(int index)
 {
     float start[3];
     float direction[3];
+
     TraceResult tr;
     bool wayBlocked = false;
+
     for (int i = 0; i < MaxPathIndex; i++)
     {
         if (m_paths[index].pathIndex[i] != -1)
@@ -757,13 +771,16 @@ stock void WaypointAdd(float origin[3], bool cdebug = true)
             return;
         }
     }
+
     for (float scanDistance = 16.0; scanDistance < 144.0; scanDistance += 16.0)
     {
-        start = VectorAsFloat(m_paths[index].origin);
+        start = m_paths[index].origin;
         MakeVectors(nullvec);
         direction = g_pGlobals->v_forward * scanDistance;
         direction = direction.ToAngles();
+
         m_paths[index].radius = scanDistance;
+
         for (float circleRadius = 0.0f; circleRadius < 180.0f; circleRadius += 5.0f)
         {
             MakeVectors(direction);
@@ -798,9 +815,11 @@ stock void WaypointAdd(float origin[3], bool cdebug = true)
             }
             direction.y = AngleNormalize(direction.y + circleRadius);
         }
+
         if (wayBlocked)
             break;
     }
+
     path->radius -= 16.0f;
     if (path->radius < 0.0f)
         path->radius = 0.0f;
@@ -831,7 +850,7 @@ stock void AddPath(int srcIndex, int destIndex, float distance)
         {
             m_paths[srcIndex].pathIndex[i] = destIndex;
             m_paths[srcIndex].distance[i] = distance;
-            PrintHintTextToAll("Path added from %d to %d", srcIndex, destIndex);
+            //PrintHintTextToAll("Path added from %d to %d", srcIndex, destIndex);
             return;
         }
     }
@@ -851,7 +870,7 @@ stock void AddPath(int srcIndex, int destIndex, float distance)
 
     if (slotID != -1)
     {
-        PrintHintTextToAll("Reached to path limit (%d)\nPath added from %d to %d", MaxPathIndex, srcIndex, destIndex);
+        //PrintHintTextToAll("Reached to path limit (%d)\nPath added from %d to %d", MaxPathIndex, srcIndex, destIndex);
         m_paths[srcIndex].pathIndex[slotID] = destIndex;
         m_paths[srcIndex].distance[slotID] = distance;
     }
@@ -954,9 +973,6 @@ stock float HeuristicNormal(int start, int goal)
 
 stock float CostNormal(int current, int parent, int client)
 {
-    if (parent == -1)
-        return 1.0;
-    
     if (m_paths[current].flags == WAYPOINT_DOUBLEJUMP)
         return 1.0;
     
@@ -975,11 +991,16 @@ stock float CostNormal(int current, int parent, int client)
 	return GetWaypointDistance(current, parent) + float(GetDeaths(current) * GetDeaths(parent)) + GetDamage(current) + GetDamage(parent) + GetRandomFloat(-cl, cl);
 }
 
-// A* Pathfinding
-stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetposition[3] = NULL_VECTOR)
+stock float CostDamage(int current, int parent)
 {
-    if (!IsValidClient(client))
-        return;
+    return GetDamage(current) + GetDamage(parent);
+}
+
+// A* Pathfinding
+stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetposition[3] = NULL_VECTOR)
+{
+    if (m_waypointNumber > 2048)
+        return AStarFindShortestPath(srcIndex, destIndex, client, targetposition);
 
 	if (destIndex == -1)
     {
@@ -990,25 +1011,25 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
             PrintHintTextToAll("Destination is invalid\nBot: %s", buffer);
         }
 
-        return;
+        return false;
     }
 
 	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
 		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
     
     if (srcIndex == destIndex)
-		return;
+		return false;
 
     AStar_t astar[MaxWaypoints];
     for (int i = 0; i < m_waypointNumber; i++)
     {
-        astar[i].g = 0.0;
         astar[i].f = 0.0;
+        astar[i].g = 0.0;
         astar[i].parent = -1;
         astar[i].state = NEW;
     }
 
-    astar[srcIndex].g = CostNormal(srcIndex, -1, client);
+    astar[srcIndex].g = CostNormal(srcIndex, destIndex, client);
     astar[srcIndex].f = astar[srcIndex].g + HeuristicNormal(srcIndex, destIndex);
     astar[srcIndex].state = OPEN;
     
@@ -1056,7 +1077,7 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
 			}
 
             delete openList;
-            return;
+            return true;
         }
 
         if (astar[currentIndex.index].state != OPEN)
@@ -1070,6 +1091,9 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
         {
             int self = m_paths[currentIndex.index].pathIndex[i];
             if (self == -1)
+                continue;
+            
+            if (self == m_lastFailedWaypoint[client])
                 continue;
             
             // blocked waypoint
@@ -1136,13 +1160,13 @@ stock void AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
     }
 
     delete openList;
-
     m_lastFailedWaypoint[client] = destIndex;
-    AStarFindShortestPath(srcIndex, destIndex, client, targetposition);
+
+    return AStarFindShortestPath(srcIndex, destIndex, client, targetposition);
 }
 
 // A* for second try
-stock void AStarFindShortestPath(int srcIndex, int destIndex, int client, float targetposition[3] = NULL_VECTOR)
+stock bool AStarFindShortestPath(int srcIndex, int destIndex, int client, float targetposition[3] = NULL_VECTOR)
 {
 	if (destIndex == -1)
     {
@@ -1153,25 +1177,26 @@ stock void AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
             PrintHintTextToAll("Destination is invalid\nBot: %s", buffer);
         }
 
-        return;
+        return false;
     }
     
 	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
 		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
     
     if (srcIndex == destIndex)
-		return;
+		return false;
     
     AStar_t astar[MaxWaypoints];
     for (int i = 0; i < m_waypointNumber; i++)
     {
-        astar[i].g = 0.0;
         astar[i].f = 0.0;
+        astar[i].g = 0.0;
         astar[i].parent = -1;
         astar[i].state = NEW;
     }
 
-    astar[srcIndex].f = GetWaypointDistance(srcIndex, destIndex);
+    astar[srcIndex].g = CostDamage(srcIndex, destIndex);
+    astar[srcIndex].f = astar[srcIndex].g + GetWaypointDistance(srcIndex, destIndex);
     astar[srcIndex].state = OPEN;
     
     SearchNode start;
@@ -1209,7 +1234,7 @@ stock void AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
 			}
 
             delete openList;
-            return;
+            return true;
         }
 
         if (astar[currentIndex.index].state != OPEN)
@@ -1224,11 +1249,113 @@ stock void AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
             int self = m_paths[currentIndex.index].pathIndex[i];
             if (self == -1)
                 continue;
+
+            if (self == m_lastFailedWaypoint[client])
+                continue;
+            
+            // blocked waypoint
+            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
+                continue;
             
             if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
                 continue;
 
             if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
+                continue;
+            
+            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) != TFClass_DemoMan)
+                continue;
+            else
+            {
+                int wearable = MaxClients + 1;
+	            while ((wearable = FindEntityByClassname(wearable, "tf_wearable_demoshield*")) > MaxClients)
+	            {
+    	        	if (GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity") != client)
+                        continue;
+                }
+            }
+
+            // calculate the F value as F = G + H
+            float g = astar[currentIndex.index].g + CostDamage(self, currentIndex.index);
+            float h = GetWaypointDistance(self, destIndex);
+            float f = g + h;
+
+            if (astar[self].state == NEW || astar[self].f > f)
+            {
+                // put the current child into open list
+                astar[self].parent = currentIndex.index;
+                astar[self].state = OPEN;
+                astar[self].g = g;
+                astar[self].f = f;
+                SearchNode next;
+                next.index = self;
+                next.cost = astar[self].f;
+                openList.PushArray(next, 2);
+            }
+        }
+    }
+
+    // if still failing try to go random point
+    delete openList;
+    destIndex = GetRandomInt(1, m_waypointNumber);
+    m_lastFailedWaypoint[client] = -1;
+    return false;
+}
+
+stock bool IsPathPossible(int srcIndex, int destIndex)
+{
+	if (destIndex == -1)
+        return false;
+    
+	if (srcIndex == -1)
+		return true;
+    
+    if (srcIndex == destIndex)
+		return true;
+    
+    AStar_t astar[MaxWaypoints];
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        astar[i].f = 0.0;
+        astar[i].parent = -1;
+        astar[i].state = NEW;
+    }
+
+    astar[srcIndex].f = GetWaypointDistance(srcIndex, destIndex);
+    astar[srcIndex].state = OPEN;
+    
+    SearchNode start;
+    start.index = srcIndex;
+    start.cost = astar[srcIndex].f;
+
+    ArrayList openList = new ArrayList(2);
+    openList.PushArray(start, 2);
+    while (openList.Length > 0)
+    {
+        // set current node to the node with the lowest f value
+        openList.Sort(Sort_Ascending, Sort_Float);
+        SearchNode currentIndex;
+        openList.GetArray(0, currentIndex, 2);
+        openList.Erase(0);
+		
+        // is the current node the goal node?
+        if (currentIndex.index == destIndex)
+        {
+            delete openList;
+            return true;
+        }
+
+        if (astar[currentIndex.index].state != OPEN)
+            continue;
+
+        // put current node into CLOSED list
+        astar[currentIndex.index].state = CLOSED;
+
+        // now expand the current node
+        for (int i = 0; i < MaxPathIndex; i++)
+        {
+            int self = m_paths[currentIndex.index].pathIndex[i];
+            if (self == -1)
                 continue;
 
             float f = GetWaypointDistance(self, destIndex);
@@ -1246,10 +1373,8 @@ stock void AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
         }
     }
 
-    // if still failing try to go random point
     delete openList;
-    destIndex = GetRandomInt(1, m_waypointNumber);
-    m_lastFailedWaypoint[client] = -1;
+    return false;
 }
 
 stock int FindCoverWaypoint(int client = -1, float maxDistance = 99999.0)
@@ -1543,19 +1668,13 @@ stock void WaypointClear(int index)
 
 stock float GetWaypointDistance(int srcIndex, int destIndex)
 {
-    if (srcIndex == -1 || destIndex == -1)
-        return 99999.0;
-
-    if (srcIndex == destIndex)
-        return 0.0;
-
     for (int i = 0; i < MaxPathIndex; i++)
     {
         if (m_paths[srcIndex].pathIndex[i] == destIndex)
             return m_paths[srcIndex].distance[i];
     }
 
-    return GetFastDistance(m_paths[srcIndex].origin, m_paths[destIndex].origin);
+    return GetFastDistance2D(m_paths[srcIndex].origin, m_paths[destIndex].origin);
 }
 
 stock bool IsWaypointUsed(int index)
@@ -1631,11 +1750,17 @@ stock void WaypointLoad()
 
     if (fp == null)
     {
-        if (NavMesh_Exists())
-            m_aboutTheWaypoint = "No waypoint file found\nNavmesh file will be used";
-        else
-            m_aboutTheWaypoint = "No waypoint file found\nNo navmesh file found\nBots will not move";
-        return;
+        BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/waypoints/nav/%s.nav", currentMap);
+        fp = OpenFile(filepath, "rb");
+
+        if (fp == null)
+        {
+            if (NavMesh_Exists())
+                m_aboutTheWaypoint = "No waypoint file found\nNavmesh file will be used";
+            else
+                m_aboutTheWaypoint = "No waypoint file found\nNo navmesh file found\nBots will be idle";
+            return;
+        }
     }
 
     // read about the file and author
@@ -1739,6 +1864,40 @@ stock void WaypointSave()
     
     fp.Close();
     PrintHintTextToAll("%d waypoints saved sucsessfully!", m_waypointNumber);
+}
+
+stock void WaypointSaveNAV()
+{
+    if (m_waypointNumber <= 0)
+        return;
+
+    WaypointHeader header;
+    header.author = "navmesh";
+
+    char filepath[PLATFORM_MAX_PATH];
+    BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/waypoints/nav/%s.nav", currentMap);
+    
+    // remember the original waypoint author
+    File rf = OpenFile(filepath, "rb");
+    if (rf != null)
+    {
+        rf.Read(header, sizeof(header), 4);
+        rf.Close();
+    }
+    
+    header.fileVersion = WaypointVersion;
+    header.pointNumber = m_waypointNumber;
+    
+    File fp = OpenFile(filepath, "wb");
+
+    // write the all waypoint data
+    fp.Write(header, sizeof(header), 4);
+
+    // save the waypoint paths...
+    for (int i = 0; i < m_waypointNumber; i++)
+        fp.Write(m_paths[i], sizeof(Path), 4);
+    
+    fp.Close();
 }
 
 /*stock void Analyze()

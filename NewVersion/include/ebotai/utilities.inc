@@ -153,7 +153,7 @@ Handle g_hGetBonePosition;
 Handle g_hSnapEyeAngles;
 Handle g_hCustomTaunt;
 
-//bool isAFK[TFMaxPlayers];
+bool m_isAFK[TFMaxPlayers];
 
 Handle gH_RestartTimer = null;
 int gI_RestartTimerIteration = 0;
@@ -214,7 +214,7 @@ public void InitGamedata()
 
 stock bool IsSniper(int client)
 {
-	if (IsEBot(client))
+	if (IsEBot(client) || m_isAFK[client])
 		return m_isSniper[client];
 	else
 		return TF2_GetPlayerClass(client) == TFClass_Sniper;
@@ -222,7 +222,7 @@ stock bool IsSniper(int client)
 
 stock bool IsMedic(int client)
 {
-	if (IsEBot(client))
+	if (IsEBot(client) || m_isAFK[client])
 		return m_isMedic[client];
 	else
 		return TF2_GetPlayerClass(client) == TFClass_Medic;
@@ -230,7 +230,7 @@ stock bool IsMedic(int client)
 
 stock bool HasCrossbow(int client)
 {
-	if (IsEBot(client))
+	if (IsEBot(client) || m_isAFK[client])
 		return m_hasCrossbow[client];
 	else
 		return false;
@@ -238,7 +238,7 @@ stock bool HasCrossbow(int client)
 
 stock bool HasSandwich(int client)
 {
-	if (IsEBot(client))
+	if (IsEBot(client) || m_isAFK[client])
 		return m_hasSandwich[client];
 	else
 		return false;
@@ -686,14 +686,6 @@ stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
 	
 	float fAng[3];
 	GetClientEyeAngles(client, fAng);
-
-	float vecDir[3];
-	if (AvoidBumpingEnemies(client, vecDir))
-	{
-		flGoal[0] += vecDir[0];
-		flGoal[1] += vecDir[1];
-		flGoal[2] += vecDir[2];
-	}
 	
 	float newmove[3];
 	SubtractVectors(flGoal, flPos, newmove);
@@ -727,6 +719,14 @@ stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
 		
 		if (left2 && !left)
 			m_moveVel[client][1] = 500.0;
+	}
+
+	float vecDir[3];
+	if (AvoidBumpingEnemies(client, vecDir))
+	{
+		m_moveVel[client][0] += vecDir[0];
+		m_moveVel[client][1] += vecDir[1];
+		m_moveVel[client][2] += vecDir[2];
 	}
 }
 
@@ -855,7 +855,29 @@ stock bool IsVisible(float start[3], float end[3])
 	return false;
 }
 
+float hully[3] = {-18.0, -18.0, -18.0};
+float hullx[3] = {18.0, 18.0, 18.0};
+
 stock bool IsVisibleWaypoint(float start[3], float end[3])
+{
+	float fstart[3];
+	float fend[3];
+
+	fstart[0] = start[0];
+	fstart[1] = start[1];
+	fstart[2] = start[2] + 64.0;
+	fend[0] = end[0];
+	fend[1] = end[1];
+	fend[2] = end[2] + 64.0;
+
+	Handle tr = TR_TraceHullFilterEx(fstart, fend, hully, hullx, MASK_PLAYERSOLID, WaypointFilter);
+	float fr = TR_GetFraction(tr);
+	CloseHandle(tr);
+
+	return fr >= 1.0;
+}
+
+stock bool IsVisibleWaypointDebug(float start[3], float end[3])
 {
 	float fstart[3];
 	float fend[3];
@@ -1239,7 +1261,36 @@ stock int GetBluControlPointCount()
 		if (StrEqual(ClassName, "team_control_point", false))
 			count++;
 	}
+
 	return count;
+}
+
+stock GetNearestEnemyControlPoint(int client)
+{
+	int NearestControlPoint = -1;
+	
+	float distance = -1.0; 
+	float nearestDistance = -1.0;
+	
+	int iControlPoint = -1;
+	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+	{
+		if (!IsValidEntity(iControlPoint))
+			continue;
+		
+		if (GetClientTeam(client) == GetTeamNumber(iControlPoint))
+			continue;
+		
+		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iControlPoint), true);
+        
+		if (distance < nearestDistance || nearestDistance == -1.0)
+		{
+			NearestControlPoint = iControlPoint;
+			nearestDistance = distance;
+		}
+	}
+	
+	return NearestControlPoint;
 }
 
 stock int GetNearestPayload(int client, int team)
@@ -1477,12 +1528,28 @@ public bool RocketFilter(int entity, int mask)
 	return entity > MaxClients;
 }
 
+stock float GetVectorDistance2D(float vec1[3], float vec2[3])
+{
+	float x = vec1[0] - vec2[0];
+	float y = vec1[1] - vec2[1];
+	return SquareRoot(x * x + y * y);
+}
+
 // subtracts the given vector from the given vector and return the x + y + z
 stock float GetFastDistance(float vec1[3], float vec[3])
 {
 	float result = (vec1[0] - vec[0]) + (vec1[1] - vec[1]) + (vec1[2] - vec[2]);
 	if (result < 0)
-		result = -result;
+		return -result;
+
+	return result;
+}
+
+stock float GetFastDistance2D(float vec1[3], float vec[3])
+{
+	float result = (vec1[0] - vec[0]) + (vec1[1] - vec[1]);
+	if (result < 0)
+		return -result;
 
 	return result;
 }
@@ -1491,7 +1558,7 @@ stock int GetFastDistanceInt(int vec1[3], int vec[3])
 {
 	int result = (vec1[0] - vec[0]) + (vec1[1] - vec[1]) + (vec1[2] - vec[2]);
 	if (result < 0)
-		result = -result;
+		return -result;
 
 	return result;
 }
@@ -1600,7 +1667,7 @@ stock bool AvoidBumpingEnemies(int client, float out[3])
 		return false;
 	
 	int ClosestPlayer = 0;
-	float flClosestDistance = Squaredf(256.0);
+	float flClosestDistance = Squaredf(200.0);
 	
 	for (int i = 1; i < MaxClients; i++)
 	{
@@ -1919,38 +1986,6 @@ stock bool IsRevealedSpyByTarget(int client, target)
 		return true;
 	
 	return false;
-}
-
-stock int GetNearestEnemyControlPoint(int client)
-{
-	int NearestControlPoint = -1;
-	
-	float distance = -1.0; 
-	float nearestDistance = -1.0;
-	
-	int iControlPoint = -1;
-	
-	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
-	{
-		if (!IsValidEntity(iControlPoint))
-			continue;
-		
-		if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked") != 0)
-			continue;
-		
-		if (GetClientTeam(client) == GetTeamNumber(iControlPoint))
-			continue;
-		
-		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iControlPoint));
-        
-		if (distance < nearestDistance || nearestDistance == -1.0)
-		{
-			NearestControlPoint = iControlPoint;
-			nearestDistance = distance;
-		}
-	}
-	
-	return NearestControlPoint;
 }
 
 stock int GetEnemyControlPointCount(int client)

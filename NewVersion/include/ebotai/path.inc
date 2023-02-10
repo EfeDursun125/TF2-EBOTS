@@ -56,6 +56,7 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 			{
 				MoveTo(client, flGoPos, !m_hasWaypoints);
 				CheckWalls(client);
+				m_lastFailedWaypoint[client] = m_currentIndex[client];
 				if (m_nextStuckCheck[client] + 3.0 <= GetGameTime())
 				{
 					FindPath(client, targetposition, entity, index);
