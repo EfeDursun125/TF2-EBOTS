@@ -192,31 +192,12 @@ public Action DeleteWaypoints(Handle timer)
 	{
 		for (int i = 0; i < m_waypointNumber; i++)
 		{
-			bool deleted = false;
 			int oneway = 0;
 			for (int x = 0; x < MaxPathIndex; x++)
 			{
 				int n = m_paths[i].pathIndex[x];
 				if (n != -1)
-				{
 					oneway++;
-
-					if (!deleted)
-					{
-						int from = 0;
-						for (int j = 0; j < MaxPathIndex; j++)
-						{
-							if (m_paths[n].pathIndex[j] != -1 && m_paths[n].pathIndex[j] == i)
-								from++;
-						}
-
-						if (from <= 0)
-						{
-							DeleteWaypointIndex(i);
-							deleted = true;
-						}
-					}
-				}
 			}
 
 			if (oneway <= 1)
