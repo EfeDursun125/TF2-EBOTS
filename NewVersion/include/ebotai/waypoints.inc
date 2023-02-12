@@ -1,7 +1,7 @@
 // from https://github.com/EfeDursun125/CS-EBOT/blob/main/source/waypoint.cpp
 // higher version waypoints will be ignored due to updated waypoint system
 const int WaypointVersion = 2;
-const int MaxWaypoints = 4096;
+const int MaxWaypoints = 8192;
 const int MaxPathIndex = 8;
 
 int nearestIndex = -1;
@@ -703,7 +703,7 @@ stock void AutoWaypoint()
         WaypointAdd(GetOrigin(m_hostEntity));
 }
 
-stock void WaypointAdd(float origin[3], bool cdebug = true, int flags = 0)
+stock void WaypointAdd(float origin[3], bool cdebug = true, int flags = 0, bool autoPath = true)
 {
     if (m_waypointNumber >= MaxWaypoints)
     {
@@ -733,20 +733,23 @@ stock void WaypointAdd(float origin[3], bool cdebug = true, int flags = 0)
         m_paths[index].distance[i] = 0.0;
     }
 
-    // calculate all the paths to this new waypoint
-    for (int i = 0; i < m_waypointNumber; i++)
+     // calculate all the paths to this new waypoint
+    if (autoPath)
     {
-        // skip the waypoint that was just added
-        if (index == i)
-            continue; 
+        for (int i = 0; i < m_waypointNumber; i++)
+        {
+            // skip the waypoint that was just added
+            if (index == i)
+                continue; 
 
-        // check if the waypoint is reachable from the new one (one-way)
-        if (IsWaypointReachable(m_paths[index].origin, m_paths[i].origin))
-            AddPath(index, i, GetVectorDistance2D(m_paths[index].origin, m_paths[i].origin));
+            // check if the waypoint is reachable from the new one (one-way)
+            if (IsWaypointReachable(m_paths[index].origin, m_paths[i].origin))
+                AddPath(index, i, GetVectorDistance2D(m_paths[index].origin, m_paths[i].origin));
 
-        // check if the new one is reachable from the waypoint (other way)
-        if (IsWaypointReachable(m_paths[i].origin, m_paths[index].origin))
-            AddPath(i, index, GetVectorDistance2D(m_paths[i].origin, m_paths[index].origin));
+            // check if the new one is reachable from the waypoint (other way)
+            if (IsWaypointReachable(m_paths[i].origin, m_paths[index].origin))
+                AddPath(i, index, GetVectorDistance2D(m_paths[i].origin, m_paths[index].origin));
+        }
     }
 
     //CalculateWayzone(index);
@@ -1042,6 +1045,8 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
     if (m_hidingSpots[client] != null)
         m_hidingSpots[client].Clear();
 
+    int temp = destIndex;
+
     SearchNode start;
     start.index = srcIndex;
     start.cost = astar[srcIndex].f;
@@ -1057,16 +1062,16 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
         openList.Erase(0);
 
         // is the current node the goal node?
-        if (currentIndex.index == destIndex)
+        if (currentIndex.index == temp)
         {
             DeletePathNodes(client);
             
             if (!IsNullVector(targetposition))
             {
                 m_positions[client].PushArray(targetposition, 3);
-                m_pathIndex[client].Push(destIndex);
+                m_pathIndex[client].Push(temp);
                 m_positions[client].PushArray(targetposition, 3);
-                m_pathIndex[client].Push(destIndex);
+                m_pathIndex[client].Push(temp);
             }
 
             // build the complete path
@@ -1161,6 +1166,17 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
 
     delete openList;
     m_lastFailedWaypoint[client] = destIndex;
+
+    ArrayList PossiblePath = new ArrayList();
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        if (astar[i].state == CLOSED)
+            PossiblePath.Push(i);
+    }
+
+    // just roam around :(
+    if (PossiblePath.Length > 0)
+        return AStarFindShortestPath(srcIndex, PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1)), client, NULL_VECTOR);
 
     return AStarFindShortestPath(srcIndex, destIndex, client, targetposition);
 }
