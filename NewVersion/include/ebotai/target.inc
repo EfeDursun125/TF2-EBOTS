@@ -246,6 +246,7 @@ public void FindFriendsAndEnemiens(int client)
 	{
 		m_lastEnemy[client] = m_nearestEnemy[client];
 		m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
+		m_lastEnemySeen[client] = GetGameTime();
 	}
 }
 
@@ -300,4 +301,6 @@ public void FindEnemyEntities(int client)
 	}
 	
 	m_hasEntitiesNear[client] = m_hasEntitiesNearCount > 0;
+	if (m_hasEntitiesNear[client])
+		m_lastEntitySeen[client] = GetGameTime();
 }

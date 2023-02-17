@@ -106,29 +106,19 @@ public void CheckSlowThink(int client)
 		}
 		
 		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Sniper && (IsWeaponSlotActive(client, 1) && m_secondaryID[client] == 751))
-		{
 			m_buttons[client] |= IN_ATTACK2;
-		}
 		
 		if (TF2_GetPlayerClass(client) == TFClass_Sniper && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 752))
-		{
 			m_buttons[client] |= IN_RELOAD;
-		}
 		
 		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && (IsWeaponSlotActive(client, 2) && m_meleeID[client] == 44 || m_meleeID[client] == 648))
-		{	
 			m_attack2Timer[client] = GetGameTime() + 2.0;
-		}
 		
 		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Pyro && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 594))
-		{	
 			m_buttons[client] |= IN_ATTACK2;
-		}
 		
 		if (TF2_GetPlayerClass(client) == TFClass_Scout && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 448))
-		{
 			m_buttons[client] |= IN_ATTACK2;
-		}
 		
 		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
 		{
@@ -140,17 +130,21 @@ public void CheckSlowThink(int client)
 		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Soldier && m_secondaryID[client] == 129 || m_secondaryID[client] == 1001 || m_secondaryID[client] == 226 || m_secondaryID[client] == 354)
 		{
 			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flRageMeter"))
+			{
 				EquipWeaponSlot(client, 1);
 				if (IsWeaponSlotActive(client, 1))
 					m_buttons[client] |= IN_ATTACK;
+			}
 		}
 		
 		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Heavy && m_secondaryID[client] == 42 || m_secondaryID[client] == 863 || m_secondaryID[client] == 1002 || m_secondaryID[client] == 1190 || m_secondaryID[client] == 311 || m_secondaryID[client] == 159 || m_secondaryID[client] == 433)
 		{
 			if (GetClientHealth(client) < (GetMaxHealth(client) / 1.4))
+			{
 				EquipWeaponSlot(client, 1);
 				if (IsWeaponSlotActive(client, 1) && (GetClientHealth(client) < (GetMaxHealth(client) / 1.4)))
 					m_buttons[client] |= IN_ATTACK;
+			}
 		}
 
 		if (TF2_GetPlayerClass(client) == TFClass_Pyro && m_primaryID[client] != 594)
@@ -245,6 +239,10 @@ public void CheckSlowThink(int client)
 				if (!IsPlayerAlive(search))
 					continue;
 				
+				// only pyro ebots can suspect ebot spies
+				if (IsEBot(search) && TF2_GetPlayerClass(client) == TFClass_Pyro)
+					continue;
+				
 				if (!IsVisible(GetEyePosition(client), GetEyePosition(search)))
 					continue;
 				
@@ -265,12 +263,6 @@ public void CheckSlowThink(int client)
 		{
 			if (!TF2_IsPlayerInCondition(client, TFCond_Disguised) && !TF2_IsPlayerInCondition(client, TFCond_Disguising) && !TF2_HasTheFlag(client))
 				DisguiseAsEnemy(client);
-
-			if (TF2_IsPlayerInCondition(client, TFCond_Cloaked))
-			{
-				int cloak = FindSendPropInfo("CTFPlayer", "m_flCloakMeter");
-				SetEntDataFloat(client, cloak, 100.0);
-			}
 			
 			if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]) && HasEntProp(m_nearestEntity[client], Prop_Send, "m_bHasSapper")) // remember sappable things
 				m_knownSentry[client] = m_nearestEntity[client];
@@ -309,6 +301,7 @@ public void CheckHideFromDanger(int client)
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Medic && m_friendsNearCount[client] <= 0)
 		musthide = true;
+		
 	if (TF2_GetPlayerClass(client) == TFClass_Spy && m_meleeID[client] == 356)
 	{
 		if (GetClientHealth(client) <= 55.0)

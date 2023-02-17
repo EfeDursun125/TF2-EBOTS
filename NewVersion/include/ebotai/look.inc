@@ -172,13 +172,14 @@ stock void LookAround(int client)
 	float ClientEye[3];
 	GetClientEyePosition(client, ClientEye);
 
-	if (m_hasFriendsNear[client] && IsAttacking(m_nearestFriend[client]) && !IsWeaponSlotActive(client, 2) && TF2_GetPlayerClass(m_nearestFriend[client]) != TFClass_Medic)
+	if (m_hasFriendsNear[client] && IsAttacking(m_nearestFriend[client]) && !IsWeaponSlotActive(client, 2) && !IsWeaponSlotActive(m_nearestFriend[client], 2) && TF2_GetPlayerClass(m_nearestFriend[client]) != TFClass_Medic)
 	{
 		int friend = m_nearestFriend[client];
-		if (IsFakeClient(friend))
+		if (IsEBot(friend) || m_isAFK[friend])
 			m_lookAt[client] = m_lookAt[friend];
 		else
 			GetAimOrigin(friend, m_lookAt[client]);
+		
 		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
 	}
 	else if (m_isSlowThink[client] && ChanceOf(m_eBotSenseChance[client])) // no any friends near, who's footsteps is this or fire sounds?
@@ -200,7 +201,7 @@ stock void LookAround(int client)
 			if (!IsAttacking(search) && !IsMoving(search))
 				continue;
 			
-			if (IsWeaponSlotActive(client, 2))
+			if (IsWeaponSlotActive(search, 2))
 				continue;
 			
 			if (TF2_GetPlayerClass(client) == TFClass_Medic)
@@ -219,7 +220,7 @@ stock void LookAround(int client)
 				{
 					PlayerArea[0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius) + ((PlayerArea[0] - ClientEye[0]) * 1024.0);
 					PlayerArea[1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius) + ((PlayerArea[1] - ClientEye[1]) * 1024.0);
-					PlayerArea[2] = m_paths[index].origin[2];
+					PlayerArea[2] = m_eyeOrigin[client][2];
 				}
 			}
 			else
@@ -232,6 +233,7 @@ stock void LookAround(int client)
 					EyeVectors(client, fw);
 					PlayerArea[0] += (fw[0] * 256.0);
 					PlayerArea[1] += (fw[0] * 256.0);
+					PlayerArea[2] = m_eyeOrigin[client][2];
 				}
 			}
 
@@ -241,6 +243,7 @@ stock void LookAround(int client)
 				{
 					if (IsMoving(client))
 						m_buttons[client] |= IN_JUMP;
+
 					if (m_lowHealth[client] || m_lowAmmo[client] || m_difficulty[client] == 1)
 						m_attack2Timer[client] = GetGameTime() + 2.0;
 					else
@@ -252,7 +255,7 @@ stock void LookAround(int client)
 			
 			m_lookAt[client][0] = PlayerArea[0];
 			m_lookAt[client][1] = PlayerArea[1];
-			m_lookAt[client][2] = PlayerArea[2] + GetHeight(client);
+			m_lookAt[client][2] = PlayerArea[2];
 			m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
 			
 			return;

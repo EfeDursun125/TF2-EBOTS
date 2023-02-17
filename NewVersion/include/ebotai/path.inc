@@ -1,7 +1,10 @@
 stock void FollowPath(int client, float targetposition[3], int entity = -1, int index = -1)
 {
 	if (IsNullVector(targetposition))
-		return;
+	{
+		DeletePathNodes(client);
+		SelectObjective(client);
+	}
 	
 	if (m_stopTime[client] > GetGameTime() && !TF2_IsPlayerInCondition(client, TFCond_OnFire))
 	{
@@ -181,7 +184,7 @@ stock void FindPath(int client, float targetposition2[3], int entity = -1, int i
 {
 	if (m_hasWaypoints)
 	{
-		if (isPLR || (isPL && GetClientTeam(client) == 3))
+		if (isPLR || (isPL && GetClientTeam(client) == 3) || isCP)
 			SelectObjective(client);
 
 		if (index == -1)

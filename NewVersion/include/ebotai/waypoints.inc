@@ -48,6 +48,87 @@ enum
     WAYPOINT_DEMOCHARGE = 19
 };
 
+enum struct PriorityQueueItem
+{
+    float cost;
+    int index;
+
+    void SetValue(int newIndex, float newCost)
+    {
+        this.cost = newCost;
+        this.index = newIndex;
+    }
+}
+
+enum struct PriorityQueue
+{
+    ArrayList pque;
+
+    void NewQueue()
+    {
+        this.pque = new ArrayList(2);
+    }
+
+    void DeleteQueue()
+    {
+        delete this.pque;
+    }
+
+    bool IsEmpty()
+    {
+        return this.pque.Length <= 0;
+    }
+
+    void Insert(PriorityQueueItem item)
+    {
+        this.pque.PushArray(item, 2);
+    }
+
+    PriorityQueueItem RemoveLowest()
+    {
+        // can someone fix this???
+        /*if (this.pque.Length > 1)
+        {
+            float max = 999999999999999999999999999.0;
+            int swapIndex = 0;
+
+            for (int i = 0; i < this.pque.Length - 1; i++)
+	    	{
+               PriorityQueueItem nx;
+		    	this.pque.GetArray(i, nx, 2);
+
+                if (nx.cost < max)
+                {
+                    max = nx.cost;
+                    swapIndex = i;
+                }
+            }
+
+            if (swapIndex != 0)
+                this.pque.SwapAt(0, swapIndex);
+        }
+
+        PriorityQueueItem item;
+        this.pque.GetArray(0, item, 2);
+        return item;*/
+
+        PriorityQueueItem item;
+        this.pque.Sort(Sort_Ascending, Sort_Float);
+        this.pque.GetArray(0, item, 2);
+        this.pque.Erase(0);
+        return item;
+    }
+
+    PriorityQueueItem RemoveHighest()
+    {
+        PriorityQueueItem item;
+        this.pque.Sort(Sort_Descending, Sort_Float);
+        this.pque.GetArray(0, item, 2);
+        this.pque.Erase(0);
+        return item;
+    }
+}
+
 enum AStarState_t {OPEN, CLOSED, NEW};
 enum struct AStar_t
 {
@@ -96,12 +177,6 @@ enum struct PathOLD
     int origin[3];
 	int campStart[3];
 	int campEnd[3];
-}
-
-enum struct SearchNode
-{
-    float cost;
-    int index;
 }
 
 bool m_hasWaypoints;
@@ -404,7 +479,7 @@ stock void DrawWaypoints()
         if (distance > 64.0 && !ClientViewsOrigin(m_hostEntity, m_paths[i].origin, 0.6))
             continue;
 
-        if (IsVisibleWaypointIndex(FindNearestWaypoint(GetOrigin(m_hostEntity)), i, GetHeight(m_hostEntity), 72.0))
+        if (!IsVisibleToWaypoint(GetEyePosition(m_hostEntity), i, GetHeight(m_hostEntity)))
             continue;
 
         // check the distance
@@ -553,10 +628,26 @@ stock bool IsVisibleWaypointIndex(int start, int end, float startheight = 18.0, 
 	fstart = m_paths[start].origin;
 	fstart[2] += startheight;
 
-	fstart = m_paths[end].origin;
+	fend = m_paths[end].origin;
 	fend[2] += endheight;
 
 	Handle trace = TR_TraceRayFilterEx(fstart, fend, MASK_PLAYERSOLID, RayType_EndPoint, TraceEntityFilterStuff);
+	float flFraction = TR_GetFraction(trace);
+	delete trace;
+
+	if (flFraction >= 1.0) 
+		return !(flFraction == 0.0);
+    
+	return false;
+}
+
+stock bool IsVisibleToWaypoint(float origin[3], int waypoint, float height = 64.0)
+{
+	float end[3];
+	end = m_paths[waypoint].origin;
+	end[2] += height;
+
+	Handle trace = TR_TraceRayFilterEx(origin, end, MASK_PLAYERSOLID, RayType_EndPoint, TraceEntityFilterStuff);
 	float flFraction = TR_GetFraction(trace);
 	delete trace;
 
@@ -574,6 +665,7 @@ stock bool IsConnected(int pointA, int pointB)
         if (m_paths[pointA].pathIndex[i] == pointB)
             return true;
     }
+
     return false;
 }
 
@@ -990,6 +1082,15 @@ stock float CostNormal(int current, int parent, int client)
     if (m_paths[current].flags == WAYPOINT_NOSPY && TF2_GetPlayerClass(client) == TFClass_Spy)
         return 65355.0;
     
+    if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+    {
+        if (IsValidEntity(SentryGun[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(128.0))
+            return GetWaypointDistance(current, parent) * GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true);
+
+        if (IsValidEntity(Dispenser[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(128.0))
+            return GetWaypointDistance(current, parent) * GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true);
+    }
+    
     float cl = float(client) + 1.0;
 	return GetWaypointDistance(current, parent) + float(GetDeaths(current) * GetDeaths(parent)) + GetDamage(current) + GetDamage(parent) + GetRandomFloat(-cl, cl);
 }
@@ -1002,6 +1103,9 @@ stock float CostDamage(int current, int parent)
 // A* Pathfinding
 stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetposition[3] = NULL_VECTOR)
 {
+    if (!DeactiveCloak(client) || CurrentProcess[client] == PRO_HIDE)
+        return AStarFindHidingSpot(srcIndex, client, targetposition);
+
     if (m_waypointNumber > 2048)
         return AStarFindShortestPath(srcIndex, destIndex, client, targetposition);
 
@@ -1047,19 +1151,17 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
 
     int temp = destIndex;
 
-    SearchNode start;
-    start.index = srcIndex;
-    start.cost = astar[srcIndex].f;
+    PriorityQueueItem start;
+    start.SetValue(srcIndex, astar[srcIndex].f);
 
-    ArrayList openList = new ArrayList(2);
-    openList.PushArray(start, 2);
-    while (openList.Length > 0)
+    PriorityQueue openList;
+    openList.NewQueue();
+    openList.Insert(start);
+    while (!openList.IsEmpty())
     {
         // set current node to the node with the lowest f value
-        SearchNode currentIndex;
-        openList.Sort(Sort_Ascending, Sort_Float);
-        openList.GetArray(0, currentIndex, 2);
-        openList.Erase(0);
+        PriorityQueueItem currentIndex;
+        currentIndex = openList.RemoveLowest();
 
         // is the current node the goal node?
         if (currentIndex.index == temp)
@@ -1081,7 +1183,6 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
                 currentIndex.index = astar[currentIndex.index].parent;
 			}
 
-            delete openList;
             return true;
         }
 
@@ -1156,15 +1257,14 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
                 astar[self].state = OPEN;
                 astar[self].g = g;
                 astar[self].f = f;
-                SearchNode next;
-                next.index = self;
-                next.cost = astar[self].f;
-                openList.PushArray(next, 2);
+
+                PriorityQueueItem next;
+                next.SetValue(self, astar[self].f);
+                openList.Insert(next);
             }
         }
     }
 
-    delete openList;
     m_lastFailedWaypoint[client] = destIndex;
 
     ArrayList PossiblePath = new ArrayList();
@@ -1215,19 +1315,17 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
     astar[srcIndex].f = astar[srcIndex].g + GetWaypointDistance(srcIndex, destIndex);
     astar[srcIndex].state = OPEN;
     
-    SearchNode start;
-    start.index = srcIndex;
-    start.cost = astar[srcIndex].f;
+    PriorityQueueItem start;
+    start.SetValue(srcIndex, astar[srcIndex].f);
 
-    ArrayList openList = new ArrayList(2);
-    openList.PushArray(start, 2);
-    while (openList.Length > 0)
+    PriorityQueue openList;
+    openList.NewQueue();
+    openList.Insert(start);
+    while (!openList.IsEmpty())
     {
         // set current node to the node with the lowest f value
-        openList.Sort(Sort_Ascending, Sort_Float);
-        SearchNode currentIndex;
-        openList.GetArray(0, currentIndex, 2);
-        openList.Erase(0);
+        PriorityQueueItem currentIndex;
+        currentIndex = openList.RemoveLowest();
 		
         // is the current node the goal node?
         if (currentIndex.index == destIndex)
@@ -1249,7 +1347,6 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
                 currentIndex.index = astar[currentIndex.index].parent;
 			}
 
-            delete openList;
             return true;
         }
 
@@ -1303,18 +1400,143 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
                 astar[self].state = OPEN;
                 astar[self].g = g;
                 astar[self].f = f;
-                SearchNode next;
-                next.index = self;
-                next.cost = astar[self].f;
-                openList.PushArray(next, 2);
+
+                PriorityQueueItem next;
+                next.SetValue(self, astar[self].f);
+                openList.Insert(next);
             }
         }
     }
 
-    // if still failing try to go random point
-    delete openList;
-    destIndex = GetRandomInt(1, m_waypointNumber);
-    m_lastFailedWaypoint[client] = -1;
+    ArrayList PossiblePath = new ArrayList();
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        if (astar[i].state == CLOSED)
+            PossiblePath.Push(i);
+    }
+
+    // just roam around :(
+    if (PossiblePath.Length > 0)
+        return AStarFindShortestPath(srcIndex, PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1)), client, NULL_VECTOR);
+
+    return false;
+}
+
+// A* for second try
+stock bool AStarFindHidingSpot(int srcIndex, int client, float dangerOrigin[3])
+{
+	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
+		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
+    
+    AStar_t astar[MaxWaypoints];
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        astar[i].f = 0.0;
+        astar[i].parent = -1;
+        astar[i].state = NEW;
+    }
+
+    astar[srcIndex].f = GetFastDistance(m_paths[srcIndex].origin, dangerOrigin);
+    astar[srcIndex].state = OPEN;
+    
+    PriorityQueueItem start;
+    start.SetValue(srcIndex, astar[srcIndex].f);
+
+    PriorityQueue openList;
+    openList.NewQueue();
+    openList.Insert(start);
+    while (!openList.IsEmpty())
+    {
+        // set current node to the node with the highest f value
+        PriorityQueueItem currentIndex;
+        currentIndex = openList.RemoveHighest();
+		
+        float height = GetHeight(client);
+
+        // is the current node the goal node?
+        if (!IsVisibleToWaypoint(dangerOrigin, currentIndex.index, height) && !IsVisibleByEnemy(client, currentIndex.index, height))
+        {
+            DeletePathNodes(client);
+
+            // build the complete path
+            while (currentIndex.index != -1)
+            {
+				AddToPath(currentIndex.index, client);
+                currentIndex.index = astar[currentIndex.index].parent;
+			}
+
+            return true;
+        }
+
+        if (astar[currentIndex.index].state != OPEN)
+            continue;
+
+        // put current node into CLOSED list
+        astar[currentIndex.index].state = CLOSED;
+
+        // now expand the current node
+        for (int i = 0; i < MaxPathIndex; i++)
+        {
+            int self = m_paths[currentIndex.index].pathIndex[i];
+            if (self == -1)
+                continue;
+
+            if (self == m_lastFailedWaypoint[client])
+                continue;
+            
+            // blocked waypoint
+            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
+                continue;
+            
+            if (m_paths[self].team == 2 && GetClientTeam(client) == 3)
+                continue;
+            else if (m_paths[self].team == 3 && GetClientTeam(client) == 2)
+                continue;
+            
+            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
+                continue;
+
+            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
+                continue;
+            
+            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) != TFClass_DemoMan)
+                continue;
+            else
+            {
+                int wearable = MaxClients + 1;
+	            while ((wearable = FindEntityByClassname(wearable, "tf_wearable_demoshield*")) > MaxClients)
+	            {
+    	        	if (GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity") != client)
+                        continue;
+                }
+            }
+
+            float f = GetFastDistance(m_paths[self].origin, dangerOrigin);
+            if (astar[self].state == NEW || astar[self].f > f)
+            {
+                // put the current child into open list
+                astar[self].parent = currentIndex.index;
+                astar[self].state = OPEN;
+                astar[self].f = f;
+
+                PriorityQueueItem next;
+                next.SetValue(self, astar[self].f);
+                openList.Insert(next);
+            }
+        }
+    }
+
+    ArrayList PossiblePath = new ArrayList();
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        if (astar[i].state == CLOSED)
+            PossiblePath.Push(i);
+    }
+
+    // just roam around :(
+    if (PossiblePath.Length > 0)
+        return AStarFindShortestPath(srcIndex, PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1)), client, NULL_VECTOR);
+
     return false;
 }
 
@@ -1340,24 +1562,22 @@ stock bool IsPathPossible(int srcIndex, int destIndex)
     astar[srcIndex].f = GetWaypointDistance(srcIndex, destIndex);
     astar[srcIndex].state = OPEN;
     
-    SearchNode start;
-    start.index = srcIndex;
-    start.cost = astar[srcIndex].f;
+    PriorityQueueItem start;
+    start.SetValue(srcIndex, astar[srcIndex].f);
 
-    ArrayList openList = new ArrayList(2);
-    openList.PushArray(start, 2);
-    while (openList.Length > 0)
+    PriorityQueue openList;
+    openList.NewQueue();
+    openList.Insert(start);
+    while (!openList.IsEmpty())
     {
         // set current node to the node with the lowest f value
-        openList.Sort(Sort_Ascending, Sort_Float);
-        SearchNode currentIndex;
-        openList.GetArray(0, currentIndex, 2);
-        openList.Erase(0);
+        PriorityQueueItem currentIndex;
+        currentIndex = openList.RemoveLowest();
 		
         // is the current node the goal node?
         if (currentIndex.index == destIndex)
         {
-            delete openList;
+            openList.DeleteQueue();
             return true;
         }
 
@@ -1381,170 +1601,20 @@ stock bool IsPathPossible(int srcIndex, int destIndex)
                 astar[self].parent = currentIndex.index;
                 astar[self].state = OPEN;
                 astar[self].f = f;
-                SearchNode next;
-                next.index = self;
-                next.cost = astar[self].f;
-                openList.PushArray(next, 2);
+
+                PriorityQueueItem next;
+                next.SetValue(self, astar[self].f);
+                openList.Insert(next);
             }
         }
     }
 
-    delete openList;
+    openList.DeleteQueue();
     return false;
-}
-
-stock int FindCoverWaypoint(int client = -1, float maxDistance = 99999.0)
-{
-    maxDistance *= maxDistance;
-
-    if (m_hidingSpots[client] != null && m_hidingSpots[client].Length > 0)
-    {
-        int index = -1;
-        for (int spot = m_hidingSpots[client].Length - 1; spot > 0; spot--)
-        {
-            float normalDist = maxDistance;
-
-            int hs = m_hidingSpots[client].Get(spot);
-            float distance = GetVectorDistance(m_paths[hs].origin, GetOrigin(client), true) + (GetDamage(hs) * GetDamage(hs)) + (GetDeaths(hs) * GetDeaths(hs));
-            if (distance < normalDist)
-            {
-                index = hs;
-                normalDist = distance;
-            }  
-	    }
-
-        if (index != -1)
-            return index;
-    }
-
-    // do not move to a position near to the enemy
-    /*float distance = GetVectorDistance(GetOrigin(client), m_lastEnemyOrigin[client], true);
-    if (maxDistance > distance)
-        maxDistance = distance;
-
-    float minDist = 384.0 * 384.0;
-    if (maxDistance < minDist)
-        maxDistance = minDist;
-
-    int srcIndex = m_currentIndex[client];
-    int enemyIndex = FindNearestWaypoint(m_lastEnemyOrigin[client], 999999.0, m_lastEnemy[client]);
-    if (enemyIndex == -1)
-        return -1;
-        
-    float height = GetHeight(client);
-    float enemyheight;
-    
-    if (IsValidClient(m_lastEnemy[client]))
-        enemyheight = GetHeight(m_lastEnemy[client]) * 2;
-    else
-        enemyheight = height * 2;
-
-    ArrayList enemyIndices = new ArrayList();
-
-    int waypointIndex[MaxPathIndex];
-    float minDistance[MaxPathIndex];
-
-    for (int i = 0; i < MaxPathIndex; i++)
-    {
-        waypointIndex[i] = -1;
-        minDistance[i] = maxDistance;
-    }
-
-    // now get enemies neigbouring points
-    for (int i = 0; i < MaxPathIndex; i++)
-    {
-        if (m_paths[enemyIndex].pathIndex[i] != -1)
-            enemyIndices.Push(m_paths[enemyIndex].pathIndex[i]);
-    }
-
-    // find the best waypoint now
-    for (int i = 0; i < m_waypointNumber; i++)
-    {
-        // exclude current waypoints and waypoints seen by the enemy
-        if (i == srcIndex || IsVisibleWaypointIndex(enemyIndex, i, height, enemyheight) || IsVisibleWaypointIndex(srcIndex, i, height, enemyheight))
-            continue;
-
-        bool neighbourVisible = false;  // now check neighbour waypoints for visibility
-
-        for (int j = 0; j != enemyIndices.Length; j++)
-        {
-            if (IsVisibleWaypointIndex(enemyIndices.Get(j), i, enemyheight, height) || IsVisibleWaypointIndex(enemyIndices.Get(j), srcIndex, enemyheight, height))
-            {
-                neighbourVisible = true;
-                break;
-            }
-        }
-
-        // skip visible points
-        if (neighbourVisible)
-            continue;
-
-        float distances = GetWaypointDistance(srcIndex, i);
-        float enemyDistance = GetWaypointDistance(enemyIndex, i);
-
-        if (distances >= enemyDistance)
-            continue;
-
-        for (int j = 0; j < MaxPathIndex; j++)
-        {
-            if (distances < minDistance[j])
-            {
-                waypointIndex[j] = i;
-                minDistance[j] = distances;
-                break;
-            }
-        }
-    }
-
-    // use statistic if we have them
-    for (int i = 0; i < MaxPathIndex; i++) // not now
-    {
-        if (waypointIndex[i] != -1)
-        {
-            int deaths = GetDeaths(waypointIndex[i]);
-            minDistance[i] += GetDamage(waypointIndex[i]) + (deaths * deaths);
-        }
-    }
-
-    // take the first one which isn't spotted by the enemy and not in blacklist
-    for (int i = 0; i < MaxPathIndex; i++)
-    {
-        if (waypointIndex[i] != -1 && m_lastFailedWaypoint[client] != waypointIndex[i])
-        {
-            float origin[3];
-            origin = m_lastEnemyOrigin[client];
-            origin[2] += enemyheight;
-            float origin2[3];
-            origin2 = m_paths[waypointIndex[i]].origin;
-            origin2[2] += height;
-            
-            // expand the search
-            for (int j = 0; j < MaxPathIndex; j++)
-            {
-                int expandedIndex = m_paths[waypointIndex[i]].pathIndex[j];
-                if (expandedIndex != -1 && expandedIndex != waypointIndex[i] && m_lastFailedWaypoint[client] != expandedIndex)
-                {
-                    float origin3[3];
-                    origin3 = m_lastEnemyOrigin[client];
-                    origin3[2] += enemyheight;
-                    float origin4[3];
-                    origin4 = m_paths[expandedIndex].origin;
-                    origin4[2] += height;
-                    if (!IsVisible(origin3, origin4))
-                        return expandedIndex;
-                }
-            }
-        }
-    }*/
-
-    return -1;
 }
 
 stock bool IsVisibleByEnemy(int client, int waypointIndex, float height)
 {
-    if (waypointIndex == -1)
-        return false;
-
     float origin[3];
     origin = m_paths[waypointIndex].origin;
     origin[2] += height;
@@ -1627,9 +1697,10 @@ stock int FindNearestWaypoint(float origin[3], float maxDistance = 999999.0, int
 
         if (client > 0 && client <= MaxClients)
         {
-            if (m_paths[i].team == 2 && GetClientTeam(client) == 3)
+            int team = GetClientTeam(client);
+            if (m_paths[i].team == 2 && team == 3)
                 continue;
-            else if (m_paths[i].team == 3 && GetClientTeam(client) == 2)
+            else if (m_paths[i].team == 3 && team == 2)
                 continue;
         }
         

@@ -24,8 +24,10 @@ bool m_isMedic[TFMaxPlayers];
 
 bool m_hasCrossbow[TFMaxPlayers];
 bool m_hasWrench[TFMaxPlayers];
-
 bool m_hasSandwich[TFMaxPlayers];
+
+int SentryGun[TFMaxPlayers];
+int Dispenser[TFMaxPlayers];
 
 int m_tackEntity[TFMaxPlayers];
 
@@ -76,6 +78,7 @@ float m_goalPosition[TFMaxPlayers][3];
 int m_goalIndex[TFMaxPlayers];
 int m_currentIndex[TFMaxPlayers];
 
+float m_duckTimer[TFMaxPlayers];
 float m_attackTimer[TFMaxPlayers];
 float m_attack2Timer[TFMaxPlayers];
 
@@ -126,6 +129,12 @@ int m_lastKiller[TFMaxPlayers];
 
 float m_itAimStart[TFMaxPlayers];
 float m_cosError[TFMaxPlayers];
+
+float m_origin[TFMaxPlayers][3];
+float m_eyeOrigin[TFMaxPlayers][3];
+
+float m_lastEnemySeen[TFMaxPlayers];
+float m_lastEntitySeen[TFMaxPlayers];
 
 Handle EBotDebug;
 Handle EBotFPS;
@@ -247,6 +256,27 @@ stock bool HasSandwich(int client)
 stock bool GotDamageByLast(int client, float value)
 {
 	return m_damageTime[client] > GetGameTime() + value;
+}
+
+stock bool ActiveCloak(int client)
+{
+	if (!TF2_IsPlayerInCondition(client, TFCond_Cloaked) && !TF2_IsPlayerInCondition(client, TFCond_DeadRingered))
+		m_buttons[client] |= IN_ATTACK2;
+
+	return true;
+}
+
+stock bool DeactiveCloak(int client)
+{
+	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) || TF2_IsPlayerInCondition(client, TFCond_DeadRingered))
+	{
+		if (m_lastEnemySeen[client] + 4.0 > GetGameTime() || m_lastEntitySeen[client] + 4.0 > GetGameTime())
+			return false;
+		
+		m_buttons[client] |= IN_ATTACK2;
+	}
+
+	return true;
 }
 
 stock void FindPayload()
