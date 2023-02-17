@@ -442,6 +442,7 @@ public void OnClientPutInServer(int client)
 	DJTime[client] = 0.0;
 	m_attack2Timer[client] = 0.0;
 	m_attackTimer[client] = 0.0;
+	m_duckTimer[client] = 0.0;
 	m_thinkTimer[client] = 0.0;
 	m_checkTimer[client] = 0.0;
 	m_wasdTimer[client] = 0.0;
@@ -883,8 +884,10 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			if (m_attack2Timer[client] > GetGameTime())
 				buttons |= IN_ATTACK2;
 		}
-		
-		if (GetEntProp(client, Prop_Send, "m_bJumping"))
+
+		if (m_duckTimer[client] > GetGameTime())
+			buttons |= IN_DUCK;
+		else if (GetEntProp(client, Prop_Send, "m_bJumping"))
 			buttons |= IN_DUCK;
 		
 		if (m_thinkTimer[client] < GetGameTime())
@@ -896,6 +899,9 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 				m_moveVel[client][2] = 0.0;
 			}
 			
+			m_origin[client] = GetOrigin(client);
+			m_eyeOrigin[client] = GetEyePosition(client);
+
 			CheckSlowThink(client);
 			ThinkAI(client);
 			m_thinkTimer[client] = GetGameTime() + GetConVarFloat(EBotFPS);
@@ -903,10 +909,13 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 		else
 		{
 			LookAtPosition(client, m_lookAt[client], angles, m_tackEntity[client]);
-
-			int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
-			if (nOldButtons & (IN_JUMP|IN_DUCK))
-				SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
+			
+			if (m_duckTimer[client] < GetGameTime())
+			{
+				int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
+				if (nOldButtons & (IN_JUMP|IN_DUCK))
+					SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
+			}
 			
 			if (CurrentProcess[client] == PRO_BUILDDISPENSER && m_isSlowThink[client] && GetRandomInt(1, 3) == 1)
 			{
@@ -1151,8 +1160,13 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_knownSpy[client] = -1;
 		m_goalIndex[client] = -1;
 		m_goalEntity[client] = -1;
+		m_goalPosition[client] = NULL_VECTOR;
 		m_lastFailedWaypoint[client] = -1;
 		m_currentIndex[client] = -1;
+		m_lastEnemySeen[client] = 0.0;
+		m_lastEntitySeen[client] = 0.0;
+		m_stopTime[client] = 0.0;
+		m_pauseTime[client] = 0.0;
 		DeletePathNodes(client);
 
 		if (TF2_GetPlayerClass(client) == TFClass_Engineer)
@@ -1202,11 +1216,11 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 			if (index != -1)
 			{
 				AStarFindPath(-1, index, client, m_paths[index].origin);
-				m_nextStuckCheck[client] = GetGameTime() + 20.0;
+				m_nextStuckCheck[client] = GetGameTime() + 10.0;
 			}
 		}
 
-		m_nextStuckCheck[client] = GetGameTime() + 20.0;
+		m_nextStuckCheck[client] = GetGameTime() + 10.0;
 	}
 
 	return Plugin_Handled;
