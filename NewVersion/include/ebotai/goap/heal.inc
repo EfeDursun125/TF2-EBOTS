@@ -45,19 +45,6 @@ public void HealUpdate(int client)
 
 		float distance = GetVectorDistance(GetOrigin(client), GetOrigin(m_healTarget[client]), true);
 
-		if (IsWeaponSlotActive(client, 1))
-		{
-			int medigun = GetPlayerWeaponSlot(client, 1);
-			if (IsValidEntity(medigun))
-			{
-				/*SetEntPropEnt(medigun, Prop_Send, "m_hHealingTarget", m_nearestFriend[client]);
-				SetEntPropEnt(medigun, Prop_Send, "m_hLastHealingTarget", m_nearestFriend[client]);
-				SetEntProp(medigun, Prop_Send, "m_bHealing", 1);*/
-				//SetEntProp(medigun, Prop_Send, "m_bAttacking", 1);
-				//SetEntPropFloat(medigun, Prop_Send, "m_flNextTargetCheckTime", 999999999.0);
-			}
-		}
-
 		if (distance <= Squared(GetConVarInt(EBotMedicFollowRange)))
 		{
 			if (!IsWeaponSlotActive(client, 1))

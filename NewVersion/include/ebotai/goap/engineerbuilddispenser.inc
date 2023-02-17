@@ -30,10 +30,27 @@ public void BuildDispenserUpdate(int client)
 	if (!IsWeaponSlotActive(client, 5))
 		FakeClientCommandThrottled(client, "build 0 0");
 	else
-		m_buttons[client] |= IN_ATTACK;
+	{
+		if (IsValidEntity(SentryGun[client]))
+		{
+			float randomArea[3];
+			randomArea = GetCenter(SentryGun[client]);
+			randomArea[0] += GetRandomFloat(-600.0, 600.0);
+			randomArea[1] += GetRandomFloat(-600.0, 600.0);
+			FollowPath(client, randomArea);
+
+			if (IsVisible(GetEyePosition(client), randomArea) || IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+				m_buttons[client] |= IN_ATTACK;
+		}
+		else
+		{
+			m_buttons[client] |= IN_ATTACK;
+			FinishCurrentProcess(client);
+		}
+	}
 	
 	int dispenser = TF2_GetObject(client, TFObject_Dispenser, TFObjectMode_None);
-	if (dispenser != -1)
+	if (IsValidEntity(dispenser))
 	{
 		FinishCurrentProcess(client);
 		EngineerMoveDispenserTimer[client] = GetGameTime() + GetRandomFloat(120.0, 180.0);

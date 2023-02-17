@@ -23,6 +23,10 @@ stock bool GetHealthRequirements(int client)
 
 stock void GetHealthStart(int client)
 {
+	m_goalEntity[client] = -1;
+	m_goalIndex[client] = -1;
+	m_goalPosition[client] = NULL_VECTOR;
+
 	FindNearestHealthPack(client);
 	DeletePathNodes(client);
 }
@@ -40,21 +44,7 @@ stock void GetHealthUpdate(int client)
 	FindEnemyEntities(client);
 	LookUpdate(client);
 	
-	if (m_hasWaypoints)
-	{
-		int index = FindHealthWaypoint(client);
-		if (index != -1)
-		{
-			m_goalPosition[client] = m_paths[index].origin;
-			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squared(48))
-				MoveTo(client, m_goalPosition[client], false);
-			else
-				FollowPath(client, m_goalPosition[client]);
-		}
-		else
-			SetFailedProcess(client, true);
-	}
-	else if (IsValidEntity(m_goalEntity[client]))
+	if (IsValidEntity(m_goalEntity[client]))
 	{
 		if (!IsValidHealthPack(m_goalEntity[client]))
 		{
@@ -71,6 +61,7 @@ stock void GetHealthUpdate(int client)
 	else
 	{
 		FindNearestHealthPack(client);
+
 		// check again
 		if (!IsValidEntity(m_goalEntity[client])) // no avaliable health packs
 			SetFailedProcess(client, true);
@@ -80,58 +71,8 @@ stock void GetHealthUpdate(int client)
 stock void GetHealthEnd(int client)
 {
 	m_goalEntity[client] = -1;
-}
-
-stock int FindHealthWaypoint(int client)
-{
-	int index = -1;
-	ArrayList NearHealthPacks = new ArrayList();
-	ArrayList MedHealthPacks = new ArrayList();
-	ArrayList AllHealthPacks = new ArrayList();
-	for (int i = 0; i < m_waypointNumber; i++)
-	{
-		if (m_paths[i].flags != _:WAYPOINT_HEALTH && m_paths[i].flags != _:WAYPOINT_RESUPPLY)
-			continue;
-		
-		if (m_lastFailedWaypoint[client] == i)
-			continue;
-		
-		// blocked waypoint
-		if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
-			continue;
-		
-		// not for our team
-    	if (m_paths[i].team == GetEnemyTeam(GetClientTeam(client)))
-      		continue;
-		
-		// only get safe health packs
-		if (m_hasEnemiesNear[client] && !GameRules_GetProp("m_bPlayingMedieval"))
-		{
-			if (GetVectorDistance(m_paths[i].origin, GetOrigin(m_nearestEnemy[client]), true) <= GetVectorDistance(m_paths[i].origin, GetOrigin(client), true))
-				continue;
-		}
-		
-		if (GetVectorDistance(m_paths[i].origin, GetOrigin(client), true) <= Squared(768))
-			NearHealthPacks.Push(i);
-		else if (GetVectorDistance(m_paths[i].origin, GetOrigin(client), true) <= Squared(1536))
-			MedHealthPacks.Push(i);
-		else
-			AllHealthPacks.Push(i);
-	}
-
-	if (NearHealthPacks.Length > 1)
-		index = NearHealthPacks.Get(GetRandomInt(0, NearHealthPacks.Length - 1));
-	else if (MedHealthPacks.Length > 1)
-		index = MedHealthPacks.Get(GetRandomInt(0, MedHealthPacks.Length - 1));
-	else if (AllHealthPacks.Length > 0)
-		index = AllHealthPacks.Get(GetRandomInt(0, AllHealthPacks.Length - 1));
-
-	delete NearHealthPacks;
-	delete MedHealthPacks;
-	delete AllHealthPacks;
-
-	m_goalIndex[client] = index;
-	return index;
+	m_goalIndex[client] = -1;
+	m_goalPosition[client] = NULL_VECTOR;
 }
 
 stock void FindNearestHealthPack(int client)
@@ -146,8 +87,12 @@ stock void FindNearestHealthPack(int client)
 		if (!IsValidHealthPack(x))
 			continue;
 		
-		// only get safe health packs
-		if (m_hasEnemiesNear[client] && GetVectorDistance(GetOrigin(x), GetOrigin(m_nearestEnemy[client]), true) <= Squared(768))
+		// only get safe ammo packs
+		if (m_hasEnemiesNear[client] && GetVectorDistance(GetOrigin(x), GetOrigin(m_nearestEnemy[client]), true) <= GetVectorDistance(GetOrigin(x), GetOrigin(client), true))
+			continue;
+		
+		int index = FindNearestWaypoint(GetOrigin(x), 64.0, client);
+		if (index == -1)
 			continue;
 		
 		float edict_distance = GetFastDistance(GetOrigin(client), GetOrigin(x));
@@ -157,6 +102,8 @@ stock void FindNearestHealthPack(int client)
 			m_goalEntity[client] = x;
 		}
 	}
+
+	m_goalIndex[client] = FindNearestWaypoint(GetOrigin(m_goalEntity[client]), 64.0, client);
 }
 
 stock bool IsValidHealthPack(int entity)

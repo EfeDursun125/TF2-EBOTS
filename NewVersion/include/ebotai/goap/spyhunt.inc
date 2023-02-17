@@ -20,10 +20,20 @@ public void SpyHuntStart(int client)
 
 public void SpyHuntUpdate(int client)
 {
-	CheckHealth(client);
-	CheckAmmo(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
+
+	if (!DeactiveCloak(client))
+	{
+		LookAround(client);
+		if (IsValidClient(m_goalEntity[client]) || IsValidEntity(m_goalEntity[client]))
+			FollowPath(client, GetOrigin(m_goalEntity[client]));
+
+		return;
+	}
+
+	CheckHealth(client);
+	CheckAmmo(client);
 
 	int threat = m_goalEntity[client];
 	int closestThreat = m_nearestEnemy[client];
@@ -68,8 +78,7 @@ public void SpyHuntUpdate(int client)
 	{
 		m_isCoverBlown[client] = true;
 		EquipWeaponSlot(client, 0);
-
-		SetProcess(client, PRO_HIDE, 60.0, "Escaping sentry fire!");
+		ActiveCloak(client);
 		return;
 	}
 
@@ -82,13 +91,6 @@ public void SpyHuntUpdate(int client)
 
 	// remember who we are attacking (in case we changed our minds)
 	m_victim[client] = playerThreat;
-
-	// uncloak so we can attack
-	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked))
-	{
-		SetProcess(client, PRO_HIDE, 60.0, "Finding somewhere to uncloak!");
-		return;
-	}
 
 	bool isKnifeFight = false;
 
@@ -136,7 +138,9 @@ public void SpyHuntUpdate(int client)
 		isKnifeFight = true;
 
 	// does my threat know I'm a Spy?
-	if (IsClientAimingToMe(client, playerThreat) && IsAttacking(playerThreat) && GotDamageByLast(client, 1.0))
+	if (IsClientAimingToMe(client, playerThreat) && IsAttacking(playerThreat) && GotDamageByLast(client, 4.0))
+		m_isCoverBlown[client] = true;
+	else if (TF2_IsPlayerInCondition(playerThreat, TFCond_Disguised) || TF2_IsPlayerInCondition(playerThreat, TFCond_Cloaked))
 		m_isCoverBlown[client] = true;
 	
 	if (m_isCoverBlown[client] || 
@@ -188,19 +192,24 @@ public void SpyHuntUpdate(int client)
 			// if we're still disguised, go for the backstab
 			if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
 			{
-				if (isBehindVictim || m_isCoverBlown[client])
-				{
-					// we're behind them (or they're onto us) - backstab!
+				// we're behind them (or they're onto us) - backstab!
+				if (isBehindVictim)
 					m_buttons[client] |= IN_ATTACK;
+				else if (m_isCoverBlown[client])
+				{
+					if (!m_lowHealth[client] && !m_lowAmmo[client])
+						m_buttons[client] |= IN_ATTACK;
+					else
+						ActiveCloak(client);
 				}
 			}
 			else
 			{
 				// we're exposed - stab! stab! stab!
-				if (!m_lowHealth[client] || !m_lowAmmo[client])
+				if (!m_lowHealth[client] && !m_lowAmmo[client] && GetClientHealth(playerThreat) < 100.0)
 					m_buttons[client] |= IN_ATTACK;
-				else if (!TF2_IsPlayerInCondition(client, TFCond_Cloaked))
-					m_buttons[client] |= IN_ATTACK2;
+				else
+					ActiveCloak(client);
 			}
 		}
 	}

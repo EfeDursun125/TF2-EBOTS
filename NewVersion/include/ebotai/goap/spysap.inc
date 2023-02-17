@@ -15,6 +15,10 @@ public bool SpySapRequirements(int client)
 	if (TF2_HasTheFlag(client))
 		return false;
 	
+	// no sapper, WHAT?
+	if (!IsValidEntity(GetPlayerWeaponSlot(client, 1)))
+		return false;
+	
 	return true;
 }
 
@@ -27,21 +31,23 @@ public void SpySapStart(int client)
 
 public void SpySapUpdate(int client)
 {
-	if (TF2_GetPlayerClass(client) != TFClass_Spy && m_hasEnemiesNear[client])
-	{
-		LookAtEnemiens(client);
-		SelectBestCombatWeapon(client);
-		AutoAttack(client);
-	}
-	
-	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
-	{
-		SetProcess(client, PRO_HIDE, 60.0, "", true);
-		return;
-	}
+	if (!TF2_IsPlayerInCondition(client, TFCond_Disguised))
+		ActiveCloak(client);
 
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
+
+	m_goalEntity[client] = m_knownSentry[client];
+
+	if (!DeactiveCloak(client))
+	{
+		LookAround(client);
+		if (IsValidClient(m_goalEntity[client]) || IsValidEntity(m_goalEntity[client]))
+			FollowPath(client, GetOrigin(m_goalEntity[client]));
+		
+		return;
+	}
+
 	CheckHealth(client);
 	CheckAmmo(client);
 	SpyAimLogic(client);
@@ -62,10 +68,13 @@ public void SpySapUpdate(int client)
 
 		if (distance <= range)
 		{
-			m_lookAt[client] = GetCenter(m_goalEntity[client]);
-			EquipWeaponSlot(client, 1);
-			m_buttons[client] |= IN_ATTACK;
-			FakeClientCommandThrottled(client, "build 3 0"); // place sapper
+			if (IsWeaponSlotActive(client, 1))
+			{
+				m_lookAt[client] = GetCenter(m_goalEntity[client]);
+				m_attackTimer[client] = GetGameTime() + 0.2;
+			}
+			else
+				FakeClientCommandThrottled(client, "build 3 0"); // place sapper
 		}
 	}
 
@@ -84,7 +93,7 @@ public void SpySapEnd(int client)
 		if (weapon == 1)
 			EquipWeaponSlot(client, 0);
 		else
-			EquipWeaponSlot(client, 1);
+			EquipWeaponSlot(client, 2);
 	}
 	
 	m_knownSentry[client] = -1; // what if sentry is unreachable???

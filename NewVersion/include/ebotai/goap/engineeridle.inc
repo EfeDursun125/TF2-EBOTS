@@ -1,5 +1,3 @@
-int SentryGun[TFMaxPlayers];
-int Dispenser[TFMaxPlayers];
 int TeleporterEnter[TFMaxPlayers];
 int TeleporterExit[TFMaxPlayers];
 
@@ -32,7 +30,7 @@ public void EngineerIdleStart(int client)
 
 public void EngineerIdleUpdate(int client)
 {
-	m_eBotDodgeRange[client] = 500;
+	m_eBotDodgeRange[client] = 512;
 
 	if (TF2_GetPlayerClass(client) != TFClass_Engineer)
 	{
@@ -69,41 +67,23 @@ public void EngineerIdleUpdate(int client)
 	if (!IsValidEntity(SentryGun[client]))
 	{
 		if (WantsBuildTeleporterEnter[client] && GetRandomInt(1, 3) == 1)
-		{
 			SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
-			return;
-		}
 
 		if (WantsBuildTeleporterExit[client] && (GetRandomInt(1, 3) == 1 || IsValidEntity(TeleporterEnter[client])))
-		{
 			SetProcess(client, PRO_BUILDTELEPORTEREXIT, 80.0, "| process started -> trying to build teleporter exit");
-			return;
-		}
 	}
 
 	if (WantsBuildSentryGun[client])
-	{
 		SetProcess(client, PRO_BUILDSENTRY, 40.0, "| process started -> trying to build sentry gun");
-		return;
-	}
 
 	if (WantsBuildDispenser[client])
-	{
 		SetProcess(client, PRO_BUILDDISPENSER, 60.0, "| process started -> trying to build dispenser");
-		return;
-	}
 
 	if (WantsBuildTeleporterExit[client])
-	{
 		SetProcess(client, PRO_BUILDTELEPORTEREXIT, 80.0, "| process started -> trying to build teleporter exit");
-		return;
-	}
 
 	if (WantsBuildTeleporterEnter[client])
-	{
 		SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
-		return;
-	}
 
 	if (IsValidEntity(SentryGun[client]) && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
 	{
@@ -113,68 +93,19 @@ public void EngineerIdleUpdate(int client)
 			{
 				MoveTo(client, GetOrigin(SentryGun[client]));
 				m_lookAt[client] = GetCenter(SentryGun[client]);
-				m_attackTimer[client] = GetGameTime() + 0.4;
+				m_attackTimer[client] = GetGameTime() + 0.2;
+				m_duckTimer[client] = GetGameTime() + 0.2;
 			}
 			else
 				EquipWeaponSlot(client, 2);
 		}
 		else
 			FollowPath(client, GetOrigin(SentryGun[client]));
+		
+		return;
 	}
-	else if (IsValidEntity(Dispenser[client]) && (!DispenserIsMaxLevel[client] || !DispenserHealthIsFull[client]))
-	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
-		{
-			if (IsWeaponSlotActive(client, 2))
-			{
-				MoveTo(client, GetOrigin(Dispenser[client]));
-				m_lookAt[client] = GetCenter(Dispenser[client]);
-				m_attackTimer[client] = GetGameTime() + 0.4;
-			}
-			else
-				EquipWeaponSlot(client, 2);
-		}
-		else
-			FollowPath(client, GetOrigin(Dispenser[client]));
-	}
-	else if (IsValidEntity(TeleporterEnter[client]) && (!TeleporterEnterHealthIsFull[client] || !TeleporterEnterIsMaxLevel[client]))
-	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) <= Squaredf(96.0) && IsVisible(GetEyePosition(client), GetCenter(TeleporterEnter[client])))
-		{
-			if (IsWeaponSlotActive(client, 2))
-			{
-				if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) < Squaredf(48.0))
-					MoveOut(client, GetOrigin(TeleporterEnter[client]));
-				else if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) > Squaredf(56.0))
-					MoveTo(client, GetOrigin(TeleporterEnter[client]));
-				
-				m_lookAt[client] = GetCenter(TeleporterEnter[client]);
-				m_attackTimer[client] = GetGameTime() + 0.4;
-			}
-			else
-				EquipWeaponSlot(client, 2);
-		}
-		else
-			FollowPath(client, GetOrigin(TeleporterEnter[client]));
-	}
-	else if (WantsMoveDispenser[client] && IsValidEntity(Dispenser[client]))
-	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
-		{
-			MoveTo(client, GetOrigin(Dispenser[client]));
-			m_lookAt[client] = GetCenter(Dispenser[client]);
-			m_buttons[client] |= IN_ATTACK2;
-
-			if (GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
-			{
-				SetProcess(client, PRO_BUILDDISPENSER, 60.0, "| process started -> wants to move dispenser");
-				return;
-			}
-		}
-		else
-			FollowPath(client, GetOrigin(Dispenser[client]));
-	}
-	else if (IsValidEntity(SentryGun[client]))
+	
+	if (WantsMoveSentryGun[client] && IsValidEntity(SentryGun[client]))
 	{
 		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
@@ -196,7 +127,8 @@ public void EngineerIdleUpdate(int client)
 				{
 					MoveTo(client, GetOrigin(SentryGun[client]));
 					m_lookAt[client] = GetCenter(SentryGun[client]);
-					m_attackTimer[client] = GetGameTime() + 0.4;
+					m_attackTimer[client] = GetGameTime() + 0.2;
+					m_duckTimer[client] = GetGameTime() + 0.2;
 				}
 				else
 					EquipWeaponSlot(client, 2);
@@ -204,13 +136,91 @@ public void EngineerIdleUpdate(int client)
 		}
 		else
 			FollowPath(client, GetOrigin(SentryGun[client]));
+		
+		return;
 	}
-	else if (!IsValidEntity(SentryGun[client]))
-		SetProcess(client, PRO_BUILDSENTRY, 40.0, "| process started -> trying to build sentry gun");
-	else if (!IsValidEntity(Dispenser[client]))
-		SetProcess(client, PRO_BUILDDISPENSER, 40.0, "| process started -> trying to build dispenser");
-	else
-		SetProcess(client, PRO_SPYLURK, 999999.0, "| process started -> spy behavior due we don't have wrench");
+
+	if (IsValidEntity(Dispenser[client]) && (!DispenserIsMaxLevel[client] || !DispenserHealthIsFull[client]))
+	{
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		{
+			if (IsWeaponSlotActive(client, 2))
+			{
+				MoveTo(client, GetOrigin(Dispenser[client]));
+				m_lookAt[client] = GetCenter(Dispenser[client]);
+				m_attackTimer[client] = GetGameTime() + 0.2;
+				m_duckTimer[client] = GetGameTime() + 0.2;
+			}
+			else
+				EquipWeaponSlot(client, 2);
+		}
+		else
+			FollowPath(client, GetOrigin(Dispenser[client]));
+		
+		return;
+	}
+	
+	if (WantsMoveDispenser[client] && IsValidEntity(Dispenser[client]))
+	{
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
+		{
+			MoveTo(client, GetOrigin(Dispenser[client]));
+			m_lookAt[client] = GetCenter(Dispenser[client]);
+			m_buttons[client] |= IN_ATTACK2;
+
+			if (GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
+			{
+				SetProcess(client, PRO_BUILDDISPENSER, 60.0, "| process started -> wants to move dispenser");
+				return;
+			}
+		}
+		else
+			FollowPath(client, GetOrigin(Dispenser[client]));
+		
+		return;
+	}
+	
+	if (IsValidEntity(TeleporterEnter[client]) && (!TeleporterEnterHealthIsFull[client] || !TeleporterEnterIsMaxLevel[client]))
+	{
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) <= Squaredf(96.0) && IsVisible(GetEyePosition(client), GetCenter(TeleporterEnter[client])))
+		{
+			if (IsWeaponSlotActive(client, 2))
+			{
+				if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) < Squaredf(48.0))
+					MoveOut(client, GetOrigin(TeleporterEnter[client]));
+				else if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) > Squaredf(56.0))
+					MoveTo(client, GetOrigin(TeleporterEnter[client]));
+				
+				m_lookAt[client] = GetCenter(TeleporterEnter[client]);
+				m_attackTimer[client] = GetGameTime() + 0.2
+				m_duckTimer[client] = GetGameTime() + 0.2
+			}
+			else
+				EquipWeaponSlot(client, 2);
+		}
+		else
+			FollowPath(client, GetOrigin(TeleporterEnter[client]));
+		
+		return;
+	}
+	
+	if (IsValidEntity(SentryGun[client]))
+	{
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		{
+			if (IsWeaponSlotActive(client, 2))
+			{
+				MoveTo(client, GetOrigin(SentryGun[client]));
+				m_lookAt[client] = GetCenter(SentryGun[client]);
+				m_attackTimer[client] = GetGameTime() + 0.2;
+				m_duckTimer[client] = GetGameTime() + 0.2;
+			}
+			else
+				EquipWeaponSlot(client, 2);
+		}
+		else
+			FollowPath(client, GetOrigin(SentryGun[client]));
+	}
 }
 
 public void EngineerIdleEnd(int client)

@@ -6,10 +6,10 @@ public bool DefaultRequirements(int client)
 public void DefaultStart(int client)
 {
 	if (!GameRules_GetProp("m_bPlayingMedieval") && TF2_GetPlayerClass(client) == TFClass_Engineer)
-		SetProcess(client, PRO_ENGINEERIDLE, 9999.0, "", true);
+		SetProcess(client, PRO_ENGINEERIDLE, 99999.0, "", true);
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Spy)
-		SetProcess(client, PRO_SPYLURK, 9999.0, "", true);
+		SetProcess(client, PRO_SPYLURK, 99999.0, "", true);
 }
 
 stock bool MustFindObjective(int client, int index, int current)
@@ -36,12 +36,6 @@ stock bool MustFindObjective(int client, int index, int current)
 
 public void DefaultUpdate(int client)
 {
-	FindFriendsAndEnemiens(client);
-	FindEnemyEntities(client);
-
-	if (m_hasEnemiesNear[client])
-		SetProcess(client, PRO_ATTACK, 180.0, "", true);
-	
 	if (IsMedic(client) || HasCrossbow(client))
 	{
 		if (m_hasEnemiesNear[client] && m_hasFriendsNear[client] && m_friendDistance[client] <= m_enemyDistance[client])
@@ -49,6 +43,22 @@ public void DefaultUpdate(int client)
 		else if (!m_hasEnemiesNear[client] && m_hasFriendsNear[client])
 			SetProcess(client, PRO_HEAL, (m_difficulty[client] + 8.0), "", true);
 	}
+	else if (TF2_GetPlayerClass(client) == TFClass_Spy)
+	{
+		CurrentProcess[client] = PRO_SPYLURK;
+		return;
+	}
+	else if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+	{
+		CurrentProcess[client] = PRO_ENGINEERIDLE;
+		return;
+	}
+
+	FindFriendsAndEnemiens(client);
+	FindEnemyEntities(client);
+
+	if (m_hasEnemiesNear[client])
+		SetProcess(client, PRO_ATTACK, 180.0, "", true);
 
 	CheckHideFromDanger(client);
 	CheckHealth(client);
@@ -125,31 +135,12 @@ public void DefaultEnd(int client)
 		return;
 
 	m_goalEntity[client] = -1;
+	m_goalIndex[client] = -1;
+	m_goalPosition[client] = NULL_VECTOR;
 }
 
 public void SelectObjective(int client)
 {
-	if (GetConVarBool(EBotForceHuntEnemy))
-	{
-		m_goalEntity[client] = FindNearestEnemy(client);
-		if (IsValidClient(m_goalEntity[client]))
-			m_goalPosition[client] = GetOrigin(m_goalEntity[client]);
-		else if (m_hasWaypoints)
-		{
-			m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
-			if (m_paths[m_goalIndex[client]].radius > 0.0)
-			{
-				m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
-				m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
-				m_goalPosition[client][2] = m_paths[m_goalIndex[client]].origin[2];
-			}
-			else
-				m_goalPosition[client] = m_paths[m_goalIndex[client]].origin;
-		}
-
-		return;
-	}
-	
 	if (m_hasWaypoints && m_hasSniperWaypoints && IsSniper(client) && !TF2_HasTheFlag(client))
 	{
 		int myindex = m_goalIndex[client];
@@ -266,6 +257,27 @@ public void SelectObjective(int client)
 			
 			return;
 		}
+	}
+
+	if (isDM || GetConVarBool(EBotForceHuntEnemy))
+	{
+		m_goalEntity[client] = FindNearestEnemy(client);
+		if (IsValidClient(m_goalEntity[client]))
+			m_goalPosition[client] = GetOrigin(m_goalEntity[client]);
+		else if (m_hasWaypoints)
+		{
+			m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
+			if (m_paths[m_goalIndex[client]].radius > 0.0)
+			{
+				m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+				m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+				m_goalPosition[client][2] = m_paths[m_goalIndex[client]].origin[2];
+			}
+			else
+				m_goalPosition[client] = m_paths[m_goalIndex[client]].origin;
+		}
+
+		return;
 	}
 
 	if (isKOTH)

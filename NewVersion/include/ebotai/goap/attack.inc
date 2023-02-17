@@ -41,24 +41,32 @@ stock void AttackStart(int client)
 float m_wasdTimer[TFMaxPlayers];
 stock void AttackUpdate(int client)
 {
-	if (TF2_GetPlayerClass(client) == TFClass_Spy && m_lowHealth[client] && !TF2_IsPlayerInCondition(client, TFCond_Cloaked))
-		m_buttons[client] |= IN_ATTACK2;
+	if (TF2_GetPlayerClass(client) == TFClass_Spy && m_lowHealth[client])
+	{
+		if (ActiveCloak(client))
+		{
+			FinishCurrentProcess(client, true);
+			return;
+		}
+	}	
 
 	if (m_isSlowThink[client] || !IsPlayerAlive(m_nearestEnemy[client]))
 		FindFriendsAndEnemiens(client);
-	
-	FindEnemyEntities(client);
+	else
+		FindEnemyEntities(client);
 	
 	if (!m_hasEnemiesNear[client])
 	{
 		FinishCurrentProcess(client, true);
+
 		if (!IsVisible(GetCenter(client), m_pathAhead[client])) // repath required
 			DeletePathNodes(client);
+
 		if (m_lowHealth[client])
 			SetProcess(client, PRO_IDLE, GetRandomFloat(2.0, 4.0), "", true);
 	}
 
-	if (TF2_GetPlayerClass(client) == TFClass_Spy && (TF2_IsPlayerInCondition(client, TFCond_Disguised) || TF2_IsPlayerInCondition(client, TFCond_Cloaked)))
+	if (TF2_GetPlayerClass(client) == TFClass_Spy && (TF2_IsPlayerInCondition(client, TFCond_Disguised) || IsStealthed(client)))
 		FinishCurrentProcess(client, true);
 	
 	CheckHideFromDanger(client);
