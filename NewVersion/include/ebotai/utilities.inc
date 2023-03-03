@@ -1667,6 +1667,9 @@ stock float GetPercentInvisible(int client)
 
 stock void DisguiseAsEnemy(int client)
 {
+	if (isVSH && GetClientTeam(client) == 3)
+		return;
+
 	ArrayList class = new ArrayList();
 	if (m_difficulty[client] < 3)
 	{	class.Push(1);
@@ -1795,6 +1798,7 @@ stock bool HasSapper(int entity)
 {
 	if (!HasEntProp(entity, Prop_Send, "m_bHasSapper"))
 		return false;
+
 	return GetEntProp(entity, Prop_Send, "m_bHasSapper") != 0;
 }
 
@@ -1866,6 +1870,9 @@ stock bool NameAlreadyTakenByPlayer(const char[] name)
 
 stock bool AttackToSpy(int client)
 {
+	if (isVSH)
+		return true;
+
 	if (TF2_IsPlayerInCondition(client, TFCond_CritOnWin))
 		return true;
 	
@@ -1889,6 +1896,9 @@ stock bool ScreetSpy(int client)
 	if (TF2_IsPlayerInCondition(client, TFCond_DeadRingered))
 		return true;
 	
+	if (isVSH)
+		return false;
+
 	if (TF2_IsPlayerInCondition(client, TFCond_Disguising))
 		return false;
 
@@ -1947,6 +1957,9 @@ stock bool IsStealthed(int client)
 
 stock bool IsRevealedSpy(int client)
 {
+	if (isVSH)
+		return true;
+
 	if (IsStealthed(client) && TF2_IsPlayerInCondition(client, TFCond_CloakFlicker))
 		return true;
 	
@@ -1973,11 +1986,14 @@ stock bool IsRevealedSpy(int client)
 
 stock bool IsRevealedSpyByTarget(int client, target)
 {
-	if (GetVectorDistance(GetOrigin(client), GetOrigin(target), true) <= Squared(80))
+	if (isVSH)
+		return true;
+
+	if (GetVectorDistance(GetOrigin(client), GetOrigin(target), true) <= Squaredf(72.0))
 		return true;
 	
 	if (IsStealthed(client))
-		return (GetPercentInvisible(client) <= 0.80);
+		return (GetPercentInvisible(client) < 1.0);
 	
 	if (!IsStealthed(client) && m_knownSpy[target] == client)
 		return true;
@@ -2165,13 +2181,14 @@ stock int GetNearestDefendableControlPoint(int client)
 
 stock FindEntityByTargetname(const String:targetname[], const String:classname[])
 {
-  decl String:namebuf[32];
-  new index = -1;
-  namebuf[0] = '\0';
- 
-  while(strcmp(namebuf, targetname) != 0
-    && (index = FindEntityByClassname(index, classname)) != -1)
-    GetEntPropString(index, Prop_Data, "m_iName", namebuf, sizeof(namebuf));
- 
-  return(index);
+	decl String:namebuf[32];
+	int index = -1;
+	namebuf[0] = '\0';
+	
+	while(strcmp(namebuf, targetname) != 0 && (index = FindEntityByClassname(index, classname)) != -1)
+	{
+		GetEntPropString(index, Prop_Data, "m_iName", namebuf, sizeof(namebuf));
+	}
+	
+	return index;
 }

@@ -4,11 +4,11 @@ bool isCTF;
 bool isPL;
 bool isPLR;
 bool isCP;
-bool is5CP;
 bool isAD;
 bool isKOTH;
 bool isMVM;
 bool isDM;
+bool isVSH;
 
 stock void AutoLoadGamemode()
 {
@@ -16,11 +16,11 @@ stock void AutoLoadGamemode()
 	isPL = false;
 	isPLR = false;
 	isCP = false;
-	is5CP = false;
 	isAD = false;
 	isKOTH = false;
 	isMVM = false;
 	isDM = false;
+	isVSH = false;
 
 	if (StrContains(currentMap, "koth_" , false) != -1 || StrContains(currentMap, "arena_" , false) != -1)
 		isKOTH = true;
@@ -39,6 +39,8 @@ stock void AutoLoadGamemode()
 		else
 			isAD = true;
 	}
+	else if (StrContains(currentMap, "vsh_" , false) != -1)
+		isVSH = true;
 	else
 		isDM = true;
 }
