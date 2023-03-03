@@ -30,6 +30,12 @@ stock bool MustFindObjective(int client, int index, int current)
 		else
 			return true;
 	}
+
+	if (isVSH || isDM)
+	{
+		if (!IsValidClient(m_goalEntity[client]) || GetClientTeam(client) == GetClientTeam(m_goalEntity[client]))
+			return true;
+	}
 	
 	return false;
 }
@@ -259,7 +265,7 @@ public void SelectObjective(int client)
 		}
 	}
 
-	if (isDM || GetConVarBool(EBotForceHuntEnemy))
+	if (isVSH || isDM || GetConVarBool(EBotForceHuntEnemy))
 	{
 		m_goalEntity[client] = FindNearestEnemy(client);
 		if (IsValidClient(m_goalEntity[client]))

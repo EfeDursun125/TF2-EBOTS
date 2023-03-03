@@ -11,7 +11,10 @@ stock bool GetAmmoRequirements(int client)
 	
 	if (CurrentProcess[client] == PRO_HIDE)
 		return false;
-
+	
+	if (isVSH && GetClientTeam(client) == 3)
+		return false;
+		
 	if (TF2_HasTheFlag(client))
 		return false;
 	

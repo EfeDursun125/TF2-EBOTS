@@ -14,6 +14,9 @@ stock bool GetHealthRequirements(int client)
 	
 	if (m_hasEnemiesNear[client])
 		return false;
+	
+	if (isVSH && GetClientTeam(client) == 3)
+		return false;
 
 	if (TF2_HasTheFlag(client))
 		return false;
