@@ -106,7 +106,8 @@ stock void FindNearestHealthPack(int client)
 		}
 	}
 
-	m_goalIndex[client] = FindNearestWaypoint(GetOrigin(m_goalEntity[client]), 64.0, client);
+	if (IsValidHealthPack(m_goalEntity[client]))
+		m_goalIndex[client] = FindNearestWaypoint(GetOrigin(m_goalEntity[client]), 64.0, client);
 }
 
 stock bool IsValidHealthPack(int entity)

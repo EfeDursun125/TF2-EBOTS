@@ -197,7 +197,7 @@ public void SpyHuntUpdate(int client)
 					m_buttons[client] |= IN_ATTACK;
 				else if (m_isCoverBlown[client])
 				{
-					if (!m_lowHealth[client] && !m_lowAmmo[client])
+					if (!m_lowHealth[client] && !m_lowAmmo[client] && TF2_GetPlayerClass(playerThreat) != TFClass_Heavy)
 						m_buttons[client] |= IN_ATTACK;
 					else
 						ActiveCloak(client);
@@ -206,7 +206,7 @@ public void SpyHuntUpdate(int client)
 			else
 			{
 				// we're exposed - stab! stab! stab!
-				if (!m_lowHealth[client] && !m_lowAmmo[client] && GetClientHealth(playerThreat) < 100.0)
+				if (!m_lowHealth[client] && !m_lowAmmo[client] && GetClientHealth(playerThreat) < 100.0 && TF2_GetPlayerClass(playerThreat) != TFClass_Heavy)
 					m_buttons[client] |= IN_ATTACK;
 				else
 					ActiveCloak(client);
