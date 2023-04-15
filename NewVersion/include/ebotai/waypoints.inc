@@ -1284,7 +1284,7 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
 // A* for second try
 stock bool AStarFindShortestPath(int srcIndex, int destIndex, int client, float targetposition[3] = NULL_VECTOR)
 {
-	if (destIndex == -1)
+	if (destIndex <= 0)
     {
         if (GetConVarInt(EBotDebug) == 1)
         {
@@ -1427,7 +1427,7 @@ stock bool AStarFindHidingSpot(int srcIndex, int client, float dangerOrigin[3])
 {
 	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
 		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
-    
+
     AStar_t astar[MaxWaypoints];
     for (int i = 0; i < m_waypointNumber; i++)
     {

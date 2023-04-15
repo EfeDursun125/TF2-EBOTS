@@ -298,11 +298,9 @@ public void CheckHideFromDanger(int client)
 
 	if (!GameRules_GetProp("m_bPlayingMedieval") && m_enemiesNearCount[client] > m_friendsNearCount[client] + 2)
 		musthide = true;
-	
-	if (TF2_GetPlayerClass(client) == TFClass_Medic && m_friendsNearCount[client] <= 0)
+	else if (TF2_GetPlayerClass(client) == TFClass_Medic && m_friendsNearCount[client] <= 0)
 		musthide = true;
-		
-	if (TF2_GetPlayerClass(client) == TFClass_Spy && m_meleeID[client] == 356)
+	else if (TF2_GetPlayerClass(client) == TFClass_Spy && m_meleeID[client] == 356)
 	{
 		if (GetClientHealth(client) <= 55.0)
 			musthide = true;
@@ -310,6 +308,8 @@ public void CheckHideFromDanger(int client)
 	else if (GetClientHealth(client) <= (GetMaxHealth(client) / 1.4))
 		musthide = true;
 	else if (IsValidClient(m_nearestEnemy[client]) && TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Heavy && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) <= Squaredf(768.0))
+		musthide = true;
+	else if (m_hasEnemiesNear[client] && TryToHide(client))
 		musthide = true;
 	
 	if (musthide)
@@ -360,4 +360,14 @@ public void CheckWalls(int client)
 {
 	if (!m_hasEnemiesNear[client] && CheckWall(client))
 		m_buttons[client] |= IN_JUMP;
+}
+
+stock bool TryToHide(int client)
+{
+	if (TF2_GetPlayerClass(client) == TFClass_Pyro && GetVectorDistance(GetOrigin(client), m_lookAt[client], true) > Squaredf(512.0))
+		return true;
+	else if (TF2_GetPlayerClass(client) == TFClass_Sniper && GetVectorDistance(GetOrigin(client), m_lookAt[client], true) <= Squaredf(512.0))
+		return true;
+
+	return false;
 }
