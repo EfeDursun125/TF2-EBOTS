@@ -10,13 +10,13 @@ public void FindFriendsAndEnemiens(int client)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsValidClient(i))
+		if (!m_isValidClient[i])
+			continue;
+
+		if (i == client)
 			continue;
 		
 		if (!IsPlayerAlive(i))
-			continue;
-		
-		if (i == client)
 			continue;
 		
 		if (TF2_IsPlayerInCondition(i, TFCond_HalloweenGhostMode))
@@ -262,12 +262,9 @@ public void FindEnemyEntities(int client)
 	int m_hasEntitiesNearCount = 0;
 	float nearestDistance = -1.0;
 	
-	for (int i = 1; i <= GetMaxEntities(); i++)
+	for (int i = MaxClients + 1; i <= GetMaxEntities(); i++)
 	{
 		if (!IsValidEntity(i))
-			continue;
-		
-		if (i <= MaxClients)
 			continue;
 		
 		char class[64];

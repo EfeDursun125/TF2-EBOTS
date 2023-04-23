@@ -1106,6 +1106,12 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
     if (!DeactiveCloak(client) || CurrentProcess[client] == PRO_HIDE)
         return AStarFindHidingSpot(srcIndex, client, targetposition);
 
+    if (CurrentProcess[client] == PRO_GETHEALTH)
+        return AStarFindHealthPack(srcIndex, client);
+    
+    if (CurrentProcess[client] == PRO_GETAMMO)
+        return AStarFindAmmoPack(srcIndex, client);
+
     if (m_waypointNumber > 2048)
         return AStarFindShortestPath(srcIndex, destIndex, client, targetposition);
 
@@ -1422,7 +1428,6 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
     return false;
 }
 
-// A* for second try
 stock bool AStarFindHidingSpot(int srcIndex, int client, float dangerOrigin[3])
 {
 	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
@@ -1538,6 +1543,334 @@ stock bool AStarFindHidingSpot(int srcIndex, int client, float dangerOrigin[3])
         return AStarFindShortestPath(srcIndex, PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1)), client, NULL_VECTOR);
 
     return false;
+}
+
+stock bool AStarFindHealthPack(int srcIndex, int client)
+{
+	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
+		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
+
+    AStar_t astar[MaxWaypoints];
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        astar[i].f = 0.0;
+        astar[i].parent = -1;
+        astar[i].state = NEW;
+    }
+
+    float dangerOrigin[3];
+    dangerOrigin = GetOrigin(client);
+
+    astar[srcIndex].f = GetFastDistance(m_paths[srcIndex].origin, dangerOrigin);
+    astar[srcIndex].state = OPEN;
+    
+    PriorityQueueItem start;
+    start.SetValue(srcIndex, astar[srcIndex].f);
+
+    PriorityQueue openList;
+    openList.NewQueue();
+    openList.Insert(start);
+    while (!openList.IsEmpty())
+    {
+        // set current node to the node with the highest f value
+        PriorityQueueItem currentIndex;
+        currentIndex = openList.RemoveLowest();
+
+        // is the current node the goal node?
+        if ((m_paths[currentIndex.index].flags == WAYPOINT_RESUPPLY || (m_paths[currentIndex.index].flags == WAYPOINT_HEALTH && FindNearestHealthPack(m_paths[currentIndex.index].origin, 75.0) != -1)) && !IsVisibleByEnemy(client, currentIndex.index, GetHeight(client)))
+        {
+            DeletePathNodes(client);
+
+            // build the complete path
+            while (currentIndex.index != -1)
+            {
+				AddToPath(currentIndex.index, client);
+                currentIndex.index = astar[currentIndex.index].parent;
+			}
+
+            return true;
+        }
+
+        if (astar[currentIndex.index].state != OPEN)
+            continue;
+
+        // put current node into CLOSED list
+        astar[currentIndex.index].state = CLOSED;
+
+        // now expand the current node
+        for (int i = 0; i < MaxPathIndex; i++)
+        {
+            int self = m_paths[currentIndex.index].pathIndex[i];
+            if (self == -1)
+                continue;
+
+            if (self == m_lastFailedWaypoint[client])
+                continue;
+            
+            // blocked waypoint
+            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
+                continue;
+            
+            if (m_paths[self].team == 2 && GetClientTeam(client) == 3)
+                continue;
+            else if (m_paths[self].team == 3 && GetClientTeam(client) == 2)
+                continue;
+            
+            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
+                continue;
+
+            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
+                continue;
+            
+            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) != TFClass_DemoMan)
+                continue;
+            else
+            {
+                int wearable = MaxClients + 1;
+	            while ((wearable = FindEntityByClassname(wearable, "tf_wearable_demoshield*")) > MaxClients)
+	            {
+    	        	if (GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity") != client)
+                        continue;
+                }
+            }
+
+            float f = GetFastDistance(m_paths[self].origin, dangerOrigin);
+            if (astar[self].state == NEW || astar[self].f > f)
+            {
+                // put the current child into open list
+                astar[self].parent = currentIndex.index;
+                astar[self].state = OPEN;
+                astar[self].f = f;
+
+                PriorityQueueItem next;
+                next.SetValue(self, astar[self].f);
+                openList.Insert(next);
+            }
+        }
+    }
+
+    ArrayList PossiblePath = new ArrayList();
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        if (astar[i].state == CLOSED)
+            PossiblePath.Push(i);
+    }
+
+    // just roam around :(
+    if (PossiblePath.Length > 0)
+        return AStarFindShortestPath(srcIndex, PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1)), client, NULL_VECTOR);
+
+    return false;
+}
+
+stock int FindNearestHealthPack(float origin[3], float maxRange)
+{
+	float distance = 999999999999.0;
+	int entity = -1;
+
+	for (int x = TFMaxPlayers; x < GetMaxEntities(); x++)
+	{
+		if (!IsValidHealthPack(x))
+			continue;
+		
+		float edict_distance = GetFastDistance(origin, GetOrigin(x));
+		if (edict_distance < distance)
+		{
+			distance = edict_distance;
+			entity = x;
+		}
+	}
+
+    if (entity != -1 && GetVectorDistance(origin, GetOrigin(entity), true) <= Squaredf(maxRange))
+        return entity;
+
+	return -1;
+}
+
+stock bool IsValidHealthPack(int entity)
+{
+	if (IsValidEntity(entity))
+	{
+		char ClassName[32];
+		GetEdictClassname(entity, ClassName, 32);
+		
+		if (StrContains(ClassName, "prop_dynamic", false) == -1 && !HasEntProp(entity, Prop_Send, "m_fEffects"))
+			return false;
+		
+		if (StrContains(ClassName, "prop_dynamic", false) == -1 && GetEntProp(entity, Prop_Send, "m_fEffects") != 0)
+			return false;
+		
+		if (StrContains(ClassName, "item_health", false) != -1 || StrContains(ClassName, "obj_dispenser", false) != -1 || StrContains(ClassName, "func_regen", false) != -1 || StrContains(ClassName, "rd_robot_dispenser", false) != -1 || StrContains(ClassName, "pd_dispenser", false) != -1)
+			return true;
+	}
+	
+	return false;
+}
+
+stock bool AStarFindAmmoPack(int srcIndex, int client)
+{
+	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
+		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
+
+    AStar_t astar[MaxWaypoints];
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        astar[i].f = 0.0;
+        astar[i].parent = -1;
+        astar[i].state = NEW;
+    }
+
+    float dangerOrigin[3];
+    dangerOrigin = GetOrigin(client);
+
+    bool isEngineer = false;
+    if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+        isEngineer = true;
+
+    astar[srcIndex].f = GetFastDistance(m_paths[srcIndex].origin, dangerOrigin);
+    astar[srcIndex].state = OPEN;
+    
+    PriorityQueueItem start;
+    start.SetValue(srcIndex, astar[srcIndex].f);
+
+    PriorityQueue openList;
+    openList.NewQueue();
+    openList.Insert(start);
+    while (!openList.IsEmpty())
+    {
+        // set current node to the node with the highest f value
+        PriorityQueueItem currentIndex;
+        currentIndex = openList.RemoveLowest();
+
+        // is the current node the goal node?
+        if ((m_paths[currentIndex.index].flags == WAYPOINT_RESUPPLY || ((m_paths[currentIndex.index].flags == WAYPOINT_AMMO || isEngineer) && FindNearestAmmoPack(m_paths[currentIndex.index].origin, 75.0) != -1)) && !IsVisibleByEnemy(client, currentIndex.index, GetHeight(client)))
+        {
+            DeletePathNodes(client);
+
+            // build the complete path
+            while (currentIndex.index != -1)
+            {
+				AddToPath(currentIndex.index, client);
+                currentIndex.index = astar[currentIndex.index].parent;
+			}
+
+            return true;
+        }
+
+        if (astar[currentIndex.index].state != OPEN)
+            continue;
+
+        // put current node into CLOSED list
+        astar[currentIndex.index].state = CLOSED;
+
+        // now expand the current node
+        for (int i = 0; i < MaxPathIndex; i++)
+        {
+            int self = m_paths[currentIndex.index].pathIndex[i];
+            if (self == -1)
+                continue;
+
+            if (self == m_lastFailedWaypoint[client])
+                continue;
+            
+            // blocked waypoint
+            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
+                continue;
+            
+            if (m_paths[self].team == 2 && GetClientTeam(client) == 3)
+                continue;
+            else if (m_paths[self].team == 3 && GetClientTeam(client) == 2)
+                continue;
+            
+            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
+                continue;
+
+            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
+                continue;
+            
+            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) != TFClass_DemoMan)
+                continue;
+            else
+            {
+                int wearable = MaxClients + 1;
+	            while ((wearable = FindEntityByClassname(wearable, "tf_wearable_demoshield*")) > MaxClients)
+	            {
+    	        	if (GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity") != client)
+                        continue;
+                }
+            }
+
+            float f = GetFastDistance(m_paths[self].origin, dangerOrigin);
+            if (astar[self].state == NEW || astar[self].f > f)
+            {
+                // put the current child into open list
+                astar[self].parent = currentIndex.index;
+                astar[self].state = OPEN;
+                astar[self].f = f;
+
+                PriorityQueueItem next;
+                next.SetValue(self, astar[self].f);
+                openList.Insert(next);
+            }
+        }
+    }
+
+    ArrayList PossiblePath = new ArrayList();
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        if (astar[i].state == CLOSED)
+            PossiblePath.Push(i);
+    }
+
+    // just roam around :(
+    if (PossiblePath.Length > 0)
+        return AStarFindShortestPath(srcIndex, PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1)), client, NULL_VECTOR);
+
+    return false;
+}
+
+stock int FindNearestAmmoPack(float origin[3], float maxRange)
+{
+	float distance = 999999999999.0;
+	int entity = -1;
+
+	for (int x = TFMaxPlayers; x < GetMaxEntities(); x++)
+	{
+		if (!IsValidAmmoPack(x))
+			continue;
+		
+		float edict_distance = GetFastDistance(origin, GetOrigin(x));
+		if (edict_distance < distance)
+		{
+			distance = edict_distance;
+			entity = x;
+		}
+	}
+
+    if (entity != 1 && GetVectorDistance(origin, GetOrigin(entity), true) <= Squaredf(maxRange))
+        return entity;
+
+	return -1;
+}
+
+stock bool IsValidAmmoPack(int entity)
+{
+	if (IsValidEntity(entity))
+	{
+		char ClassName[32];
+		GetEdictClassname(entity, ClassName, 32);
+		
+		if	(StrContains(ClassName, "prop_dynamic", false) == -1 && !HasEntProp(entity, Prop_Send, "m_fEffects"))
+			return false;
+		
+		if	(StrContains(ClassName, "prop_dynamic", false) == -1 && GetEntProp(entity, Prop_Send, "m_fEffects") != 0)
+			return false;
+		
+		if	(StrContains(ClassName, "item_ammo", false) != -1 || StrContains(ClassName, "tf_ammo_pack", false) != -1 || StrContains(ClassName, "obj_dispenser", false) != -1 || StrContains(ClassName, "func_regen", false) != -1 || StrContains(ClassName, "pd_dispenser", false) != -1 || StrContains(ClassName, "rd_robot_dispenser", false) != -1 || StrContains(ClassName, "item_healthammokit", false) != -1)
+			return true;
+	}
+	
+	return false;
 }
 
 stock bool IsPathPossible(int srcIndex, int destIndex)

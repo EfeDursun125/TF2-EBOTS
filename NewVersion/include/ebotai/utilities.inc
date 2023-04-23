@@ -1,3 +1,5 @@
+bool m_isValidClient[TFMaxPlayers];
+
 enum
 {
     PRO_DEFAULT = 0,
