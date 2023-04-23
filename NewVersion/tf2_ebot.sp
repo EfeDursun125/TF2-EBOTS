@@ -837,9 +837,10 @@ public void OnGameFrame()
 
 public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float angles[3])
 {
-	if (!IsValidClient(client))
+	m_isValidClient[client] = IsValidClient(client);
+	if (!m_isValidClient[client])
 		return Plugin_Continue;
-		
+	
 	if (!IsEBot(client) && !m_isAFK[client])
 		return Plugin_Continue;
 
