@@ -127,11 +127,13 @@ public void OnPluginStart()
 			continue;
 		
 		SDKHook(i, SDKHook_OnTakeDamage, OnTakeDamage);
+		m_spawnTime[i] = GetGameTime();
 		m_difficulty[i] = -1;
 		m_isEBot[i] = true;
 		m_class[i] = TF2_GetPlayerClass(i);
 		m_team[i] = GetClientTeam(i);
 		m_isAlive[i] = IsPlayerAlive(i);
+		m_ignoreEnemies[i] = 0.0;
 	}
 }
 
@@ -465,6 +467,7 @@ public void OnClientPutInServer(int client)
 	m_spawnTime[client] = GetGameTime();
 	m_isAlive[client] = false;
 	m_team[client] = -3;
+	m_ignoreEnemies[client] = 0.0;
 	
 	if (GetConVarInt(EBotDifficulty) < 0 || GetConVarInt(EBotDifficulty) > 4)
 		m_difficulty[client] = GetRandomInt(0, 4);
@@ -1186,6 +1189,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_lastEntitySeen[client] = 0.0;
 		m_stopTime[client] = 0.0;
 		m_pauseTime[client] = 0.0;
+		m_ignoreEnemies[client] = 0.0;
 		DeletePathNodes(client);
 
 		if (TF2_GetPlayerClass(client) == TFClass_Engineer)
