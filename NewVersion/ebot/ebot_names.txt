@@ -66,3 +66,4 @@ Pyro Master
 DED
 okie
 Oxtil
+Satellite
