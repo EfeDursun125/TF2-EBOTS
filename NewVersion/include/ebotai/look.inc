@@ -182,7 +182,7 @@ stock void LookAround(int client)
 		
 		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
 	}
-	else if (m_isSlowThink[client] && m_class[client] != TFClass_Medic && ChanceOf(m_eBotSenseChance[client])) // no any friends near, who's footsteps is this or fire sounds?
+	else if (m_isSlowThink[client] && m_ignoreEnemies[client] < GetGameTime() && m_class[client] != TFClass_Medic && ChanceOf(m_eBotSenseChance[client])) // no any friends near, who's footsteps is this or fire sounds?
 	{
 		for (int search = 1; search <= MaxClients; search++)
 		{

@@ -1276,7 +1276,20 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
     for (int i = 0; i < m_waypointNumber; i++)
     {
         if (astar[i].state == CLOSED)
-            PossiblePath.Push(i);
+        {
+            if (isCP || isAD)
+            {
+                if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT)
+                    continue;
+
+                if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+                    continue;
+                
+                PossiblePath.Push(i);
+            }
+            else
+                PossiblePath.Push(i);
+        }
     }
 
     // just roam around :(

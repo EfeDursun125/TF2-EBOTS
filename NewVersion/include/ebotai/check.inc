@@ -223,7 +223,7 @@ public void CheckSlowThink(int client)
 			}
 		}
 
-		if (ChanceOf(m_eBotSenseChance[client])) // any sus?
+		if (m_ignoreEnemies[client] < GetGameTime() && ChanceOf(m_eBotSenseChance[client])) // any sus?
 		{
 			for (int search = 1; search <= MaxClients; search++)
 			{

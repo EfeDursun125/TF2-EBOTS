@@ -1,3 +1,5 @@
+float m_ignoreEnemies[TFMaxPlayers];
+
 public void FindFriendsAndEnemiens(int client)
 {
 	m_enemyDistance[client] = 99999999.0;
@@ -7,6 +9,9 @@ public void FindFriendsAndEnemiens(int client)
 	m_hasEnemiesNear[client] = false;
 	m_hasFriendsNear[client] = false;
 	float medicdist = 99999999.0;
+
+	if (m_ignoreEnemies[client] > GetGameTime())
+		return;
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -257,6 +262,12 @@ public void FindEnemyEntities(int client)
 {
 	if (!m_isSlowThink[client])
 		return;
+
+	if (m_ignoreEnemies[client] > GetGameTime())
+	{
+		m_hasEntitiesNear[client] = false;
+		return;
+	}
 	
 	if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]) && GetEntProp(m_nearestEntity[client], Prop_Data, "m_iHealth") > 0 && IsVisible(GetEyePosition(client), GetCenter(m_nearestEntity[client])))
 		return;
