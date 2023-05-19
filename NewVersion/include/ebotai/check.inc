@@ -58,12 +58,12 @@ public void CheckSlowThink(int client)
 		{
 			if (!IsMoving(client))
 			{
-				if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) != TFClass_Sniper)
+				if (m_hasEnemiesNear[client] && m_class[client] != TFClass_Sniper)
 					AStarFindPath(-1, FindNearestWaypoint(GetOrigin(m_nearestEnemy[client]), 999999.0, client), client, GetOrigin(m_nearestEnemy[client]));
 				else if (m_goalIndex[client] != -1 && m_paths[m_goalIndex[client]].activeArea != currentActiveArea)
 					SelectObjective(client);
 			}
-			else if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_DemoMan)
+			else if (m_hasEnemiesNear[client] && m_class[client] == TFClass_DemoMan)
 				m_buttons[client] |= IN_ATTACK2;
 		}
 
@@ -105,29 +105,29 @@ public void CheckSlowThink(int client)
 				m_buttons[client] |= IN_ATTACK2;
 		}
 		
-		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Sniper && (IsWeaponSlotActive(client, 1) && m_secondaryID[client] == 751))
+		if (m_hasEnemiesNear[client] && m_class[client] == TFClass_Sniper && (IsWeaponSlotActive(client, 1) && m_secondaryID[client] == 751))
 			m_buttons[client] |= IN_ATTACK2;
 		
-		if (TF2_GetPlayerClass(client) == TFClass_Sniper && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 752))
+		if (m_class[client] == TFClass_Sniper && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 752))
 			m_buttons[client] |= IN_RELOAD;
 		
-		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && (IsWeaponSlotActive(client, 2) && m_meleeID[client] == 44 || m_meleeID[client] == 648))
+		if (m_hasEnemiesNear[client] && m_class[client] == TFClass_Scout && (IsWeaponSlotActive(client, 2) && m_meleeID[client] == 44 || m_meleeID[client] == 648))
 			m_attack2Timer[client] = GetGameTime() + 2.0;
 		
-		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Pyro && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 594))
+		if (m_hasEnemiesNear[client] && m_class[client] == TFClass_Pyro && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 594))
 			m_buttons[client] |= IN_ATTACK2;
 		
-		if (TF2_GetPlayerClass(client) == TFClass_Scout && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 448))
+		if (m_class[client] == TFClass_Scout && (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 448))
 			m_buttons[client] |= IN_ATTACK2;
 		
-		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Scout && m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
+		if (!m_hasEnemiesNear[client] && m_class[client] == TFClass_Scout && m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
 		{
 			EquipWeaponSlot(client, 1);
 			if (IsWeaponSlotActive(client, 1))
 				m_buttons[client] |= IN_ATTACK;
 		}
 		
-		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Soldier && m_secondaryID[client] == 129 || m_secondaryID[client] == 1001 || m_secondaryID[client] == 226 || m_secondaryID[client] == 354)
+		if (!m_hasEnemiesNear[client] && m_class[client] == TFClass_Soldier && m_secondaryID[client] == 129 || m_secondaryID[client] == 1001 || m_secondaryID[client] == 226 || m_secondaryID[client] == 354)
 		{
 			if (100.0 == GetEntPropFloat(client, Prop_Send, "m_flRageMeter"))
 			{
@@ -137,7 +137,7 @@ public void CheckSlowThink(int client)
 			}
 		}
 		
-		if (!m_hasEnemiesNear[client] && TF2_GetPlayerClass(client) == TFClass_Heavy && m_secondaryID[client] == 42 || m_secondaryID[client] == 863 || m_secondaryID[client] == 1002 || m_secondaryID[client] == 1190 || m_secondaryID[client] == 311 || m_secondaryID[client] == 159 || m_secondaryID[client] == 433)
+		if (!m_hasEnemiesNear[client] && m_class[client] == TFClass_Heavy && m_secondaryID[client] == 42 || m_secondaryID[client] == 863 || m_secondaryID[client] == 1002 || m_secondaryID[client] == 1190 || m_secondaryID[client] == 311 || m_secondaryID[client] == 159 || m_secondaryID[client] == 433)
 		{
 			if (GetClientHealth(client) < (GetMaxHealth(client) / 1.4))
 			{
@@ -147,14 +147,14 @@ public void CheckSlowThink(int client)
 			}
 		}
 
-		if (TF2_GetPlayerClass(client) == TFClass_Pyro && m_primaryID[client] != 594)
+		if (m_class[client] == TFClass_Pyro && m_primaryID[client] != 594)
 		{
 			int iProjectile = -1;
 			while ((iProjectile = FindEntityByClassname(iProjectile, "tf_projectile_*")) != INVALID_ENT_REFERENCE)
 			{
-				if (IsValidEntity(iProjectile) && GetClientTeam(client) != GetTeamNumber(iProjectile))
+				if (IsValidEntity(iProjectile) && m_team[client] != GetTeamNumber(iProjectile))
 				{
-					if (GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client), true) <= Squared(256))
+					if (GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client), true) <= Squaredf(256.0))
 					{
 						EquipWeaponSlot(client, 0);
 						m_buttons[client] |= IN_ATTACK2;
@@ -165,14 +165,14 @@ public void CheckSlowThink(int client)
 			}
 		}
 		
-		if (TF2_GetPlayerClass(client) == TFClass_Engineer && m_secondaryID[client] == 528)
+		if (m_class[client] == TFClass_Engineer && m_secondaryID[client] == 528)
 		{
 			int iProjectile = -1;
 			while ((iProjectile = FindEntityByClassname(iProjectile, "tf_projectile_*")) != INVALID_ENT_REFERENCE)
 			{
-				if (IsValidEntity(iProjectile) && GetClientTeam(client) != GetTeamNumber(iProjectile))
+				if (IsValidEntity(iProjectile) && m_team[client] != GetTeamNumber(iProjectile))
 				{
-					if (GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client), true) <= Squared(256))
+					if (GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client), true) <= Squaredf(256.0))
 					{
 						EquipWeaponSlot(client, 1);
 						m_lookAt[client] = GetOrigin(iProjectile);
@@ -185,7 +185,7 @@ public void CheckSlowThink(int client)
 			}
 		}
 
-		if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
+		if (m_class[client] == TFClass_DemoMan)
 		{
 			m_stickyCount[client] = GetPlayerStickyCount(client);
 			
@@ -202,22 +202,19 @@ public void CheckSlowThink(int client)
 
 					for (int search = 1; search <= MaxClients; search++)
 					{
-						if (search == client)
-							continue;
-
 						if (!IsValidClient(search))
 							continue;
 
-						if (!IsPlayerAlive(search))
+						if (!m_isAlive[search])
+							continue;
+
+						if (m_team[client] == m_team[search])
 							continue;
 
 						if (TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
 							continue;
 
-						if (GetClientTeam(client) == GetClientTeam(search))
-							continue;
-						
-						if (GetVectorDistance(GetOrigin(iSticky), GetOrigin(search), true) > Squared(120))
+						if (GetVectorDistance(GetOrigin(iSticky), GetOrigin(search), true) > Squaredf(125.0))
 							continue;
 						
 						m_buttons[client] |= IN_ATTACK2;
@@ -230,17 +227,20 @@ public void CheckSlowThink(int client)
 		{
 			for (int search = 1; search <= MaxClients; search++)
 			{
-				if (search == client)
-					continue;
-				
 				if (!IsValidClient(search))
 					continue;
 				
-				if (!IsPlayerAlive(search))
+				if (!m_isAlive[search])
 					continue;
 				
+				if (m_team[client] == m_team[search])
+					continue;
+
+				if (m_class[search] != TFClass_Spy)
+					continue;
+
 				// only pyro ebots can suspect ebot spies
-				if (IsEBot(search) && TF2_GetPlayerClass(client) == TFClass_Pyro)
+				if (m_class[client] != TFClass_Pyro && IsEBot(search))
 					continue;
 				
 				if (!IsVisible(GetEyePosition(client), GetEyePosition(search)))
@@ -256,10 +256,10 @@ public void CheckSlowThink(int client)
 			}
 		}
 
-		if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Spy)
+		if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && m_class[m_nearestEnemy[client]] == TFClass_Spy)
 			m_knownSpy[client] = m_nearestEnemy[client];
 		
-		if (TF2_GetPlayerClass(client) == TFClass_Spy)
+		if (m_class[client] == TFClass_Spy)
 		{
 			if (!TF2_IsPlayerInCondition(client, TFCond_Disguised) && !TF2_IsPlayerInCondition(client, TFCond_Disguising) && !TF2_HasTheFlag(client))
 				DisguiseAsEnemy(client);
@@ -298,16 +298,16 @@ public void CheckHideFromDanger(int client)
 
 	if (!GameRules_GetProp("m_bPlayingMedieval") && m_enemiesNearCount[client] > m_friendsNearCount[client] + 2)
 		musthide = true;
-	else if (TF2_GetPlayerClass(client) == TFClass_Medic && m_friendsNearCount[client] <= 0)
+	else if (m_class[client] == TFClass_Medic && m_friendsNearCount[client] <= 0)
 		musthide = true;
-	else if (TF2_GetPlayerClass(client) == TFClass_Spy && m_meleeID[client] == 356)
+	else if (m_class[client] == TFClass_Spy && m_meleeID[client] == 356)
 	{
 		if (GetClientHealth(client) <= 55.0)
 			musthide = true;
 	}
 	else if (GetClientHealth(client) <= (GetMaxHealth(client) / 1.4))
 		musthide = true;
-	else if (IsValidClient(m_nearestEnemy[client]) && TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Heavy && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) <= Squaredf(768.0))
+	else if (IsValidClient(m_nearestEnemy[client]) && m_class[m_nearestEnemy[client]] == TFClass_Heavy && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) <= Squaredf(768.0))
 		musthide = true;
 	else if (m_hasEnemiesNear[client] && TryToHide(client))
 		musthide = true;
@@ -325,7 +325,7 @@ public void CheckHealth(int client)
 	if (m_hasWaypoints && m_hasEnemiesNear[client])
 		return;
 	
-	if (TF2_GetPlayerClass(client) == TFClass_Spy && m_meleeID[client] == 356)
+	if (m_class[client] == TFClass_Spy && m_meleeID[client] == 356)
 	{
 		if (GetClientHealth(client) < 55.0)
 			m_lowHealth[client] = true;
@@ -347,7 +347,7 @@ public void CheckAmmo(int client)
 	if (!m_isSlowThink[client])
 		return;
 		
-	if (GetAmmo(client, 0) <= 3 && TF2_GetPlayerClass(client) != TFClass_Spy && TF2_GetPlayerClass(client) != TFClass_Medic)
+	if (GetAmmo(client, 0) <= 3 && m_class[client] != TFClass_Spy && m_class[client] != TFClass_Medic)
 		m_lowAmmo[client] = true;
 	else
 		m_lowAmmo[client] = false;
@@ -364,9 +364,9 @@ public void CheckWalls(int client)
 
 stock bool TryToHide(int client)
 {
-	if (TF2_GetPlayerClass(client) == TFClass_Pyro && GetVectorDistance(GetOrigin(client), m_lookAt[client], true) > Squaredf(512.0))
+	if (m_class[client] == TFClass_Pyro && GetVectorDistance(GetOrigin(client), m_lookAt[client], true) > Squaredf(512.0))
 		return true;
-	else if (TF2_GetPlayerClass(client) == TFClass_Sniper && GetVectorDistance(GetOrigin(client), m_lookAt[client], true) <= Squaredf(512.0))
+	else if (m_class[client] == TFClass_Sniper && GetVectorDistance(GetOrigin(client), m_lookAt[client], true) <= Squaredf(512.0))
 		return true;
 
 	return false;

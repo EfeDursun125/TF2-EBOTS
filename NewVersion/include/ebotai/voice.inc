@@ -16,7 +16,7 @@ stock void UseVoiceCommand(int client)
 	{
 		m_voiceTimer[client] = GetGameTime() + GetRandomFloat(10.0, 20.0);
 
-		if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Spy && ChanceOf(m_eBotSenseChance[client]))
+		if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && m_class[m_nearestEnemy[client]] == TFClass_Spy && ChanceOf(m_eBotSenseChance[client]))
 		{
 			CallVoiceCommand(client, "voicemenu 1 1");
 			return;

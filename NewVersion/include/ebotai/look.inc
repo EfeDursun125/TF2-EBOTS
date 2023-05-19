@@ -40,9 +40,9 @@ stock void LookAtEnemiens(int client)
 		if (GetEntityFlags(m_nearestEnemy[client]) & FL_ONGROUND)
 		{
 			float AimPositon2[3];
-			AimPositon2[2] = AimPositon[2] + (EntVec[2] / 2.5);
-			AimPositon2[1] = AimPositon[1] + (EntVec[1] / 2.5);
-			AimPositon2[0] = AimPositon[0] + (EntVec[0] / 2.5);
+			AimPositon2[2] = AimPositon[2] + (EntVec[2] * 0.4);
+			AimPositon2[1] = AimPositon[1] + (EntVec[1] * 0.4);
+			AimPositon2[0] = AimPositon[0] + (EntVec[0] * 0.4);
 			
 			if (IsVisible(GetEyePosition(client), AimPositon2))
 				m_lookAt[client] = AimPositon2;
@@ -52,9 +52,9 @@ stock void LookAtEnemiens(int client)
 		else
 		{
 			float AimPositon2[3];
-			AimPositon2[2] = AimPositon[2] + (EntVec[2] / 2);
-			AimPositon2[1] = AimPositon[1] + (EntVec[1] / 2);
-			AimPositon2[0] = AimPositon[0] + (EntVec[0] / 2);
+			AimPositon2[2] = AimPositon[2] + (EntVec[2] * 0.5);
+			AimPositon2[1] = AimPositon[1] + (EntVec[1] * 0.5);
+			AimPositon2[0] = AimPositon[0] + (EntVec[0] * 0.5);
 			
 			if (IsVisible(GetEyePosition(client), AimPositon2))
 				m_lookAt[client] = AimPositon2;
@@ -62,7 +62,7 @@ stock void LookAtEnemiens(int client)
 				m_lookAt[client] = AimPositon;
 		}
 	}
-	else if (TF2_GetPlayerClass(client) == TFClass_Soldier && IsWeaponSlotActive(client, 0))
+	else if (m_class[client] == TFClass_Soldier && IsWeaponSlotActive(client, 0))
 	{
 		if (m_difficulty[client] >= 2 && IsVisible(GetEyePosition(client), GetOrigin(m_nearestEnemy[client])))
 		{
@@ -79,12 +79,12 @@ stock void LookAtEnemiens(int client)
 		else
 			m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
 	}
-	else if (TF2_GetPlayerClass(client) == TFClass_DemoMan && !IsWeaponSlotActive(client, 2))
+	else if (m_class[client] == TFClass_DemoMan && !IsWeaponSlotActive(client, 2))
 	{
 		GetClientEyePosition(m_nearestEnemy[client], BestAimPosition);
 		if (TF2_GetPlayerWeaponID(client, 0) == 996)
 		{
-			BestAimPosition[2] += (SquareRoot(distance) / 7) - 5;
+			BestAimPosition[2] += (SquareRoot(distance) * 0.14285714285) - 5;
 			if (IsVisible(GetEyePosition(client), BestAimPosition))
 				m_lookAt[client] = BestAimPosition;
 			else
@@ -139,7 +139,7 @@ stock void LookAtEnemiens(int client)
 				m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
 		}
 	}
-	else if (TF2_GetPlayerClass(client) == TFClass_Spy && (TF2_GetPlayerWeaponID(client, 0) == 61 || TF2_GetPlayerWeaponID(client, 0) == 1006))
+	else if (m_class[client] == TFClass_Spy && (TF2_GetPlayerWeaponID(client, 0) == 61 || TF2_GetPlayerWeaponID(client, 0) == 1006))
 	{
 		int iBone = LookupBone(m_nearestEnemy[client], "bip_head");
 		if (iBone != -1)
@@ -172,7 +172,7 @@ stock void LookAround(int client)
 	float ClientEye[3];
 	GetClientEyePosition(client, ClientEye);
 
-	if (m_hasFriendsNear[client] && IsAttacking(m_nearestFriend[client]) && !IsWeaponSlotActive(client, 2) && !IsWeaponSlotActive(m_nearestFriend[client], 2) && TF2_GetPlayerClass(m_nearestFriend[client]) != TFClass_Medic)
+	if (m_hasFriendsNear[client] && m_class[m_nearestFriend[client]] != TFClass_Medic && IsAttacking(m_nearestFriend[client]) && !IsWeaponSlotActive(client, 2) && !IsWeaponSlotActive(m_nearestFriend[client], 2))
 	{
 		int friend = m_nearestFriend[client];
 		if (IsEBot(friend) || m_isAFK[friend])
@@ -182,20 +182,20 @@ stock void LookAround(int client)
 		
 		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
 	}
-	else if (m_isSlowThink[client] && ChanceOf(m_eBotSenseChance[client])) // no any friends near, who's footsteps is this or fire sounds?
+	else if (m_isSlowThink[client] && m_class[client] != TFClass_Medic && ChanceOf(m_eBotSenseChance[client])) // no any friends near, who's footsteps is this or fire sounds?
 	{
-		for (int search = 0; search < MaxClients; search++)
+		for (int search = 1; search <= MaxClients; search++)
 		{
 			if (!IsValidClient(search))
 				continue;
 			
-			if (!IsPlayerAlive(search))
+			if (!m_isAlive[search])
+				continue;
+
+			if (m_team[client] == m_team[search])
 				continue;
 			
 			if (TF2_IsPlayerInCondition(search, TFCond_HalloweenGhostMode))
-				continue;
-			
-			if (GetClientTeam(client) == GetClientTeam(search))
 				continue;
 			
 			if (!IsAttacking(search) && !IsMoving(search))
@@ -204,10 +204,7 @@ stock void LookAround(int client)
 			if (IsWeaponSlotActive(search, 2))
 				continue;
 			
-			if (TF2_GetPlayerClass(client) == TFClass_Medic)
-				continue;
-			
-			if (GetVectorDistance(GetOrigin(client), GetOrigin(search), true) > Squared(768))
+			if (GetVectorDistance(GetOrigin(client), GetOrigin(search), true) > Squaredf(768.0))
 				continue;
 			
 			float PlayerArea[3];
@@ -237,7 +234,7 @@ stock void LookAround(int client)
 				}
 			}
 
-			if (m_difficulty[client] > 0 && TF2_GetPlayerClass(client) == TFClass_Heavy && IsWeaponSlotActive(client, 0))
+			if (m_difficulty[client] > 0 && m_class[client] == TFClass_Heavy && IsWeaponSlotActive(client, 0))
 			{
 				if (IsValidEntity(GetPlayerWeaponSlot(client, TFWeaponSlot_Primary)))
 				{

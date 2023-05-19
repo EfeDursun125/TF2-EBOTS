@@ -1,5 +1,3 @@
-bool m_isValidClient[TFMaxPlayers];
-
 enum
 {
     PRO_DEFAULT = 0,
@@ -228,7 +226,7 @@ stock bool IsSniper(int client)
 	if (IsEBot(client) || m_isAFK[client])
 		return m_isSniper[client];
 	else
-		return TF2_GetPlayerClass(client) == TFClass_Sniper;
+		return m_class[client] == TFClass_Sniper;
 }
 
 stock bool IsMedic(int client)
@@ -236,7 +234,7 @@ stock bool IsMedic(int client)
 	if (IsEBot(client) || m_isAFK[client])
 		return m_isMedic[client];
 	else
-		return TF2_GetPlayerClass(client) == TFClass_Medic;
+		return m_class[client] == TFClass_Medic;
 }
 
 stock bool HasCrossbow(int client)
@@ -434,18 +432,12 @@ stock float[] GetEyeAngles(int client)
 
 stock float[] GetCenter(int entity)
 {
-	if (!HasEntProp(entity, Prop_Send, "m_vecMaxs"))
-	{
-		float vector[3];
-		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vector);
-		return vector;
-	}
 	float result[3], maxs[3], origin[3];
 	GetEntPropVector(entity, Prop_Send, "m_vecOrigin", origin);
 	GetEntPropVector(entity, Prop_Send, "m_vecMaxs", maxs);
 	result[0] = origin[0];
 	result[1] = origin[1];
-	result[2] = origin[2] += (maxs[2] / 2);
+	result[2] = origin[2] += (maxs[2] * 0.5);
 	return result;
 }
 
@@ -647,7 +639,7 @@ stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3], int tra
 	float max_angvel = 1024.0 + (1024.0 * fps);
 	
 	if (m_cosError[client] > 0.7)
-		max_angvel *= Sine((3.14 / 2.0) * (1.0 + ((-49.0 / 15.0) * (m_cosError[client] - 0.7))));
+		max_angvel *= Sine((3.14 * 0.5) * (1.0 + ((-49.0 * 0.06666666666) * (m_cosError[client] - 0.7))));
 	
 	if (m_itAimStart[client] != -1 && (GetGameTime() - m_itAimStart[client] < 0.25))
 		max_angvel *= 4.0 * (GetGameTime() - m_itAimStart[client]);
@@ -1692,13 +1684,14 @@ stock void DisguiseAsEnemy(int client)
 		class.Push(8);
 		class.Push(9);
 	}
+	
 	TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), view_as<TFClassType>(class.Get(GetRandomInt(0, class.Length - 1))));
 	delete class;
 }
 
 stock bool AvoidBumpingEnemies(int client, float out[3])
 {
-	if (TF2_GetPlayerClass(client) != TFClass_Spy)
+	if (m_class[client] != TFClass_Spy)
 		return false;
 	
 	int ClosestPlayer = 0;
@@ -1740,7 +1733,7 @@ stock bool AvoidBumpingEnemies(int client, float out[3])
 
 stock bool IsClientAimingToMe(int client, int target)
 {
-	if (ClientViews(target, client, 0.96))
+	if (ClientViews(target, client, 0.9))
 		return true;
 		
 	return false;
@@ -1756,7 +1749,7 @@ stock bool IsClientVisibleInScreen(int client, int target)
 
 stock bool IsClientAimingToPosition(int client, float targetposition[3])
 {
-	if (ClientViewsOrigin(client, targetposition, 0.96))
+	if (ClientViewsOrigin(client, targetposition, 0.9))
 		return true;
 		
 	return false;

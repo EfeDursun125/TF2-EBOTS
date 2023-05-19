@@ -1072,17 +1072,17 @@ stock float CostNormal(int current, int parent, int client)
         return 1.0;
     
     // low health or don't want take any damage
-    if (m_paths[current].flags == WAYPOINT_FALLDAMAGE && (m_lowHealth[client] || GetRandomInt(1, 3) == 1 || TF2_GetPlayerClass(client) == TFClass_Spy))
+    if (m_paths[current].flags == WAYPOINT_FALLDAMAGE && (m_lowHealth[client] || m_class[client] == TFClass_Spy || GetRandomInt(1, 3) == 1))
         return 65355.0;
     
     // they don't let us jump and heavy can't jump
-    if (m_paths[current].flags == WAYPOINT_JUMP && (m_hasEnemiesNear[client] || TF2_GetPlayerClass(client) == TFClass_Heavy))
+    if (m_paths[current].flags == WAYPOINT_JUMP && (m_hasEnemiesNear[client] || m_class[client] == TFClass_Heavy))
         return 65355.0;
     
-    if (m_paths[current].flags == WAYPOINT_NOSPY && TF2_GetPlayerClass(client) == TFClass_Spy)
+    if (m_paths[current].flags == WAYPOINT_NOSPY && m_class[client] == TFClass_Spy)
         return 65355.0;
     
-    if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+    if (m_class[client] == TFClass_Engineer)
     {
         if (IsValidEntity(SentryGun[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(128.0))
             return GetWaypointDistance(current, parent) * GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true);
@@ -1090,9 +1090,8 @@ stock float CostNormal(int current, int parent, int client)
         if (IsValidEntity(Dispenser[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(128.0))
             return GetWaypointDistance(current, parent) * GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true);
     }
-    
-    float cl = float(client) + 1.0;
-	return GetWaypointDistance(current, parent) + float(GetDeaths(current) * GetDeaths(parent)) + GetDamage(current) + GetDamage(parent) + GetRandomFloat(-cl, cl);
+
+	return GetWaypointDistance(current, parent) + float(GetDeaths(current) * GetDeaths(parent)) + GetDamage(current) + GetDamage(parent);
 }
 
 stock float CostDamage(int current, int parent)
@@ -1212,13 +1211,13 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
             if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
+            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
                 continue;
 
-            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
+            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
                 continue;
 
-            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) != TFClass_DemoMan)
+            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
                 continue;
             else
             {
@@ -1376,13 +1375,13 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
             if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
+            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
                 continue;
 
-            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
+            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) != TFClass_DemoMan)
+            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
                 continue;
             else
             {
@@ -1493,18 +1492,18 @@ stock bool AStarFindHidingSpot(int srcIndex, int client, float dangerOrigin[3])
             if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
                 continue;
             
-            if (m_paths[self].team == 2 && GetClientTeam(client) == 3)
+            if (m_paths[self].team == 2 && m_team[client] == 3)
                 continue;
-            else if (m_paths[self].team == 3 && GetClientTeam(client) == 2)
+            else if (m_paths[self].team == 3 && m_team[client] == 2)
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
+            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && m_class[client]!= TFClass_Scout)
                 continue;
 
-            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
+            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) != TFClass_DemoMan)
+            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
                 continue;
             else
             {
@@ -1611,18 +1610,18 @@ stock bool AStarFindHealthPack(int srcIndex, int client)
             if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
                 continue;
             
-            if (m_paths[self].team == 2 && GetClientTeam(client) == 3)
+            if (m_paths[self].team == 2 && m_team[client] == 3)
                 continue;
-            else if (m_paths[self].team == 3 && GetClientTeam(client) == 2)
+            else if (m_paths[self].team == 3 && m_team[client] == 2)
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
+            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
                 continue;
 
-            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
+            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) != TFClass_DemoMan)
+            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
                 continue;
             else
             {
@@ -1724,7 +1723,7 @@ stock bool AStarFindAmmoPack(int srcIndex, int client)
     dangerOrigin = GetOrigin(client);
 
     bool isEngineer = false;
-    if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+    if (m_class[client] == TFClass_Engineer)
         isEngineer = true;
 
     astar[srcIndex].f = GetFastDistance(m_paths[srcIndex].origin, dangerOrigin);
@@ -1777,18 +1776,18 @@ stock bool AStarFindAmmoPack(int srcIndex, int client)
             if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
                 continue;
             
-            if (m_paths[self].team == 2 && GetClientTeam(client) == 3)
+            if (m_paths[self].team == 2 && m_team[client] == 3)
                 continue;
-            else if (m_paths[self].team == 3 && GetClientTeam(client) == 2)
+            else if (m_paths[self].team == 3 && m_team[client] == 2)
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && TF2_GetPlayerClass(client) != TFClass_Scout)
+            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
                 continue;
 
-            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (TF2_GetPlayerClass(client) != TFClass_Soldier || m_lowHealth[client]))
+            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) != TFClass_DemoMan)
+            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
                 continue;
             else
             {
@@ -1957,10 +1956,10 @@ stock bool IsVisibleByEnemy(int client, int waypointIndex, float height)
         if (!IsValidClient(i))
 			continue;
 		
-		if (!IsPlayerAlive(i))
+		if (!m_isAlive[i])
 			continue;
 		
-		if (GetClientTeam(i) == GetClientTeam(client))
+		if (m_team[i] == m_team[client])
 			continue;
         
         if (IsVisible(origin, GetEyePosition(i)))
@@ -2030,10 +2029,9 @@ stock int FindNearestWaypoint(float origin[3], float maxDistance = 999999.0, int
 
         if (client > 0 && client <= MaxClients)
         {
-            int team = GetClientTeam(client);
-            if (m_paths[i].team == 2 && team == 3)
+            if (m_paths[i].team == 2 && m_team[client] == 3)
                 continue;
-            else if (m_paths[i].team == 3 && team == 2)
+            else if (m_paths[i].team == 3 && m_team[client] == 2)
                 continue;
         }
         
@@ -2324,6 +2322,7 @@ stock void WaypointSaveNAV()
 {
     if (m_analyzeWaypoints == false)
         return;
+        
     if (m_waypointNumber > 0)
     {
         for (int i = 0; i < m_waypointNumber; i++)

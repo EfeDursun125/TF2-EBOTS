@@ -1,9 +1,16 @@
 stock void FollowPath(int client, float targetposition[3], int entity = -1, int index = -1)
 {
+	if (m_spawnTime[client] + 2.0 > GetGameTime())
+	{
+		SelectObjective(client);
+		return;
+	}
+
 	if (IsNullVector(targetposition))
 	{
 		DeletePathNodes(client);
 		SelectObjective(client);
+		return;
 	}
 	
 	if (m_stopTime[client] > GetGameTime() && !TF2_IsPlayerInCondition(client, TFCond_OnFire))
@@ -144,7 +151,7 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 						MoveTo(client, flGoPos, !m_hasWaypoints);
 						m_buttons[client] |= IN_JUMP;
 
-						if (TF2_GetPlayerClass(client) == TFClass_Scout)
+						if (m_class[client] == TFClass_Scout)
 						{
 							DJTime[client] = GetGameTime() + 0.5;
 							NoDodge[client] = GetGameTime() + 6.5;
@@ -182,6 +189,12 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 
 stock void FindPath(int client, float targetposition2[3], int entity = -1, int index = -1)
 {
+	if (m_spawnTime[client] + 2.0 > GetGameTime())
+	{
+		SelectObjective(client);
+		return;
+	}
+		
 	if (m_hasWaypoints)
 	{
 		if (isPLR || (isPL && GetClientTeam(client) == 3) || isCP)

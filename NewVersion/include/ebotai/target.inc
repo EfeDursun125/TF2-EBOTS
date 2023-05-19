@@ -10,13 +10,13 @@ public void FindFriendsAndEnemiens(int client)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!m_isValidClient[i])
+		if (!IsValidClient(i))
+			continue;
+
+		if (!m_isAlive[i])
 			continue;
 
 		if (i == client)
-			continue;
-		
-		if (!IsPlayerAlive(i))
 			continue;
 		
 		if (TF2_IsPlayerInCondition(i, TFCond_HalloweenGhostMode))
@@ -28,33 +28,36 @@ public void FindFriendsAndEnemiens(int client)
 		if (!IsVisible(GetEyePosition(client), GetEyePosition(i)))
 			continue;
 		
-		if (GetClientTeam(i) == GetClientTeam(client))
+		if (m_team[i] == m_team[client])
 		{
+			int health = GetClientHealth(i);
+			int maxHealth = GetMaxHealth(i);
+			
 			if (IsMedic(client) || HasCrossbow(client))
 			{
 				// no medigun no pocket
-				if (HasCrossbow(client) && GetClientHealth(i) >= GetMaxHealth(i))
+				if (HasCrossbow(client) && health >= maxHealth)
 					continue;
 
-				if (GameRules_GetProp("m_bPlayingMedieval") && GetClientHealth(i) >= GetMaxHealth(i))
+				if (GameRules_GetProp("m_bPlayingMedieval") && health >= maxHealth)
 					continue;
 				
 				if (TF2_IsPlayerInCondition(i, TFCond_Cloaked))
 					continue;
 		
-				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && GetClientHealth(i) >= GetMaxHealth(i))
+				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && health >= maxHealth)
 					continue;
 		
-				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsWeaponSlotActive(i, 2) && GetClientHealth(i) >= GetMaxHealth(i))
+				if (m_class[i] == TFClass_Engineer && IsWeaponSlotActive(i, 2) && health >= maxHealth)
 					continue;
 		
-				if (IsMedic(i) && GetClientHealth(i) >= GetMaxHealth(i))
+				if (IsMedic(i) && health >= maxHealth)
 					continue;
 		
-				if (IsSniper(i) && GetClientHealth(i) >= GetMaxHealth(i))
+				if (IsSniper(i) && health >= maxHealth)
 					continue;
 		
-				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsWeaponSlotActive(i, 5) && GetClientHealth(i) >= GetMaxHealth(i))
+				if (m_class[i] == TFClass_Engineer && IsWeaponSlotActive(i, 5) && health >= maxHealth)
 					continue;
 		
 				m_friendsNearCount[client]++;
@@ -62,20 +65,20 @@ public void FindFriendsAndEnemiens(int client)
 				float realdist = m_friendDistance[client];
 				float pri = 1.0; // lowest = highest priority
 
-				if (TF2_GetPlayerClass(i) == TFClass_Heavy)
+				if (m_class[i] == TFClass_Heavy)
 					pri = 0.5;
-				else if (TF2_GetPlayerClass(i) == TFClass_Soldier)
+				else if (m_class[i] == TFClass_Soldier)
 					pri = 0.6;
-				else if (TF2_GetPlayerClass(i) == TFClass_Pyro)
+				else if (m_class[i] == TFClass_Pyro)
 					pri = 0.7;
-				else if (TF2_GetPlayerClass(i) == TFClass_DemoMan)
+				else if (m_class[i] == TFClass_DemoMan)
 					pri = 0.8;
-				else if (TF2_GetPlayerClass(i) == TFClass_Scout)
+				else if (m_class[i] == TFClass_Scout)
 					pri = 0.9;
 				else if (IsMedic(i))
 					pri = 1.1;
 
-				float edict_distance = ((realdist * GetClientHealth(i)) * (TF2_GetNumberOfHealers(i) + 1)) * pri;
+				float edict_distance = ((realdist * health) * (TF2_GetNumberOfHealers(i) + 1)) * pri;
 
 				if (edict_distance < medicdist)
 				{
@@ -86,28 +89,28 @@ public void FindFriendsAndEnemiens(int client)
 			else if (HasSandwich(client))
 			{
 				// no medigun no pocket
-				if (HasSandwich(client) && GetClientHealth(i) >= GetMaxHealth(i))
+				if (HasSandwich(client) && health >= maxHealth)
 					continue;
 
-				if (GameRules_GetProp("m_bPlayingMedieval") && GetClientHealth(i) >= GetMaxHealth(i))
+				if (GameRules_GetProp("m_bPlayingMedieval") && health >= maxHealth)
 					continue;
 				
 				if (TF2_IsPlayerInCondition(i, TFCond_Cloaked))
 					continue;
 		
-				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && GetClientHealth(i) >= GetMaxHealth(i))
+				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && health >= maxHealth)
 					continue;
 		
-				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsWeaponSlotActive(i, 2) && GetClientHealth(i) >= GetMaxHealth(i))
+				if (m_class[i] == TFClass_Engineer && IsWeaponSlotActive(i, 2) && health >= maxHealth)
 					continue;
 		
-				if (IsMedic(i) && GetClientHealth(i) >= GetMaxHealth(i))
+				if (IsMedic(i) && health >= maxHealth)
 					continue;
 		
-				if (IsSniper(i) && GetClientHealth(i) >= GetMaxHealth(i))
+				if (IsSniper(i) && health >= maxHealth)
 					continue;
 		
-				if (TF2_GetPlayerClass(i) == TFClass_Engineer && IsWeaponSlotActive(i, 5) && GetClientHealth(i) >= GetMaxHealth(i))
+				if (m_class[i] == TFClass_Engineer && IsWeaponSlotActive(i, 5) && health >= maxHealth)
 					continue;
 		
 				m_friendsNearCount[client]++;
@@ -178,7 +181,7 @@ public void FindFriendsAndEnemiens(int client)
 				if (TF2_IsPlayerInCondition(i, TFCond_Ubercharged))
 					continue;
 
-				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && TF2_GetPlayerClass(i) == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
+				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && m_class[i] == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
 					continue;
 			}
 			else if (edict_distance > Squared(80))
@@ -186,7 +189,7 @@ public void FindFriendsAndEnemiens(int client)
 				if (!IsAttacking(i) && !TF2_IsPlayerInCondition(client, TFCond_Disguised) && !ClientViews(client, i))
 					continue;
 				
-				if (TF2_GetPlayerClass(i) == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
+				if (m_class[i] == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
 					continue;
 			}
 
@@ -275,7 +278,7 @@ public void FindEnemyEntities(int client)
 		if (GetEntProp(i, Prop_Data, "m_iHealth") <= 0)
 			continue;
 		
-		if (GetTeamNumber(i) == GetClientTeam(client))
+		if (GetTeamNumber(i) == m_team[client])
 			continue;
 
 		if (HasEntProp(i, Prop_Send, "m_bHasSapper") && GetEntProp(i, Prop_Send, "m_bHasSapper") != 0)
