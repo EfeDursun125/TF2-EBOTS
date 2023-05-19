@@ -12,8 +12,13 @@ float autoupdate = 0.0;
 
 float DJTime[TFMaxPlayers];
 float NoDodge[TFMaxPlayers];
+float m_spawnTime[TFMaxPlayers];
 
 char PlayerName[TFMaxPlayers][64];
+
+TFClassType m_class[TFMaxPlayers];
+int m_team[TFMaxPlayers];
+bool m_isAlive[TFMaxPlayers];
 
 public Plugin myinfo = 
 {
@@ -124,6 +129,9 @@ public void OnPluginStart()
 		SDKHook(i, SDKHook_OnTakeDamage, OnTakeDamage);
 		m_difficulty[i] = -1;
 		m_isEBot[i] = true;
+		m_class[i] = TF2_GetPlayerClass(i);
+		m_team[i] = GetClientTeam(i);
+		m_isAlive[i] = IsPlayerAlive(i);
 	}
 }
 
@@ -218,6 +226,9 @@ public Action SaveWaypoints(Handle timer)
 
 public void OnMapStart()
 {
+	m_isAlive[0] = false;
+	m_team[0] = -3;
+
 	GetCurrentMap(currentMap, sizeof(currentMap));
 	AutoLoadGamemode();
 
@@ -360,7 +371,6 @@ public Action Command_Afk(int client, int args)
 	return Plugin_Handled;
 }
 
-
 public void EBotDeathChat(int client)
 {
 	if (GetRandomInt(1, 100) > GetConVarInt(EBotDeadChat))
@@ -452,6 +462,9 @@ public void OnClientPutInServer(int client)
 	CurrentProcessTime[client] = 0.0;
 	CurrentProcess[client] = PRO_DEFAULT;
 	m_damageTime[client] = 0.0;
+	m_spawnTime[client] = GetGameTime();
+	m_isAlive[client] = false;
+	m_team[client] = -3;
 	
 	if (GetConVarInt(EBotDifficulty) < 0 || GetConVarInt(EBotDifficulty) > 4)
 		m_difficulty[client] = GetRandomInt(0, 4);
@@ -837,12 +850,16 @@ public void OnGameFrame()
 
 public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float angles[3])
 {
-	m_isValidClient[client] = IsValidClient(client);
-	if (!m_isValidClient[client])
+	if (!IsClientInGame(client))
 		return Plugin_Continue;
 	
 	if (!IsEBot(client) && !m_isAFK[client])
+	{
+		m_class[client] = TF2_GetPlayerClass(client);
+		m_isAlive[client] = IsPlayerAlive(client);
+		m_team[client] = GetClientTeam(client);
 		return Plugin_Continue;
+	}
 
 	// auto backstab
 	if (IsWeaponSlotActive(client, 2))
@@ -875,7 +892,8 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 	}
 
 	// is client alive? if not, we can't do anything
-	if (IsPlayerAlive(client))
+	m_isAlive[client] = IsPlayerAlive(client);
+	if (m_isAlive[client])
 	{
 		if (GetConVarBool(EBotAllowAttackButtons))
 		{
@@ -942,7 +960,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 
 		vel = m_moveVel[client];
 
-		if (m_currentIndex[client] > 0 && m_paths[m_currentIndex[client]].flags == WAYPOINT_DEMOCHARGE && TF2_GetPlayerClass(client) == TFClass_DemoMan)
+		if (m_currentIndex[client] > 0 && m_paths[m_currentIndex[client]].flags == WAYPOINT_DEMOCHARGE && m_class[client] == TFClass_DemoMan)
 		{
 			m_currentWaypointIndex[client]--;
 			m_targetNode[client]--;
@@ -1044,7 +1062,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 					{
 						if (!GetConVarBool(EBotChangeClassRandom) && GetRandomInt(1, 2) == 1 && IsValidClient(m_lastKiller[client]))
 						{
-							if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Scout)
+							if (m_class[m_lastKiller[client]] == TFClass_Scout)
 							{
 								int rand = GetRandomInt(1, 3);
 								if (rand == 1)
@@ -1054,7 +1072,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 								else
 									TF2_SetPlayerClass(client, TFClass_Heavy);
 							}
-							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Soldier)
+							else if (m_class[m_lastKiller[client]] == TFClass_Soldier)
 							{
 								int rand = GetRandomInt(1, 3);
 								if (rand == 1)
@@ -1064,7 +1082,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 								else
 									TF2_SetPlayerClass(client, TFClass_Sniper);
 							}
-							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Pyro)
+							else if (m_class[m_lastKiller[client]] == TFClass_Pyro)
 							{
 								int rand = GetRandomInt(1, 3);
 								if (rand == 1)
@@ -1074,7 +1092,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 								else
 									TF2_SetPlayerClass(client, TFClass_Heavy);
 							}
-							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_DemoMan)
+							else if (m_class[m_lastKiller[client]] == TFClass_DemoMan)
 							{
 								int rand = GetRandomInt(1, 3);
 								if (rand == 1)
@@ -1084,7 +1102,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 								else
 									TF2_SetPlayerClass(client, TFClass_Pyro);
 							}
-							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Heavy)
+							else if (m_class[m_lastKiller[client]] == TFClass_Heavy)
 							{
 								int rand = GetRandomInt(1, 3);
 								if (rand == 1)
@@ -1094,7 +1112,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 								else
 									TF2_SetPlayerClass(client, TFClass_DemoMan);
 							}
-							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Engineer)
+							else if (m_class[m_lastKiller[client]] == TFClass_Engineer)
 							{
 								int rand = GetRandomInt(1, 3);
 								if (rand == 1)
@@ -1104,7 +1122,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 								else
 									TF2_SetPlayerClass(client, TFClass_Heavy);
 							}
-							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Sniper)
+							else if (m_class[m_lastKiller[client]] == TFClass_Sniper)
 							{
 								int rand = GetRandomInt(1, 3);
 								if (rand == 1)
@@ -1114,7 +1132,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 								else
 									TF2_SetPlayerClass(client, TFClass_Sniper);
 							}
-							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Medic)
+							else if (m_class[m_lastKiller[client]] == TFClass_Medic)
 							{
 								int rand = GetRandomInt(1, 3);
 								if (rand == 1)
@@ -1124,7 +1142,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 								else
 									TF2_SetPlayerClass(client, TFClass_Spy);
 							}
-							else if (TF2_GetPlayerClass(m_lastKiller[client]) == TFClass_Spy)
+							else if (m_class[m_lastKiller[client]] == TFClass_Spy)
 							{
 								int rand = GetRandomInt(1, 3);
 								if (rand == 1)
@@ -1222,6 +1240,9 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		}
 
 		m_nextStuckCheck[client] = GetGameTime() + 10.0;
+		m_spawnTime[client] = GetGameTime();
+		m_class[client] = TF2_GetPlayerClass(client);
+		m_team[client] = GetClientTeam(client);
 	}
 
 	return Plugin_Handled;
@@ -1235,13 +1256,13 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 	
 	if (IsValidClient(client) && (IsEBot(client) || m_isAFK[client]) && IsValidClient(victim))
 	{
-		if (TF2_GetPlayerClass(client) == TFClass_Spy)
-			TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), TF2_GetPlayerClass(victim), victim);
+		if (m_class[client] == TFClass_Spy)
+			TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), m_class[victim], victim);
 		
 		if (GetRandomInt(1, 3) == 1 && !m_lowHealth[client] && !m_hasEntitiesNear[client])
 		{
 			FindFriendsAndEnemiens(client);
-			if (!m_hasEnemiesNear[client] && (!m_hasFriendsNear[client] || TF2_GetPlayerClass(client) == TFClass_Sniper))
+			if (!m_hasEnemiesNear[client] && (!m_hasFriendsNear[client] || m_class[client] == TFClass_Sniper))
 				PlayTaunt(client, 463);
 		}
 	}
@@ -1273,7 +1294,7 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	int target = GetClientOfUserId(GetEventInt(event, "attacker"));
 
-	if (!IsValidClient(client) || client == target)
+	if (client < 1 || !IsValidClient(client) || client == target)
 		return Plugin_Handled;
 	
 	if (IsEBot(client) || m_isAFK[client])
@@ -1282,14 +1303,14 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 		{
 			m_damageTime[client] = GetGameTime();
 
-			if (TF2_IsPlayerInCondition(target, TFCond_Zoomed) && (TF2_GetPlayerClass(client) == TFClass_Scout || TF2_GetPlayerClass(client) == TFClass_Pyro))
+			if ((m_class[client] == TFClass_Scout || m_class[client] == TFClass_Pyro) && TF2_IsPlayerInCondition(target, TFCond_Zoomed))
 			{
 				m_hasEnemiesNear[client] = true;
 				m_nearestEnemy[client] = target;
 				SetProcess(client, PRO_HUNTENEMY, 180.0, "trying to hunt down sniper", true);
 			}
 
-			if (!TF2_IsPlayerInCondition(client, TFCond_OnFire) && (!m_hasEnemiesNear[client] || !IsPlayerAlive(m_nearestEnemy[client])))
+			if ((!m_hasEnemiesNear[client] || !m_isAlive[m_nearestEnemy[client]]) && !TF2_IsPlayerInCondition(client, TFCond_OnFire))
 			{
 				m_lookAt[client] = GetEyePosition(target);
 				m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.5, 5.0);
@@ -1297,7 +1318,7 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 				m_hasEnemiesNear[client] = true;
 			}
 		
-			if (TF2_GetPlayerClass(client) == TFClass_Spy)
+			if (m_class[client] == TFClass_Spy)
 			{
 				if (GetRandomInt(1, GetMaxHealth(client)) > GetClientHealth(client))
 					m_buttons[client] |= IN_ATTACK2;
@@ -1308,7 +1329,7 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 				{
 					for (int search = 1; search <= MaxClients; search++)
 					{
-						if (IsValidClient(search) && IsPlayerAlive(search) && search != client && GetClientTeam(client) != GetClientTeam(search))
+						if (IsValidClient(search) && m_isAlive[search] && search != client && m_team[client] != m_team[search])
 						{
 							if (ChanceOf(m_eBotSenseChance[search]) && IsEBot(search))
 								m_knownSpy[search] = client;
@@ -1317,7 +1338,7 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 				}
 			}
 		}
-		else if (!m_hasEntitiesNear[client] && IsValidEntity(target))
+		else if (!m_hasEntitiesNear[client] && target > TFMaxPlayers && IsValidEntity(target))
 		{
 			m_damageTime[client] = GetGameTime();
 			m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.5, 5.0);
@@ -1333,24 +1354,26 @@ public Action BotHurt(Handle event, char[] name, bool dontBroadcast)
 // on bot take damage
 public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 {
-	if (IsFakeClient(victim) && victim == attacker)
+	if (IsValidClient(victim))
 	{
-		if (!m_hasRocketJumpWaypoints || m_lowHealth[victim] || TF2_GetPlayerClass(victim) != TFClass_Soldier)
+		if (victim != attacker)
 		{
-			damage = 0.0;
-			return Plugin_Handled;
+			if ((IsEBot(victim) || m_isAFK[victim]) && m_currentIndex[victim] > 0)
+				IncreaseDamage(m_currentIndex[victim], damage);
+			else
+			{
+				int index = FindNearestWaypoint(GetOrigin(victim), 999999.0, victim);
+				if (index != -1)
+					IncreaseDamage(index, damage);
+			}
 		}
-	}
-
-	if (IsValidClient(victim) && victim != attacker)
-	{
-		if ((IsEBot(victim) || m_isAFK[victim]) && m_currentIndex[victim] > 0)
-			IncreaseDamage(m_currentIndex[victim], damage);
-		else
+		else if (IsFakeClient(victim))
 		{
-			int index = FindNearestWaypoint(GetOrigin(victim), 999999.0, victim);
-			if (index != -1)
-				IncreaseDamage(index, damage);
+			if (!m_hasRocketJumpWaypoints || m_lowHealth[victim] || m_class[victim] != TFClass_Soldier)
+			{
+				damage = 0.0;
+				return Plugin_Handled;
+			}
 		}
 	}
 
@@ -1386,7 +1409,7 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 		if (!IsEBot(client) && !m_isAFK[client])
 			continue;
 		
-		if (!IsPlayerAlive(client))
+		if (!m_isAlive[client])
 			continue;
 
 		if (m_hasRouteWaypoints)
