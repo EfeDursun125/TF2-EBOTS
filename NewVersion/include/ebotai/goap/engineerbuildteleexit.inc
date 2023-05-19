@@ -35,45 +35,48 @@ public void BuildTeleExitUpdate(int client)
 	LookUpdate(client);
 	
 	float range = GetVectorDistance(GetOrigin(client), teleexitbuildarea, true);
-	if (range <= Squared(300))
+	if (range <= Squaredf(300.0))
 	{
+		m_ignoreEnemies[client] = GetGameTime() + 0.5;
+
 		if (!IsWeaponSlotActive(client, 5) && !IsMoving(client))
 			FakeClientCommandThrottled(client, "build 1 1");
 			
-		int index = m_goalIndex[client];
-		if (m_hasWaypoints && index != -1)
+		if (m_hasWaypoints)
 		{
-			if (GetRandomInt(1, 2) == 1)
-				m_lookAt[client] = m_paths[index].campStart;
-			else
-				m_lookAt[client] = m_paths[index].campEnd;
+			int index = m_goalIndex[client];
+			if (index != -1)
+			{
+				if (GetRandomInt(1, 2) == 1)
+					m_lookAt[client] = m_paths[index].campStart;
+				else
+					m_lookAt[client] = m_paths[index].campEnd;
+			}
 		}
-		else
-			m_lookAt[client] = teleexitbuildarea;
+
+		if (IsWeaponSlotActive(client, 5))
+		{
+			if (!IsMoving(client))
+				m_buttons[client] |= IN_ATTACK;
+			
+			int objBeingBuilt = GetEntPropEnt(GetActiveWeapon(client), Prop_Send, "m_hObjectBeingBuilt");
+			if (!IsValidEntity(objBeingBuilt))
+				return;
+			
+			if (m_isSlowThink[client] && GetRandomInt(1, 10) == 1)
+				PickTeleExitSpot(client, teleexitbuildarea);
+			
+			return;
+		}
 	}
 
-	if (range > Squared(70))
+	if (range > Squaredf(70.0))
 		FollowPath(client, teleexitbuildarea);
 	else
 		MoveToWaypoint(client, teleexitbuildarea, teleexitbuildarea);
 	
-	if (IsWeaponSlotActive(client, 5))
-	{
-		if (!IsMoving(client))
-			m_buttons[client] |= IN_ATTACK;
-		
-		int objBeingBuilt = GetEntPropEnt(GetActiveWeapon(client), Prop_Send, "m_hObjectBeingBuilt");
-		if (!IsValidEntity(objBeingBuilt))
-			return;
-		
-		if (m_isSlowThink[client] && GetRandomInt(1, 10) == 1)
-			PickTeleExitSpot(client, teleexitbuildarea);
-		
-		return;
-	}
-	
 	int teleexit = TF2_GetObject(client, TFObject_Teleporter, TFObjectMode_Exit);
-	if (teleexit != -1)
+	if (IsValidEntity(teleexit))
 	{
 		FinishCurrentProcess(client);
 		WantsBuildTeleporterExit[client] = false;

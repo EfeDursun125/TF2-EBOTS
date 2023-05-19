@@ -40,7 +40,10 @@ public void BuildDispenserUpdate(int client)
 			FollowPath(client, randomArea);
 
 			if (IsVisible(GetEyePosition(client), randomArea) || IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+			{
+				m_ignoreEnemies[client] = GetGameTime() + 0.5;
 				m_buttons[client] |= IN_ATTACK;
+			}
 		}
 		else
 		{

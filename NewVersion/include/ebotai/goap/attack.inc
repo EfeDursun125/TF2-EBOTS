@@ -9,7 +9,7 @@ stock bool AttackRequirements(int client)
 	if (NoDodge[client] >= GetGameTime())
 		return false;
 	
-	if (m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]) && m_class[client] != TFClass_Sniper && m_class[client] != TFClass_Scout && m_class[client] != TFClass_Pyro)
+	if (m_class[client] != TFClass_Sniper && m_class[client] != TFClass_Scout && m_class[client] != TFClass_Pyro && m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]))
 		return false;
 	
 	if (!(GetEntityFlags(client) & FL_ONGROUND))
@@ -91,7 +91,7 @@ stock void AttackUpdate(int client)
 	}
 	else if (m_class[client] == TFClass_Scout || m_class[client] == TFClass_Pyro)
 	{
-		if (m_enemyDistance[client] > Squared(GetConVarInt(m_eBotDodgeRangeMin)) || m_class[client] == TFClass_Spy)
+		if (m_class[client] == TFClass_Spy || m_enemyDistance[client] > Squared(GetConVarInt(m_eBotDodgeRangeMin)))
 		{
 			if (IsValidClient(m_goalEntity[client]))
 				FollowPath(client, GetOrigin(m_goalEntity[client]));

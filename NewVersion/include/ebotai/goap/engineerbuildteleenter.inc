@@ -35,16 +35,15 @@ public void BuildTeleEnterUpdate(int client)
 	LookUpdate(client);
 	
 	float range = GetVectorDistance(GetOrigin(client), teleenterbuildarea, true);
-	if (range <= Squared(300))
+	if (range <= Squaredf(300.0))
 	{
+		m_ignoreEnemies[client] = GetGameTime() + 0.5;
+
 		if (!IsWeaponSlotActive(client, 5) && !IsMoving(client))
 		{
 			FakeClientCommandThrottled(client, "build 1 0");
 			m_buttons[client] |= IN_ATTACK;
 		}
-		
-		float position[3];
-		position = NULL_VECTOR;
 
 		if (m_hasWaypoints)
 		{
@@ -52,40 +51,35 @@ public void BuildTeleEnterUpdate(int client)
 			if (index != -1)
 			{
 				if (GetRandomInt(1, 2) == 1)
-					position = m_paths[index].campStart;
+					m_lookAt[client] = m_paths[index].campStart;
 				else
-					position = m_paths[index].campEnd;
+					m_lookAt[client] = m_paths[index].campEnd;
 			}
 		}
-		else
-			position = teleenterbuildarea;
-		
-		if (!IsNullVector(position))
-			m_lookAt[client] = position;
+
+		if (IsWeaponSlotActive(client, 5))
+		{
+			if (!IsMoving(client))
+				m_buttons[client] |= IN_ATTACK;
+
+			int objBeingBuilt = GetEntPropEnt(GetActiveWeapon(client), Prop_Send, "m_hObjectBeingBuilt");
+			if (!IsValidEntity(objBeingBuilt))
+				return;
+			
+			if (m_isSlowThink[client] && GetRandomInt(1, 10) == 1)
+				PickTeleEnterSpot(client, teleenterbuildarea);
+			
+			return;
+		}
 	}
 
-	if (range > Squared(70))
+	if (range > Squaredf(70.0))
 		FollowPath(client, teleenterbuildarea);
 	else
 		MoveToWaypoint(client, teleenterbuildarea, teleenterbuildarea);
-	
-	if (IsWeaponSlotActive(client, 5))
-	{
-		if (!IsMoving(client))
-			m_buttons[client] |= IN_ATTACK;
 
-		int objBeingBuilt = GetEntPropEnt(GetActiveWeapon(client), Prop_Send, "m_hObjectBeingBuilt");
-		if (!IsValidEntity(objBeingBuilt))
-			return;
-		
-		if (m_isSlowThink[client] && GetRandomInt(1, 10) == 1)
-			PickTeleEnterSpot(client, teleenterbuildarea);
-		
-		return;
-	}
-	
 	int teleenter = TF2_GetObject(client, TFObject_Teleporter, TFObjectMode_Entrance);
-	if (teleenter != -1)
+	if (IsValidEntity(teleenter))
 	{
 		FinishCurrentProcess(client);
 		WantsBuildTeleporterEnter[client] = false;
