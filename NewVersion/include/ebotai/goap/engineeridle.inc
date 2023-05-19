@@ -32,7 +32,7 @@ public void EngineerIdleUpdate(int client)
 {
 	m_eBotDodgeRange[client] = 512;
 
-	if (TF2_GetPlayerClass(client) != TFClass_Engineer)
+	if (m_class[client] != TFClass_Engineer)
 	{
 		SetProcess(client, PRO_DEFAULT, 99999.0, "", true, false);
 		CurrentProcess[client] = PRO_DEFAULT;

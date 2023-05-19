@@ -52,7 +52,7 @@ public void HealUpdate(int client)
 			
 			if (IsWeaponSlotActive(client, 1) || (m_primaryID[client] == 1079 || m_primaryID[client] == 305))
 			{
-				if (m_hasEnemiesNear[client] && (GetClientHealth(client) <= 60 || TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Spy))
+				if (m_hasEnemiesNear[client] && (GetClientHealth(client) <= 60 || m_class[m_nearestEnemy[client]] == TFClass_Spy))
 					m_buttons[client] |= IN_ATTACK2;
 				
 				m_tackEntity[client] = m_healTarget[client];

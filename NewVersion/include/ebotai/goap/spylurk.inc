@@ -19,7 +19,7 @@ public void SpyLurkStart(int client)
 
 public void SpyLurkUpdate(int client)
 {
-	if (TF2_GetPlayerClass(client) != TFClass_Spy)
+	if (m_class[client] != TFClass_Spy)
 	{
 		SetProcess(client, PRO_DEFAULT, 99999.0, "", true, false);
 		CurrentProcess[client] = PRO_DEFAULT;
@@ -75,7 +75,7 @@ public void SpyLurkUpdate(int client)
 				SelectObjective(client);
 		}
 	
-		if (m_hasEnemiesNear[client] && TF2_GetPlayerClass(m_nearestEnemy[client]) != TFClass_Spy)
+		if (m_hasEnemiesNear[client] && m_class[m_nearestEnemy[client]] != TFClass_Spy)
 		{
 			float distance = GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true);
 			int range = Squared(256);

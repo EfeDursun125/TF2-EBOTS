@@ -31,7 +31,7 @@ stock void GetAmmoStart(int client)
 
 stock void GetAmmoUpdate(int client)
 {
-	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+	if (m_class[client] == TFClass_Engineer)
 	{
 		if (!IsMetalLow(client))
 		{
@@ -63,4 +63,5 @@ stock void GetAmmoEnd(int client)
 	m_goalEntity[client] = -1;
 	m_goalIndex[client] = -1;
 	m_goalPosition[client] = NULL_VECTOR;
+	SelectObjective(client);
 }

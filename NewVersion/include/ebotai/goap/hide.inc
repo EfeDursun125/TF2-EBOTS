@@ -3,7 +3,7 @@ stock bool HideRequirements(int client)
 	if (!m_hasWaypoints)
 		return false;
 	
-	if (TF2_GetPlayerClass(client) == TFClass_Spy)
+	if (m_class[client] == TFClass_Spy)
 		return false;
 	
 	if (TF2_HasTheFlag(client))

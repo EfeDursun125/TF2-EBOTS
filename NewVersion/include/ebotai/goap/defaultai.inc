@@ -5,10 +5,10 @@ public bool DefaultRequirements(int client)
 
 public void DefaultStart(int client)
 {
-	if (!GameRules_GetProp("m_bPlayingMedieval") && TF2_GetPlayerClass(client) == TFClass_Engineer)
+	if (!GameRules_GetProp("m_bPlayingMedieval") && m_class[client] == TFClass_Engineer)
 		SetProcess(client, PRO_ENGINEERIDLE, 99999.0, "", true);
 	
-	if (TF2_GetPlayerClass(client) == TFClass_Spy)
+	if (m_class[client] == TFClass_Spy)
 		SetProcess(client, PRO_SPYLURK, 99999.0, "", true);
 }
 
@@ -24,7 +24,7 @@ stock bool MustFindObjective(int client, int index, int current)
 	{
 		if (IsValidEntity(m_goalEntity[client]))
 		{
-			if (GetClientTeam(client) == GetTeamNumber(m_goalEntity[client]))
+			if (m_team[client] == GetTeamNumber(m_goalEntity[client]))
 				return true;
 		}
 		else
@@ -33,7 +33,7 @@ stock bool MustFindObjective(int client, int index, int current)
 
 	if (isVSH || isDM)
 	{
-		if (!IsValidClient(m_goalEntity[client]) || GetClientTeam(client) == GetClientTeam(m_goalEntity[client]))
+		if (!IsValidClient(m_goalEntity[client]) || m_team[client] == m_team[m_goalEntity[client]])
 			return true;
 	}
 	
@@ -49,12 +49,12 @@ public void DefaultUpdate(int client)
 		else if (!m_hasEnemiesNear[client] && m_hasFriendsNear[client])
 			SetProcess(client, PRO_HEAL, (m_difficulty[client] + 8.0), "", true);
 	}
-	else if (TF2_GetPlayerClass(client) == TFClass_Spy)
+	else if (m_class[client] == TFClass_Spy)
 	{
 		CurrentProcess[client] = PRO_SPYLURK;
 		return;
 	}
-	else if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+	else if (m_class[client] == TFClass_Engineer)
 	{
 		CurrentProcess[client] = PRO_ENGINEERIDLE;
 		return;
@@ -96,7 +96,7 @@ public void DefaultUpdate(int client)
 		else
 			m_tackEntity[client] = -1;
 
-		if (TF2_GetPlayerClass(client) == TFClass_DemoMan && m_paths[index].flags == WAYPOINT_DEMOMANCAMP)
+		if (m_class[client] == TFClass_DemoMan && m_paths[index].flags == WAYPOINT_DEMOMANCAMP)
 		{
 			if (m_stickyCount[client] < 4)
 				m_lookAt[client] = m_paths[index].campStart;
@@ -106,7 +106,10 @@ public void DefaultUpdate(int client)
 			if (m_stickyCount[client] < 8)
 			{
 				if (IsWeaponSlotActive(client, 1))
-					m_buttons[client] |= IN_ATTACK;
+				{
+					if (m_attackTimer[client] + 0.125 < GetGameTime())
+						m_attackTimer[client] = GetGameTime() + 0.125;
+				}
 				else
 					EquipWeaponSlot(client, 1);
 
@@ -134,10 +137,10 @@ public void DefaultUpdate(int client)
 
 public void DefaultEnd(int client)
 {
-	if (TF2_GetPlayerClass(client) == TFClass_Spy)
+	if (m_class[client] == TFClass_Spy)
 		return;
 	
-	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+	if (m_class[client] == TFClass_Engineer)
 		return;
 
 	m_goalEntity[client] = -1;
@@ -166,9 +169,9 @@ public void SelectObjective(int client)
 				continue;
 
     		// not for our team
- 			if (m_paths[i].team == 2 && GetClientTeam(client) == 3)
+ 			if (m_paths[i].team == 2 && m_team[client] == 3)
                 continue;
-            else if (m_paths[i].team == 3 && GetClientTeam(client) == 2)
+            else if (m_paths[i].team == 3 && m_team[client] == 2)
                 continue;
 
 			if (!IsWaypointUsed(i))
@@ -206,7 +209,7 @@ public void SelectObjective(int client)
 		}
 	}
 
-	if (m_hasWaypoints && m_hasStickyWaypoints && TF2_GetPlayerClass(client) == TFClass_DemoMan && !TF2_HasTheFlag(client))
+	if (m_hasWaypoints && m_hasStickyWaypoints && m_class[client] == TFClass_DemoMan && !TF2_HasTheFlag(client))
 	{
 		int myindex = m_goalIndex[client];
 		if (myindex != -1 && m_paths[myindex].flags == WAYPOINT_DEMOMANCAMP && (m_paths[myindex].activeArea == 0 || m_paths[myindex].activeArea == currentActiveArea))
@@ -225,9 +228,9 @@ public void SelectObjective(int client)
 				continue;
 
     		// not for our team
- 			if (m_paths[i].team == 2 && GetClientTeam(client) == 3)
+ 			if (m_paths[i].team == 2 && m_team[client] == 3)
                 continue;
-            else if (m_paths[i].team == 3 && GetClientTeam(client) == 2)
+            else if (m_paths[i].team == 3 && m_team[client] == 2)
                 continue;
 
 			if (!IsWaypointUsed(i))
@@ -300,12 +303,12 @@ public void SelectObjective(int client)
 					continue;
 
     			// not for our team
- 			   	if (m_paths[i].team == 2 && GetClientTeam(client) == 3)
+ 			   	if (m_paths[i].team == 2 && m_team[client] == 3)
              	   continue;
-            	else if (m_paths[i].team == 3 && GetClientTeam(client) == 2)
+            	else if (m_paths[i].team == 3 && m_team[client] == 2)
                 	continue;
 				
-				if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT && GetClientTeam(client) != GetTeamNumber(m_capturePoint))
+				if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT && m_team[client] != GetTeamNumber(m_capturePoint))
 				{
 					index = i
 					break;
@@ -362,7 +365,7 @@ public void SelectObjective(int client)
 		
 		if (m_hasWaypoints)
 		{
-			if (GetClientTeam(client) == 2)
+			if (m_team[client] == 2)
 			{
 				int index = -1;
 				ArrayList GoodDefendPoints = new ArrayList();
@@ -377,9 +380,9 @@ public void SelectObjective(int client)
 						continue;
 
     				// not for our team
-   					if (m_paths[i].team == 2 && GetClientTeam(client) == 3)
+   					if (m_paths[i].team == 2 && m_team[client] == 3)
                		 	continue;
-            		else if (m_paths[i].team == 3 && GetClientTeam(client) == 2)
+            		else if (m_paths[i].team == 3 && m_team[client] == 2)
              		   	continue;
 				
 					if (m_paths[i].flags != _:WAYPOINT_DEFEND)
@@ -439,7 +442,7 @@ public void SelectObjective(int client)
 		else if (IsValidEntity(m_bluPayload))
 		{
 			m_goalEntity[client] = m_bluPayload;
-			if (GetClientTeam(client) == 2)
+			if (m_team[client] == 2)
 			{
 				m_goalPosition[client] = GetOrigin(m_bluPayload);
 				m_goalPosition[client][0] += GetRandomFloat(-768.0, 768.0);
@@ -460,7 +463,7 @@ public void SelectObjective(int client)
 		if (!IsValidEntity(m_bluPayload) || !IsValidEntity(m_redPayload))
 			FindPayload();
 		
-		if (GetClientTeam(client) == 2 && IsValidEntity(m_redPayload))
+		if (m_team[client] == 2 && IsValidEntity(m_redPayload))
 		{
 			m_goalPosition[client] = GetOrigin(m_redPayload);
 			m_goalPosition[client][0] += GetRandomFloat(-64.0, 64.0);
@@ -485,7 +488,7 @@ public void SelectObjective(int client)
 		int flag = -1;
 		while ((flag = FindEntityByClassname(flag, "item_teamflag")) != INVALID_ENT_REFERENCE)
 		{
-			if (IsValidEntity(flag) && HasEntProp(flag, Prop_Send, "m_nFlagStatus") && GetClientTeam(client) != GetTeamNumber(flag))
+			if (IsValidEntity(flag) && HasEntProp(flag, Prop_Send, "m_nFlagStatus") && m_team[client] != GetTeamNumber(flag))
 				m_goalEntity[client] = flag;
 		}
 		m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
@@ -508,9 +511,9 @@ public void SelectObjective(int client)
 					continue;
 
     			// not for our team
-   				if (m_paths[i].team == 2 && GetClientTeam(client) == 3)
+   				if (m_paths[i].team == 2 && m_team[client] == 3)
                 	continue;
-            	else if (m_paths[i].team == 3 && GetClientTeam(client) == 2)
+            	else if (m_paths[i].team == 3 && m_team[client] == 2)
              	   	continue;
 				
 				if (m_paths[i].flags == _:WAYPOINT_CAPTUREPOINT)
@@ -575,7 +578,7 @@ public void SelectObjective(int client)
 	}
 	else if (isCP)
 	{
-		if (IsValidEntity(m_goalEntity[client]) && GetClientTeam(client) != GetTeamNumber(m_goalEntity[client]))
+		if (IsValidEntity(m_goalEntity[client]) && m_team[client] != GetTeamNumber(m_goalEntity[client]))
 		{
 			m_goalIndex[client] = FindNearestWaypoint(GetOrigin(m_goalEntity[client]));
 			if (m_paths[m_goalIndex[client]].radius > 0.0)
@@ -622,12 +625,12 @@ stock void ObjectiveMovement(int client)
 		return;
 	}
 
-	if (m_hasWaypoints && TF2_GetPlayerClass(client) == TFClass_DemoMan && m_hasStickyWaypoints)
+	if (m_hasWaypoints && m_class[client] == TFClass_DemoMan && m_hasStickyWaypoints)
 	{
 		int index = m_goalIndex[client];
 		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea == currentActiveArea))
 		{
-			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squared(4))
+			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squaredf(4.0))
 			{
 				m_moveVel[client][0] = 0.0;
 				m_moveVel[client][1] = 0.0;
@@ -645,7 +648,7 @@ stock void ObjectiveMovement(int client)
 		int index = m_goalIndex[client];
 		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea == currentActiveArea))
 		{
-			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squared(4))
+			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squaredf(4.0))
 			{
 				m_moveVel[client][0] = 0.0;
 				m_moveVel[client][1] = 0.0;
@@ -666,7 +669,7 @@ stock void ObjectiveMovement(int client)
 		{
 			float cappointpos[3];
 			GetEntPropVector(m_goalEntity[client], Prop_Send, "m_vecOrigin", cappointpos);
-			if (GetTeamNumber(m_goalEntity[client]) == GetClientTeam(client))
+			if (GetTeamNumber(m_goalEntity[client]) == m_team[client])
 			{
 				m_goalPosition[client][0] = cappointpos[0] + GetRandomFloat(-768.0, 768.0);
 				m_goalPosition[client][1] = cappointpos[1] + GetRandomFloat(-768.0, 768.0);
@@ -676,7 +679,7 @@ stock void ObjectiveMovement(int client)
 			{
 				m_goalPosition[client][0] = cappointpos[0] + GetRandomFloat(-192.0, 192.0);
 				m_goalPosition[client][1] = cappointpos[1] + GetRandomFloat(-192.0, 192.0);
-				m_goalPosition[client][2] = cappointpos[2] + 18;
+				m_goalPosition[client][2] = cappointpos[2] + 18.0;
 			}
 			
 			FollowPath(client, m_goalPosition[client]);
@@ -705,7 +708,7 @@ stock void ObjectiveMovement(int client)
 			int flag;
 			while ((flag = FindEntityByClassname(flag, "item_teamflag")) != INVALID_ENT_REFERENCE)
 			{
-				if (IsValidEntity(flag) && GetClientTeam(client) != GetTeamNumber(flag))
+				if (IsValidEntity(flag) && m_team[client] != GetTeamNumber(flag))
 				{
 					if (GetEntProp(flag, Prop_Send, "m_nFlagStatus") == 1)
 					{
@@ -714,7 +717,7 @@ stock void ObjectiveMovement(int client)
 							int flag2;
 							while ((flag2 = FindEntityByClassname(flag2, "item_teamflag")) != INVALID_ENT_REFERENCE)
 							{
-								if (IsValidEntity(flag2) && GetClientTeam(client) == GetTeamNumber(flag2))
+								if (IsValidEntity(flag2) && m_team[client] == GetTeamNumber(flag2))
 								{
 									if (GetEntProp(flag2, Prop_Send, "m_nFlagStatus") == 1) // did someone is picked our flag? chase that guy.
 										FollowPath(client, GetOrigin(flag2));
@@ -730,11 +733,11 @@ stock void ObjectiveMovement(int client)
 							}
 						}
 						else // go to flag capture area
-							FollowPath(client, GetClientTeam(client) == 2 ? m_redFlagCapPoint : m_bluFlagCapPoint);
+							FollowPath(client, m_team[client] == 2 ? m_redFlagCapPoint : m_bluFlagCapPoint);
 					}
 					else
 					{
-						m_goalPosition[client] = GetClientTeam(client) == 2 ? m_redFlagCapPoint : m_bluFlagCapPoint;
+						m_goalPosition[client] = m_team[client] == 2 ? m_redFlagCapPoint : m_bluFlagCapPoint;
 						FollowPath(client, GetOrigin(flag));
 					}
 				}

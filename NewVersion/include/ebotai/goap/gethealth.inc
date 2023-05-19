@@ -53,4 +53,5 @@ stock void GetHealthEnd(int client)
 	m_goalEntity[client] = -1;
 	m_goalIndex[client] = -1;
 	m_goalPosition[client] = NULL_VECTOR;
+	SelectObjective(client);
 }

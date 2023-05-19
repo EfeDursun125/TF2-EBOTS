@@ -9,7 +9,7 @@ stock bool AttackRequirements(int client)
 	if (NoDodge[client] >= GetGameTime())
 		return false;
 	
-	if (m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]) && TF2_GetPlayerClass(client) != TFClass_Scout && TF2_GetPlayerClass(client) != TFClass_Pyro)
+	if (m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]) && m_class[client] != TFClass_Sniper && m_class[client] != TFClass_Scout && m_class[client] != TFClass_Pyro)
 		return false;
 	
 	if (!(GetEntityFlags(client) & FL_ONGROUND))
@@ -27,7 +27,7 @@ stock bool AttackRequirements(int client)
 	if (TF2_HasTheFlag(client))
 		return false;
 	
-	if (TF2_GetPlayerClass(client) == TFClass_Spy && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+	if (m_class[client] == TFClass_Spy && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 		return false;
 		
 	return true;
@@ -41,7 +41,7 @@ stock void AttackStart(int client)
 float m_wasdTimer[TFMaxPlayers];
 stock void AttackUpdate(int client)
 {
-	if (TF2_GetPlayerClass(client) == TFClass_Spy && m_lowHealth[client])
+	if (m_class[client] == TFClass_Spy && m_lowHealth[client])
 	{
 		if (ActiveCloak(client))
 		{
@@ -66,7 +66,7 @@ stock void AttackUpdate(int client)
 			SetProcess(client, PRO_IDLE, GetRandomFloat(2.0, 4.0), "", true);
 	}
 
-	if (TF2_GetPlayerClass(client) == TFClass_Spy && (TF2_IsPlayerInCondition(client, TFCond_Disguised) || IsStealthed(client)))
+	if (m_class[client] == TFClass_Spy && (TF2_IsPlayerInCondition(client, TFCond_Disguised) || IsStealthed(client)))
 		FinishCurrentProcess(client, true);
 	
 	CheckHideFromDanger(client);
@@ -74,9 +74,24 @@ stock void AttackUpdate(int client)
 	CheckAmmo(client);
 	LookUpdate(client);
 
-	if (TF2_GetPlayerClass(client) == TFClass_Scout || TF2_GetPlayerClass(client) == TFClass_Pyro)
+	m_nextStuckCheck[client] = GetGameTime() + 5.0;
+
+	if (m_class[client] == TFClass_Sniper)
 	{
-		if (m_enemyDistance[client] > Squared(GetConVarInt(m_eBotDodgeRangeMin)) || TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Spy)
+		if (TF2_IsPlayerInCondition(m_nearestEnemy[client], TFCond_Zoomed) && ClientViews(m_nearestEnemy[client], client))
+			RandomMovement(client);
+		else if (m_enemyDistance[client] <= Squared(m_eBotDodgeRange[client]) && IsClientAimingToMe(m_nearestEnemy[client], client) && (!TF2_IsPlayerInCondition(client, TFCond_Zoomed) || IsAttacking(m_nearestEnemy[client])))
+			RandomMovement(client);
+		else
+		{
+			m_moveVel[client][0] = 0.0;
+			m_moveVel[client][1] = 0.0;
+			m_moveVel[client][2] = 0.0;
+		}
+	}
+	else if (m_class[client] == TFClass_Scout || m_class[client] == TFClass_Pyro)
+	{
+		if (m_enemyDistance[client] > Squared(GetConVarInt(m_eBotDodgeRangeMin)) || m_class[client] == TFClass_Spy)
 		{
 			if (IsValidClient(m_goalEntity[client]))
 				FollowPath(client, GetOrigin(m_goalEntity[client]));
@@ -107,9 +122,9 @@ stock void RandomMovement(int client)
 			if (m_nearestEnemy[client] > 0)
 			{
 				float distance = GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true);
-				if (TF2_GetPlayerClass(client) == TFClass_Pyro && IsWeaponSlotActive(client, 0) && distance <= Squaredf(512.0))
+				if (m_class[client] == TFClass_Pyro && IsWeaponSlotActive(client, 0) && distance <= Squaredf(512.0))
 				{
-					if (TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Pyro && GetClientHealth(client) <= GetClientHealth(m_nearestEnemy[client]))
+					if (m_class[m_nearestEnemy[client]] == TFClass_Pyro && GetClientHealth(client) <= GetClientHealth(m_nearestEnemy[client]))
 					{
 						MoveOut(client, GetOrigin(m_nearestEnemy[client]), true);
 						if (m_isSlowThink[client])
@@ -121,7 +136,7 @@ stock void RandomMovement(int client)
 					m_wasdTimer[client] = GetGameTime() + GetRandomFloat(0.128, 0.384);
 					return;
 				}
-				else if ((TF2_GetPlayerClass(m_nearestEnemy[client]) == TFClass_Pyro || IsWeaponSlotActive(m_nearestEnemy[client], 2)) && distance <= Squaredf(512.0))
+				else if ((m_class[m_nearestEnemy[client]] == TFClass_Pyro || IsWeaponSlotActive(m_nearestEnemy[client], 2)) && distance <= Squaredf(512.0))
 				{
 					MoveOut(client, GetOrigin(m_nearestEnemy[client]), true);
 					m_wasdTimer[client] = GetGameTime() + GetRandomFloat(0.128, 0.384);
