@@ -266,11 +266,9 @@ public void FindEnemyEntities(int client)
 	if (m_ignoreEnemies[client] > GetGameTime())
 	{
 		m_hasEntitiesNear[client] = false;
+		m_nearestEnemy[client] = -1;
 		return;
 	}
-	
-	if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]) && GetEntProp(m_nearestEntity[client], Prop_Data, "m_iHealth") > 0 && IsVisible(GetEyePosition(client), GetCenter(m_nearestEntity[client])))
-		return;
 
 	m_hasEntitiesNear[client] = false;
 	int m_hasEntitiesNearCount = 0;
@@ -283,10 +281,7 @@ public void FindEnemyEntities(int client)
 		
 		char class[64];
 		GetEntityClassname(i, class, sizeof(class));
-		if (StrContains(class, "obj_", false) == -1 && !StrEqual(class, "tf_projectile_pipe_remote", false) && !StrEqual(class, "tf_zombie", false) && !StrEqual(class, "tank_boss", false) && !StrEqual(class, "merasmus", false) && !StrEqual(class, "eyeball_boss", false) && !StrEqual(class, "headless_hatman", false) && !StrEqual(class, "tf_robot_destruction_robot", false))
-			continue;
-		
-		if (GetEntProp(i, Prop_Data, "m_iHealth") <= 0)
+		if (!StrEqual(class, "obj_sentrygun", false) && !StrEqual(class, "obj_dispenser", false) && !StrEqual(class, "obj_teleporter", false) && !StrEqual(class, "tf_projectile_pipe_remote", false) && !StrEqual(class, "tf_zombie", false) && !StrEqual(class, "tank_boss", false) && !StrEqual(class, "merasmus", false) && !StrEqual(class, "eyeball_boss", false) && !StrEqual(class, "headless_hatman", false) && !StrEqual(class, "tf_robot_destruction_robot", false))
 			continue;
 		
 		if (GetTeamNumber(i) == m_team[client])

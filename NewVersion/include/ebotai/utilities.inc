@@ -432,12 +432,12 @@ stock float[] GetEyeAngles(int client)
 
 stock float[] GetCenter(int entity)
 {
-	float result[3], mins[3], maxs[3];
-	GetEntPropVector(entity, Prop_Send, "m_vecMins", mins);
+	float result[3], maxs[3], origin[3];
+	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", origin);
 	GetEntPropVector(entity, Prop_Send, "m_vecMaxs", maxs);
-	result[0] = (mins[0] * 0.5) + (maxs[0] * 0.5);
-	result[1] = (mins[1] * 0.5) + (maxs[1] * 0.5);
-	result[2] = (mins[2] * 0.5) + (maxs[2] * 0.5);
+	result[0] = origin[0];
+	result[1] = origin[1];
+	result[2] = origin[2] += (maxs[2] * 0.5);
 	return result;
 }
 
