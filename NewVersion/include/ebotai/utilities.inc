@@ -434,7 +434,7 @@ stock float[] GetCenter(int entity)
 {
 	float result[3], maxs[3], origin[3];
 	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", origin);
-	GetEntPropVector(entity, Prop_Send, "m_vecMaxs", maxs);
+	GetEntPropVector(entity, Prop_Data, "m_vecMaxs", maxs);
 	result[0] = origin[0];
 	result[1] = origin[1];
 	result[2] = origin[2] += (maxs[2] * 0.5);
@@ -636,7 +636,7 @@ stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3], int tra
 	
 	m_cosError[client] = GetVectorDotProduct(eye_to_target, eye_vec);
 	
-	float max_angvel = 1024.0 + (1024.0 * fps);
+	float max_angvel = 2048.0 + (2048.0 * fps);
 	
 	if (m_cosError[client] > 0.7)
 		max_angvel *= Sine((3.14 * 0.5) * (1.0 + ((-49.0 * 0.06666666666) * (m_cosError[client] - 0.7))));
