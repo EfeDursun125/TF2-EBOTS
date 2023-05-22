@@ -50,7 +50,6 @@ public void SpySapUpdate(int client)
 
 	CheckHealth(client);
 	CheckAmmo(client);
-	SpyAimLogic(client);
 
 	m_goalEntity[client] = m_knownSentry[client];
 	if (!IsValidEntity(m_goalEntity[client]) || !HasEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper"))
@@ -60,29 +59,39 @@ public void SpySapUpdate(int client)
 	}
 
 	FollowPath(client, GetOrigin(m_goalEntity[client]));
+	
+	if (!m_hasEntitiesNear[client])
+		SpyReactChecker(client);
 
-	if (HasEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") == 0)
+	if (HasEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") != 0)
+		FinishCurrentProcess(client);
+	else
 	{
 		float distance = GetVectorDistance(GetOrigin(client), GetCenter(m_goalEntity[client]), true);
-		float range = Squaredf(256.0);
+		float range = Squaredf(300.0);
 
 		if (distance <= range)
 		{
 			if (IsWeaponSlotActive(client, 1))
 			{
-				m_lookAt[client] = GetCenter(m_goalEntity[client]);
-				m_attackTimer[client] = GetGameTime() + 0.2;
+				if (GetRandomInt(1, 2) == 1)
+					FakeClientCommandThrottled(client, "build 3 0");
+				else
+					m_buttons[client] |= IN_ATTACK;
 			}
 			else
-				FakeClientCommandThrottled(client, "build 3 0"); // place sapper
+			{
+				m_lookAt[client] = GetCenter(m_goalEntity[client]);
+				if (GetRandomInt(1, 2) == 1)
+					FakeClientCommandThrottled(client, "build 3 0");
+				else
+					EquipWeaponSlot(client, 1);
+			}
+			return;
 		}
 	}
 
-	if (HasEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") != 0)
-		FinishCurrentProcess(client);
-	
-	if (!m_hasEntitiesNear[client])
-		SpyReactChecker(client);
+	SpyAimLogic(client);
 }
 
 public void SpySapEnd(int client)

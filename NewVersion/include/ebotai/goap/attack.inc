@@ -91,7 +91,7 @@ stock void AttackUpdate(int client)
 	}
 	else if (m_class[client] == TFClass_Scout || m_class[client] == TFClass_Pyro)
 	{
-		if (m_class[client] == TFClass_Spy || m_enemyDistance[client] > Squared(GetConVarInt(m_eBotDodgeRangeMin)))
+		if (m_enemyDistance[client] > Squared(GetConVarInt(m_eBotDodgeRangeMin)))
 		{
 			if (IsValidClient(m_goalEntity[client]))
 				FollowPath(client, GetOrigin(m_goalEntity[client]));
@@ -99,8 +99,16 @@ stock void AttackUpdate(int client)
 				m_goalEntity[client] = m_nearestEnemy[client];
 		}
 		else if (ClientViews(m_nearestEnemy[client], client))
+		{
 			RandomMovement(client);
-		
+
+			if (m_class[client] == TFClass_Scout && m_primaryID[client] != 772 && GetRandomInt(1, 2) == 1)
+			{
+				m_buttons[client] |= IN_DUCK;
+				m_buttons[client] |= IN_JUMP;
+			}
+		}
+
 		return;
 	}
 	else if (m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]))

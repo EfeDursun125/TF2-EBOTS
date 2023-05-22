@@ -88,7 +88,7 @@ public void EngineerIdleUpdate(int client)
 				m_lookAt[client] = GetCenter(SentryGun[client]);
 				m_attackTimer[client] = GetGameTime() + 0.5;
 				m_duckTimer[client] = GetGameTime() + 0.5;
-				m_ignoreEnemies[client] = GetGameTime() + 0.5;
+				m_ignoreEnemies[client] = GetGameTime() + 1.0;
 			}
 			else
 				EquipWeaponSlot(client, 2);
@@ -108,7 +108,7 @@ public void EngineerIdleUpdate(int client)
 				MoveTo(client, GetOrigin(SentryGun[client]));
 				m_lookAt[client] = GetCenter(SentryGun[client]);
 				m_buttons[client] |= IN_ATTACK2;
-				m_ignoreEnemies[client] = GetGameTime() + 0.5;
+				m_ignoreEnemies[client] = GetGameTime() + 1.0;
 
 				if (GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
 				{
@@ -124,7 +124,7 @@ public void EngineerIdleUpdate(int client)
 					m_lookAt[client] = GetCenter(SentryGun[client]);
 					m_attackTimer[client] = GetGameTime() + 0.5;
 					m_duckTimer[client] = GetGameTime() + 0.5;
-					m_ignoreEnemies[client] = GetGameTime() + 0.5;
+					m_ignoreEnemies[client] = GetGameTime() + 1.0;
 				}
 				else
 					EquipWeaponSlot(client, 2);
@@ -146,7 +146,7 @@ public void EngineerIdleUpdate(int client)
 				m_lookAt[client] = GetCenter(Dispenser[client]);
 				m_attackTimer[client] = GetGameTime() + 0.5;
 				m_duckTimer[client] = GetGameTime() + 0.5;
-				m_ignoreEnemies[client] = GetGameTime() + 0.5;
+				m_ignoreEnemies[client] = GetGameTime() + 1.0;
 			}
 			else
 				EquipWeaponSlot(client, 2);
@@ -164,7 +164,7 @@ public void EngineerIdleUpdate(int client)
 			MoveTo(client, GetOrigin(Dispenser[client]));
 			m_lookAt[client] = GetCenter(Dispenser[client]);
 			m_buttons[client] |= IN_ATTACK2;
-			m_ignoreEnemies[client] = GetGameTime() + 0.5;
+			m_ignoreEnemies[client] = GetGameTime() + 1.0;
 
 			if (GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
 			{
@@ -192,7 +192,7 @@ public void EngineerIdleUpdate(int client)
 				m_lookAt[client] = GetCenter(TeleporterEnter[client]);
 				m_attackTimer[client] = GetGameTime() + 0.5;
 				m_duckTimer[client] = GetGameTime() + 0.5;
-				m_ignoreEnemies[client] = GetGameTime() + 0.5;
+				m_ignoreEnemies[client] = GetGameTime() + 1.0;
 			}
 			else
 				EquipWeaponSlot(client, 2);
@@ -213,7 +213,7 @@ public void EngineerIdleUpdate(int client)
 				m_lookAt[client] = GetCenter(SentryGun[client]);
 				m_attackTimer[client] = GetGameTime() + 0.5;
 				m_duckTimer[client] = GetGameTime() + 0.5;
-				m_ignoreEnemies[client] = GetGameTime() + 0.5;
+				m_ignoreEnemies[client] = GetGameTime() + 1.0;
 			}
 			else
 				EquipWeaponSlot(client, 2);
@@ -231,7 +231,7 @@ public void EngineerIdleEnd(int client)
 
 public void CheckEngineerBuildings(int client)
 {
-	if (!m_isSlowThink[client])
+	if (m_isSlowThink[client])
 		return;
 	
 	SentryGun[client] = TF2_GetObject(client, TFObject_Sentry, TFObjectMode_None);
