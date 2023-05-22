@@ -602,7 +602,7 @@ stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3], int tra
 	
 	float fps = GetConVarFloat(EBotFPS);
 
-	float flAimSpeed = 1.0;
+	float flAimSpeed = 1.5;
 	flAimSpeed -= fps;
 
 	float tempGoal[3];
@@ -613,9 +613,9 @@ stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3], int tra
 		float flVel[3];
 		GetEntPropVector(trackEntity, Prop_Data, "m_vecAbsVelocity", flVel);
 		float time = GetGameTime() - m_thinkTimer[client];
-		tempGoal[0] += flVel[0] * time + fps;
-		tempGoal[1] += flVel[1] * time + fps;
-		tempGoal[2] += flVel[2] * time + fps;
+		tempGoal[0] += flVel[0] * time;
+		tempGoal[1] += flVel[1] * time;
+		tempGoal[2] += flVel[2] * time;
 		trackEntity = -1;
 	}
 
@@ -636,7 +636,7 @@ stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3], int tra
 	
 	m_cosError[client] = GetVectorDotProduct(eye_to_target, eye_vec);
 	
-	float max_angvel = 2048.0 + (2048.0 * fps);
+	float max_angvel = 1024.0 + (1024.0 * fps);
 	
 	if (m_cosError[client] > 0.7)
 		max_angvel *= Sine((3.14 * 0.5) * (1.0 + ((-49.0 * 0.06666666666) * (m_cosError[client] - 0.7))));

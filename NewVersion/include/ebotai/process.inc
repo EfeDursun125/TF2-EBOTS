@@ -8,7 +8,7 @@ stock void SetProcess(int client, int process, float time = 9999.0, const char[]
 	if (FailedProcess[client] == process)
 		return;
 	
-	if (IsReadyForTheProcess(client, process) && CurrentProcess[client] != process)
+	if (CurrentProcess[client] != process && IsReadyForTheProcess(client, process))
 	{
 		if (!ignoredebug)
 			PrintToServer("%N has got a new process from %s to %s %s", client, GetProcessName(CurrentProcess[client]), GetProcessName(process), debugnote);
@@ -116,6 +116,16 @@ public void UpdateProcess(int client)
 	{
 		PrintToServer("%N is cancelled %s process -> timed out.", client, GetProcessName(CurrentProcess[client]));
 		EndProcess(client, CurrentProcess[client]);
+
+		if (RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime())
+		{
+			StartProcess(client, RememberedProcess[client]);
+			PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client]), GetProcessName(CurrentProcess[client]));
+			CurrentProcess[client] = RememberedProcess[client];
+			CurrentProcessTime[client] = RememberedProcessTime[client];
+			return;
+		}
+
 		CurrentProcess[client] = PRO_DEFAULT;
 		StartProcess(client, PRO_DEFAULT);
 	}
@@ -174,7 +184,9 @@ stock void FinishCurrentProcess(int client, bool nodbg = false, const char[] deb
 		if (RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime())
 		{
 			StartProcess(client, RememberedProcess[client]);
+			PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client]), GetProcessName(CurrentProcess[client]));
 			CurrentProcess[client] = RememberedProcess[client];
+			CurrentProcessTime[client] = RememberedProcessTime[client];
 			return;
 		}
 

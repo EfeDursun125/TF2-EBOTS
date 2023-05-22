@@ -6,6 +6,7 @@ public void CheckSlowThink(int client)
 	{
 		m_isSlowThink[client] = true;
 
+		m_class[client] = TF2_GetPlayerClass(client);
 		m_isSniper[client] = false;
 		m_isMedic[client] = false;
 		m_hasCrossbow[client] = false;

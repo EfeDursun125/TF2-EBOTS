@@ -6,7 +6,7 @@ public void ThinkAI(int client)
 // automatic look update
 stock void LookUpdate(int client, bool lookaround = true)
 {
-	if (m_class[client] == TFClass_Pyro && m_hasFriendsNear[client] && TF2_IsPlayerInCondition(m_nearestFriend[client], TFCond_OnFire) && m_friendDistance[client] <= Squaredf(384.0))
+	if (m_class[client] == TFClass_Pyro && m_primaryID[client] != 594 && m_hasFriendsNear[client] && m_friendDistance[client] <= Squaredf(384.0) && TF2_IsPlayerInCondition(m_nearestFriend[client], TFCond_OnFire))
 	{
 		if (IsWeaponSlotActive(client, 0))
 		{

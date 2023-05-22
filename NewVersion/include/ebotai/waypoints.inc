@@ -1277,7 +1277,14 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
     {
         if (astar[i].state == CLOSED)
         {
-            if (isCP || isAD)
+            if (isPL)
+            {
+                if (m_paths[i].activeArea != currentActiveArea)
+                    continue;
+                
+                PossiblePath.Push(i);
+            }
+            else if (isCP || isAD)
             {
                 if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT)
                     continue;
@@ -1701,22 +1708,22 @@ stock int FindNearestHealthPack(float origin[3], float maxRange)
 
 stock bool IsValidHealthPack(int entity)
 {
-	if (IsValidEntity(entity))
-	{
-		char ClassName[32];
-		GetEdictClassname(entity, ClassName, 32);
-		
-		if (StrContains(ClassName, "prop_dynamic", false) == -1 && !HasEntProp(entity, Prop_Send, "m_fEffects"))
-			return false;
-		
-		if (StrContains(ClassName, "prop_dynamic", false) == -1 && GetEntProp(entity, Prop_Send, "m_fEffects") != 0)
-			return false;
-		
-		if (StrContains(ClassName, "item_health", false) != -1 || StrContains(ClassName, "obj_dispenser", false) != -1 || StrContains(ClassName, "func_regen", false) != -1 || StrContains(ClassName, "rd_robot_dispenser", false) != -1 || StrContains(ClassName, "pd_dispenser", false) != -1)
-			return true;
-	}
+	if (!IsValidEntity(entity))
+		return false;
+
+	if (!HasEntProp(entity, Prop_Send, "m_fEffects"))
+		return false;
+
+	if (GetEntProp(entity, Prop_Send, "m_fEffects") != 0)
+		return false;
+
+	char class[64]; 
+	GetEntityClassname(entity, class, sizeof(class));
 	
-	return false;
+	if (StrContains(class, "item_health", false) == -1 && StrContains(class, "obj_dispenser", false) == -1)
+		return false;
+	
+	return true;
 }
 
 stock bool AStarFindAmmoPack(int srcIndex, int client)
@@ -1867,22 +1874,22 @@ stock int FindNearestAmmoPack(float origin[3], float maxRange)
 
 stock bool IsValidAmmoPack(int entity)
 {
-	if (IsValidEntity(entity))
-	{
-		char ClassName[32];
-		GetEdictClassname(entity, ClassName, 32);
-		
-		if	(StrContains(ClassName, "prop_dynamic", false) == -1 && !HasEntProp(entity, Prop_Send, "m_fEffects"))
-			return false;
-		
-		if	(StrContains(ClassName, "prop_dynamic", false) == -1 && GetEntProp(entity, Prop_Send, "m_fEffects") != 0)
-			return false;
-		
-		if	(StrContains(ClassName, "item_ammo", false) != -1 || StrContains(ClassName, "tf_ammo_pack", false) != -1 || StrContains(ClassName, "obj_dispenser", false) != -1 || StrContains(ClassName, "func_regen", false) != -1 || StrContains(ClassName, "pd_dispenser", false) != -1 || StrContains(ClassName, "rd_robot_dispenser", false) != -1 || StrContains(ClassName, "item_healthammokit", false) != -1)
-			return true;
-	}
+	if (!IsValidEntity(entity))
+		return false;
+
+	if (!HasEntProp(entity, Prop_Send, "m_fEffects"))
+		return false;
+
+	if (GetEntProp(entity, Prop_Send, "m_fEffects") != 0)
+		return false;
+
+	char class[64]; 
+	GetEntityClassname(entity, class, sizeof(class));
 	
-	return false;
+	if (StrContains(class, "tf_ammo_pack", false) == -1 && StrContains(class, "item_ammo", false) == -1 && StrContains(class, "obj_dispenser", false) == -1 && StrContains(class, "tf_ammo_pack", false) == -1)
+		return false;
+	
+	return true;
 }
 
 stock bool IsPathPossible(int srcIndex, int destIndex)
