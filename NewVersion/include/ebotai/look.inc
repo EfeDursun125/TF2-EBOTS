@@ -17,20 +17,7 @@ stock void LookAtEnemiens(int client)
 
 	float BestAimPosition[3];
 
-	if (m_class[client] == TFClass_Pyro && IsWeaponSlotActive(client, 1) && StrContains(m_primaryClassName[client], "tf_weapon_flaregun", false) != -1)
-	{
-		float EntVec[3];
-		GetEntPropVector(m_nearestEnemy[client], Prop_Data, "m_vecVelocity", EntVec);	
-
-		float dist = SquareRoot(distance);
-		float delta = dist / 2000.0;
-
-		m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
-		m_lookAt[client][0] += (EntVec[0] * delta);
-		m_lookAt[client][1] += (EntVec[1] * delta);
-		m_lookAt[client][2] += (EntVec[2] * delta);
-	}
-	else if (IsSniper(client) && m_primaryID[client] != 230 && IsWeaponSlotActive(client, 0))
+	if (IsSniper(client) && m_primaryID[client] != 230 && IsWeaponSlotActive(client, 0))
 	{
 		int iBone = LookupBone(m_nearestEnemy[client], "bip_head");
 		if (iBone != -1)
@@ -67,12 +54,12 @@ stock void LookAtEnemiens(int client)
 		if (m_difficulty[client] >= 2 && IsVisible(GetEyePosition(client), GetOrigin(m_nearestEnemy[client])))
 		{
 			float EntVec[3];
-			GetEntPropVector(m_nearestEnemy[client], Prop_Data, "m_vecVelocity", EntVec);	
+			GetEntPropVector(m_nearestEnemy[client], Prop_Data, "m_vecVelocity", EntVec);
 
 			float dist = SquareRoot(distance);
 			float delta = dist / 1100.0;
 
-			m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
+			m_lookAt[client] = GetOrigin(m_nearestEnemy[client]);
 			m_lookAt[client][0] += (EntVec[0] * delta);
 			m_lookAt[client][1] += (EntVec[1] * delta);
 			m_lookAt[client][2] += (EntVec[2] * delta);

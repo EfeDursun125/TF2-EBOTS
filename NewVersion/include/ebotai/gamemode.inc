@@ -44,3 +44,37 @@ stock void AutoLoadGamemode()
 	else
 		isDM = true;
 }
+
+stock bool IsOnDefanse(int client)
+{
+	if (m_team[client] == 2)
+	{
+		if (isPL)
+			return true;
+		
+		if (isMVM)
+			return true;
+		
+		if (isAD)
+			return true;
+	}
+
+	return false;
+}
+
+stock bool IsOnOffanse(int client)
+{
+	if (m_team[client] == 3)
+	{
+		if (isPL)
+			return true;
+		
+		if (isMVM)
+			return true;
+		
+		if (isAD)
+			return true;
+	}
+
+	return false;
+}

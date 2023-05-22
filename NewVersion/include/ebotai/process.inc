@@ -13,7 +13,7 @@ stock void SetProcess(int client, int process, float time = 9999.0, const char[]
 		if (!ignoredebug)
 			PrintToServer("%N has got a new process from %s to %s %s", client, GetProcessName(CurrentProcess[client]), GetProcessName(process), debugnote);
 
-		if (remember && CurrentProcess[client] != PRO_HIDE)
+		if (remember && CurrentProcess[client] != PRO_HIDE && CurrentProcess[client] != PRO_ENGINEERIDLE && CurrentProcess[client] != PRO_SPYLURK)
 		{
 			RememberedProcess[client] = CurrentProcess[client];
 			RememberedProcessTime[client] = CurrentProcessTime[client];
@@ -117,7 +117,7 @@ public void UpdateProcess(int client)
 		PrintToServer("%N is cancelled %s process -> timed out.", client, GetProcessName(CurrentProcess[client]));
 		EndProcess(client, CurrentProcess[client]);
 
-		if (RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime())
+		if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcess[client] != PRO_ENGINEERIDLE && RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime())
 		{
 			StartProcess(client, RememberedProcess[client]);
 			PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client]), GetProcessName(CurrentProcess[client]));
