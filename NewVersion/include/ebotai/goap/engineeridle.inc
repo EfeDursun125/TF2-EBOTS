@@ -80,7 +80,7 @@ public void EngineerIdleUpdate(int client)
 
 	if (IsValidEntity(SentryGun[client]) && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(128.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
@@ -101,7 +101,7 @@ public void EngineerIdleUpdate(int client)
 	
 	if (WantsMoveSentryGun[client] && IsValidEntity(SentryGun[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(128.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
 			if (WantsMoveSentryGun[client])
 			{
@@ -138,7 +138,7 @@ public void EngineerIdleUpdate(int client)
 
 	if (IsValidEntity(Dispenser[client]) && (!DispenserIsMaxLevel[client] || !DispenserHealthIsFull[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(128.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
@@ -159,7 +159,7 @@ public void EngineerIdleUpdate(int client)
 	
 	if (WantsMoveDispenser[client] && IsValidEntity(Dispenser[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(128.0) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
 		{
 			MoveTo(client, GetOrigin(Dispenser[client]));
 			m_lookAt[client] = GetCenter(Dispenser[client]);
@@ -180,7 +180,7 @@ public void EngineerIdleUpdate(int client)
 	
 	if (IsValidEntity(TeleporterEnter[client]) && (!TeleporterEnterHealthIsFull[client] || !TeleporterEnterIsMaxLevel[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) <= Squaredf(96.0) && IsVisible(GetEyePosition(client), GetCenter(TeleporterEnter[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) <= Squaredf(128.0) && IsVisible(GetEyePosition(client), GetCenter(TeleporterEnter[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
@@ -205,7 +205,7 @@ public void EngineerIdleUpdate(int client)
 	
 	if (IsValidEntity(SentryGun[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(64.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(128.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
@@ -238,6 +238,8 @@ public void CheckEngineerBuildings(int client)
 	Dispenser[client] = TF2_GetObject(client, TFObject_Dispenser, TFObjectMode_None);
 	TeleporterEnter[client] = TF2_GetObject(client, TFObject_Teleporter, TFObjectMode_Entrance);
 	TeleporterExit[client] = TF2_GetObject(client, TFObject_Teleporter, TFObjectMode_Exit);
+
+	bool isDefending = IsOnDefanse(client);
 	
 	if (IsValidEntity(SentryGun[client]))
 	{
@@ -267,7 +269,10 @@ public void CheckEngineerBuildings(int client)
 	else
 	{
 		WantsBuildSentryGun[client] = true;
-		EngineerMoveSentryTimer[client] = GetGameTime() + GetRandomFloat(90.0, 160.0);
+		if (isDefending)
+			EngineerMoveSentryTimer[client] = GetGameTime() + 99999999.0;
+		else
+			EngineerMoveSentryTimer[client] = GetGameTime() + GetRandomFloat(90.0, 160.0);
 		WantsMoveSentryGun[client] = false;
 	}
 	
@@ -295,7 +300,10 @@ public void CheckEngineerBuildings(int client)
 		else
 		{
 			WantsBuildDispenser[client] = false;
-			EngineerMoveDispenserTimer[client] = GetGameTime() + GetRandomFloat(120.0, 180.0);
+			if (isDefending)
+				EngineerMoveDispenserTimer[client] = GetGameTime() + 99999999.0;
+			else
+				EngineerMoveDispenserTimer[client] = GetGameTime() + GetRandomFloat(120.0, 180.0);
 			WantsMoveDispenser[client] = false;
 		}
 	}

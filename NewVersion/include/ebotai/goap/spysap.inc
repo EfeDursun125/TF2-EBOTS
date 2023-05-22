@@ -63,7 +63,7 @@ public void SpySapUpdate(int client)
 	if (!m_hasEntitiesNear[client])
 		SpyReactChecker(client);
 
-	if (HasEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") != 0)
+	if (!HasEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") || GetEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") != 0)
 		FinishCurrentProcess(client);
 	else
 	{
@@ -74,6 +74,7 @@ public void SpySapUpdate(int client)
 		{
 			if (IsWeaponSlotActive(client, 1))
 			{
+				m_lookAt[client] = GetCenter(m_goalEntity[client]);
 				if (GetRandomInt(1, 2) == 1)
 					FakeClientCommandThrottled(client, "build 3 0");
 				else
@@ -81,12 +82,12 @@ public void SpySapUpdate(int client)
 			}
 			else
 			{
-				m_lookAt[client] = GetCenter(m_goalEntity[client]);
 				if (GetRandomInt(1, 2) == 1)
 					FakeClientCommandThrottled(client, "build 3 0");
 				else
 					EquipWeaponSlot(client, 1);
 			}
+
 			return;
 		}
 	}
