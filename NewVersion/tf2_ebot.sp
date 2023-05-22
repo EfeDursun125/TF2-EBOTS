@@ -1005,7 +1005,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		if (GetConVarBool(EBotChangeClass))
 		{
 			int changeclass = GetRandomInt(1, 100);
-			if (changeclass <= GetConVarInt(EBotChangeClassChance))
+			if (changeclass <= GetConVarInt(EBotChangeClassChance) && (TF2_GetPlayerClass(client) != TFClass_Engineer || (!IsValidEntity(SentryGun[client]) && !IsValidEntity(TeleporterExit[client]))))
 			{
 				char nickname[32];
        		 	GetClientName(client, nickname, sizeof(nickname))
