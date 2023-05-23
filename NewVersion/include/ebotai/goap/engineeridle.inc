@@ -80,7 +80,7 @@ public void EngineerIdleUpdate(int client)
 
 	if (IsValidEntity(SentryGun[client]) && (!SentryIsMaxLevel[client] || !SentryHealthIsFull[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(128.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(200.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
@@ -101,7 +101,7 @@ public void EngineerIdleUpdate(int client)
 	
 	if (WantsMoveSentryGun[client] && IsValidEntity(SentryGun[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(128.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(200.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
 			if (WantsMoveSentryGun[client])
 			{
@@ -138,7 +138,7 @@ public void EngineerIdleUpdate(int client)
 
 	if (IsValidEntity(Dispenser[client]) && (!DispenserIsMaxLevel[client] || !DispenserHealthIsFull[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(128.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(200.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
@@ -159,7 +159,7 @@ public void EngineerIdleUpdate(int client)
 	
 	if (WantsMoveDispenser[client] && IsValidEntity(Dispenser[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(128.0) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(200.0) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
 		{
 			MoveTo(client, GetOrigin(Dispenser[client]));
 			m_lookAt[client] = GetCenter(Dispenser[client]);
@@ -180,7 +180,7 @@ public void EngineerIdleUpdate(int client)
 	
 	if (IsValidEntity(TeleporterEnter[client]) && (!TeleporterEnterHealthIsFull[client] || !TeleporterEnterIsMaxLevel[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) <= Squaredf(128.0) && IsVisible(GetEyePosition(client), GetCenter(TeleporterEnter[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(TeleporterEnter[client]), true) <= Squaredf(200.0) && IsVisible(GetEyePosition(client), GetCenter(TeleporterEnter[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
@@ -205,7 +205,7 @@ public void EngineerIdleUpdate(int client)
 	
 	if (IsValidEntity(SentryGun[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(128.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(SentryGun[client]), true) <= Squaredf(200.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{
