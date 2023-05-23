@@ -1211,7 +1211,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 			ArrayList RouteWaypoints = new ArrayList();
 			for (int i = 0; i < m_waypointNumber; i++)
 			{
-				if (m_paths[i].flags != _:WAYPOINT_ROUTE)
+				if (m_paths[i].flags != WAYPOINT_ROUTE)
 					continue;
 				
 				// blocked waypoint
@@ -1222,11 +1222,10 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 					continue;
 				
     			// not for our team
-				int cteam = GetClientTeam(client);
- 				if (cteam == 3 && m_paths[i].team == 2)
+ 				if (m_team[client] == 3 && m_paths[i].team == 2)
     				continue;
 				
-   				if (cteam == 2 && m_paths[i].team == 3)
+   				if (m_team[client] == 2 && m_paths[i].team == 3)
         			continue;
 
 				RouteWaypoints.Push(i);
@@ -1247,6 +1246,12 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_spawnTime[client] = GetGameTime();
 		m_class[client] = TF2_GetPlayerClass(client);
 		m_team[client] = GetClientTeam(client);
+
+		m_teleporterEntity[client] = -1;
+		if (ChanceOf(60))
+			m_useTeleporter[client] = true;
+		else
+			m_useTeleporter[client] = false;
 	}
 
 	return Plugin_Handled;
