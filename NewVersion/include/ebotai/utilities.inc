@@ -19,6 +19,9 @@ enum
 	PRO_HIDE
 }
 
+bool m_useTeleporter[TFMaxPlayers];
+int m_teleporterEntity[TFMaxPlayers];
+
 bool m_isSniper[TFMaxPlayers];
 bool m_isMedic[TFMaxPlayers];
 
@@ -602,7 +605,7 @@ stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3], int tra
 	
 	float fps = GetConVarFloat(EBotFPS);
 
-	float flAimSpeed = 1.5;
+	float flAimSpeed = 2.0;
 	flAimSpeed -= fps;
 
 	float tempGoal[3];
@@ -621,10 +624,6 @@ stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3], int tra
 
 	float eye_to_target[3];
 	SubtractVectors(tempGoal, GetEyePosition(client), eye_to_target);
-
-	float punch_angle[3];
-	GetEntPropVector(client, Prop_Send, "m_vecPunchAngle", punch_angle);
-	AddVectors(eye_ang, punch_angle, eye_ang);
 	
 	NormalizeVector(eye_to_target, eye_to_target);
 	
@@ -647,8 +646,7 @@ stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3], int tra
 	float new_eye_angle[3];
 	new_eye_angle[0] = ApproachAngle(ang_to_target[0], eye_ang[0], (max_angvel * frametime) * flAimSpeed);
 	new_eye_angle[1] = ApproachAngle(ang_to_target[1], eye_ang[1], (max_angvel * frametime) * (flAimSpeed * 1.5));
-	
-	SubtractVectors(new_eye_angle, punch_angle, new_eye_angle);
+
 	new_eye_angle[0] = AngleNormalize(new_eye_angle[0]);
 	new_eye_angle[1] = AngleNormalize(new_eye_angle[1]);
 	new_eye_angle[2] = 0.0;

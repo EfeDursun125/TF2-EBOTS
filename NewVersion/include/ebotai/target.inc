@@ -2,13 +2,13 @@ float m_ignoreEnemies[TFMaxPlayers];
 
 public void FindFriendsAndEnemiens(int client)
 {
-	m_enemyDistance[client] = 99999999.0;
-	m_friendDistance[client] = 99999999.0;
+	m_enemyDistance[client] = 999999999999999999999.0;
+	m_friendDistance[client] = 999999999999999999999.0;
 	m_enemiesNearCount[client] = 0;
 	m_friendsNearCount[client] = 0;
 	m_hasEnemiesNear[client] = false;
 	m_hasFriendsNear[client] = false;
-	float medicdist = 99999999.0;
+	float medicdist = 999999999999999999999.0;
 
 	if (m_ignoreEnemies[client] > GetGameTime())
 		return;
@@ -189,7 +189,7 @@ public void FindFriendsAndEnemiens(int client)
 				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && m_class[i] == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
 					continue;
 			}
-			else if (edict_distance > Squared(80))
+			else if (edict_distance > Squaredf(80.0))
 			{
 				if (!IsAttacking(i) && !TF2_IsPlayerInCondition(client, TFCond_Disguised) && !ClientViews(client, i))
 					continue;
@@ -198,7 +198,7 @@ public void FindFriendsAndEnemiens(int client)
 					continue;
 			}
 
-			if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && edict_distance > Squared(256))
+			if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && edict_distance > Squaredf(256.0))
 			{
 				if (m_difficulty[client] >= 1 && IsSniper(client))
 				{
@@ -272,21 +272,43 @@ public void FindEnemyEntities(int client)
 
 	m_hasEntitiesNear[client] = false;
 	int m_hasEntitiesNearCount = 0;
-	float nearestDistance = -1.0;
+	float nearestDistance = 999999999999999999999.0;
 	
 	for (int i = MaxClients + 1; i <= GetMaxEntities(); i++)
 	{
 		if (!IsValidEntity(i))
 			continue;
-		
+
 		char class[64];
 		GetEntityClassname(i, class, sizeof(class));
 		if (!StrEqual(class, "obj_sentrygun", false) && !StrEqual(class, "obj_dispenser", false) && !StrEqual(class, "obj_teleporter", false) && !StrEqual(class, "tf_projectile_pipe_remote", false) && !StrEqual(class, "tf_zombie", false) && !StrEqual(class, "tank_boss", false) && !StrEqual(class, "merasmus", false) && !StrEqual(class, "eyeball_boss", false) && !StrEqual(class, "headless_hatman", false) && !StrEqual(class, "tf_robot_destruction_robot", false))
 			continue;
-		
-		if (GetTeamNumber(i) == m_team[client])
-			continue;
 
+		if (GetTeamNumber(i) == m_team[client])
+		{
+			if (m_useTeleporter[client])
+			{
+				char class[64];
+				GetEntityClassname(i, class, sizeof(class));
+				if (!StrEqual(class, "obj_teleporter", false))
+					continue;
+				
+				if (TF2_GetObjectMode(i) != TFObjectMode_Entrance)
+					continue;
+
+				if (!IsVisible(GetEyePosition(client), GetOrigin(i)))
+					continue;
+				
+				if (!HasEntProp(i, Prop_Send, "m_bHasSapper") || GetEntProp(i, Prop_Send, "m_bHasSapper") != 0)
+					continue;
+				
+				if (GetEntProp(i, Prop_Send, "m_iState") == 2 || GetEntProp(i, Prop_Send, "m_iState") == 6 && GetEntProp(i, Prop_Send, "m_iUpgradeLevel") == 3)
+					m_teleporterEntity[client] = i;
+			}
+
+			continue;
+		}
+		
 		if (HasEntProp(i, Prop_Send, "m_bHasSapper") && GetEntProp(i, Prop_Send, "m_bHasSapper") != 0)
 			continue;
 		
@@ -299,7 +321,7 @@ public void FindEnemyEntities(int client)
 
 		m_hasEntitiesNearCount++;
 		float distance = GetFastDistance(eyeposition, center);
-		if (distance < nearestDistance || nearestDistance == -1.0)
+		if (distance < nearestDistance)
 		{
 			m_nearestEntity[client] = i;
 			nearestDistance = distance;

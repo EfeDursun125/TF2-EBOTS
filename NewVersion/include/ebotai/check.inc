@@ -55,6 +55,12 @@ public void CheckSlowThink(int client)
 				FakeClientCommandThrottled(client, "taunt");
 		}
 
+		if (m_useTeleporter[client] && TF2_IsPlayerInCondition(client, TFCond_TeleportedGlow))
+		{
+			m_useTeleporter[client] = false;
+			m_teleporterEntity[client] = -1;
+		}
+
 		if (GameRules_GetProp("m_bPlayingMedieval"))
 		{
 			if (!IsMoving(client))
