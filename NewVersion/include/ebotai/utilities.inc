@@ -752,7 +752,7 @@ stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
 	}
 }
 
-stock void MoveToWaypoint(int client, const float flGoal[3], float flDest[3])
+stock void MoveToWaypoint(int client, const float flGoal[3], const float flDest[3])
 {
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);

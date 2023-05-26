@@ -1886,7 +1886,7 @@ stock bool IsValidAmmoPack(int entity)
 	char class[64]; 
 	GetEntityClassname(entity, class, sizeof(class));
 	
-	if (StrContains(class, "tf_ammo_pack", false) == -1 && StrContains(class, "item_ammo", false) == -1 && StrContains(class, "obj_dispenser", false) == -1 && StrContains(class, "tf_ammo_pack", false) == -1)
+	if (StrContains(class, "tf_ammo_pack", false) == -1 && StrContains(class, "item_ammo", false) == -1 && StrContains(class, "tf_ammo_pack", false) == -1)
 		return false;
 	
 	return true;

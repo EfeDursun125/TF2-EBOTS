@@ -53,7 +53,7 @@ public void FindFriendsAndEnemiens(int client)
 				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && health >= maxHealth)
 					continue;
 		
-				if (m_class[i] == TFClass_Engineer && IsWeaponSlotActive(i, 2) && health >= maxHealth)
+				if (m_class[i] == TFClass_Engineer && health >= maxHealth)
 					continue;
 		
 				if (IsMedic(i) && health >= maxHealth)
