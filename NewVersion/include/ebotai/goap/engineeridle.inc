@@ -56,6 +56,21 @@ public void EngineerIdleUpdate(int client)
 	FindEnemyEntities(client);
 	CheckEngineerBuildings(client);
 	LookUpdate(client);
+
+	if (m_useTeleporter[client] && IsValidEntity(m_teleporterEntity[client]))
+	{
+		DeletePathNodes(client);
+		m_nextStuckCheck[client] = GetGameTime() + 5.0;
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(m_teleporterEntity[client]), true) <= Squaredf(24.0))
+		{
+			m_moveVel[client][0] = 0.0;
+			m_moveVel[client][1] = 0.0;
+			m_moveVel[client][2] = 0.0;
+		}
+		else
+			MoveToWaypoint(client, GetOrigin(m_teleporterEntity[client]), GetOrigin(m_teleporterEntity[client]));
+		return;
+	}
 	
 	if (!IsValidEntity(SentryGun[client]))
 	{

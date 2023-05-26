@@ -70,14 +70,14 @@ public void DefaultUpdate(int client)
 	{
 		DeletePathNodes(client);
 		m_nextStuckCheck[client] = GetGameTime() + 5.0;
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(m_teleporterEntity[client]), true) <= Squaredf(48.0))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(m_teleporterEntity[client]), true) <= Squaredf(24.0))
 		{
 			m_moveVel[client][0] = 0.0;
 			m_moveVel[client][1] = 0.0;
 			m_moveVel[client][2] = 0.0;
 		}
 		else
-			MoveTo(client, GetOrigin(m_teleporterEntity[client]), false);
+			MoveToWaypoint(client, GetOrigin(m_teleporterEntity[client]), GetOrigin(m_teleporterEntity[client]));
 		return;
 	}
 
@@ -680,10 +680,10 @@ stock void ObjectiveMovement(int client)
 	{
 		if (m_hasWaypoints)
 			FollowPath(client, m_goalPosition[client]);
-		else
+		else if (IsValidEntity(m_goalEntity[client]))
 		{
 			float cappointpos[3];
-			GetEntPropVector(m_goalEntity[client], Prop_Send, "m_vecOrigin", cappointpos);
+			cappointpos = GetOrigin(m_goalEntity[client]);
 			if (GetTeamNumber(m_goalEntity[client]) == m_team[client])
 			{
 				m_goalPosition[client][0] = cappointpos[0] + GetRandomFloat(-768.0, 768.0);
