@@ -288,9 +288,9 @@ public void FindEnemyEntities(int client)
 		{
 			if (m_useTeleporter[client])
 			{
-				char class[64];
-				GetEntityClassname(i, class, sizeof(class));
-				if (!StrEqual(class, "obj_teleporter", false))
+				char newClass[64];
+				GetEntityClassname(i, newClass, sizeof(newClass));
+				if (!StrEqual(newClass, "obj_teleporter", false))
 					continue;
 				
 				if (TF2_GetObjectMode(i) != TFObjectMode_Entrance)

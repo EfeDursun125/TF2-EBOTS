@@ -67,7 +67,7 @@ public void CheckSlowThink(int client)
 			{
 				if (m_hasEnemiesNear[client] && m_class[client] != TFClass_Sniper)
 					AStarFindPath(-1, FindNearestWaypoint(GetOrigin(m_nearestEnemy[client]), 999999.0, client), client, GetOrigin(m_nearestEnemy[client]));
-				else if (m_goalIndex[client] != -1 && m_paths[m_goalIndex[client]].activeArea != currentActiveArea)
+				else if (m_goalIndex[client] != -1 && !(m_paths[m_goalIndex[client]].activeArea & currentActiveArea))
 					SelectObjective(client);
 			}
 			else if (m_hasEnemiesNear[client] && m_class[client] == TFClass_DemoMan)

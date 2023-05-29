@@ -1,6 +1,6 @@
 // from https://github.com/EfeDursun125/CS-EBOT/blob/main/source/waypoint.cpp
 // higher version waypoints will be ignored due to updated waypoint system
-const int WaypointVersion = 2;
+const int WaypointVersion = 3;
 const int MaxWaypoints = 8192;
 const int MaxPathIndex = 8;
 
@@ -27,26 +27,77 @@ char m_aboutTheWaypoint[192] = "";
 
 enum
 {
-    WAYPOINT_JUMP = 1,
-    WAYPOINT_SNIPER = 2,
-    WAYPOINT_DEFEND = 3,
-    WAYPOINT_FALLDAMAGE = 4,
-    WAYPOINT_CROUCH = 5,
-    WAYPOINT_AMMO = 6,
-    WAYPOINT_HEALTH = 7,
-    WAYPOINT_RESUPPLY = 8,
-    WAYPOINT_DOUBLEJUMP = 9,
-    WAYPOINT_ROCKETJUMP = 10,
-    WAYPOINT_DEMOMANCAMP = 11,
-    WAYPOINT_SENTRY = 12,
-    WAYPOINT_ROUTE = 13,
-    WAYPOINT_TELEPORTERENTER = 14,
-    WAYPOINT_TELEPORTEREXIT = 15,
-    WAYPOINT_CAPTUREPOINT = 16,
-    WAYPOINT_NOSTRAFE = 17,
-    WAYPOINT_NOSPY = 18,
-    WAYPOINT_DEMOCHARGE = 19
+    WAYPOINT_JUMP = (1 << 1),
+    WAYPOINT_SNIPER = (1 << 2),
+    WAYPOINT_DEFEND = (1 << 3),
+    WAYPOINT_FALLDAMAGE = (1 << 4),
+    WAYPOINT_CROUCH = (1 << 5),
+    WAYPOINT_AMMO = (1 << 6),
+    WAYPOINT_HEALTH = (1 << 7),
+    WAYPOINT_RESUPPLY = (1 << 8),
+    WAYPOINT_DOUBLEJUMP = (1 << 9),
+    WAYPOINT_ROCKETJUMP = (1 << 10),
+    WAYPOINT_DEMOMANCAMP = (1 << 11),
+    WAYPOINT_SENTRY = (1 << 12),
+    WAYPOINT_ROUTE = (1 << 13),
+    WAYPOINT_TELEPORTERENTER = (1 << 14),
+    WAYPOINT_TELEPORTEREXIT = (1 << 15),
+    WAYPOINT_CAPTUREPOINT = (1 << 16),
+    WAYPOINT_NOSTRAFE = (1 << 17),
+    WAYPOINT_NOSPY = (1 << 18),
+    WAYPOINT_DEMOCHARGE = (1 << 19)
 };
+
+stock char[] GetWaypointName(int waypoint)
+{
+	char string[512] = "None";
+    Format(string, sizeof(string), "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", waypoint == 0 ? "None" : "", 
+        waypoint & WAYPOINT_JUMP ? "Jump " : "", 
+        waypoint & WAYPOINT_SNIPER ? "Sniper " : "", 
+        waypoint & WAYPOINT_DEFEND ? "Defend " : "", 
+        waypoint & WAYPOINT_FALLDAMAGE ? "FallDamage " : "", 
+        waypoint & WAYPOINT_CROUCH ? "Crouch " : "", 
+        waypoint & WAYPOINT_AMMO ? "Ammo " : "", 
+        waypoint & WAYPOINT_HEALTH ? "Health " : "", 
+        waypoint & WAYPOINT_RESUPPLY ? "Resupply " : "", 
+        waypoint & WAYPOINT_DOUBLEJUMP ? "DoubleJump " : "", 
+        waypoint & WAYPOINT_ROCKETJUMP ? "RocketJump " : "", 
+        waypoint & WAYPOINT_DEMOMANCAMP ? "StickyTrap " : "", 
+        waypoint & WAYPOINT_SENTRY ? "Sentry " : "", 
+        waypoint & WAYPOINT_ROUTE ? "Route " : "", 
+        waypoint & WAYPOINT_TELEPORTERENTER ? "TeleEnter " : "", 
+        waypoint & WAYPOINT_TELEPORTEREXIT ? "TeleExit " : "", 
+        waypoint & WAYPOINT_CAPTUREPOINT ? "CapturePoint " : "", 
+        waypoint & WAYPOINT_NOSTRAFE ? "NoStrafe " : "", 
+        waypoint & WAYPOINT_NOSPY ? "NoSpy " : "", 
+        waypoint & WAYPOINT_DEMOCHARGE ? "DemoCharge " : "");
+	return string;
+}
+
+enum
+{
+    AREA1 = (1 << 1),
+    AREA2 = (1 << 2),
+    AREA3 = (1 << 3),
+    AREA4 = (1 << 4),
+    AREA5 = (1 << 5),
+    AREA6 = (1 << 6),
+    AREA7 = (1 << 7)
+};
+
+stock char[] GetAreaName(int area)
+{
+	char string[256] = "All Time";
+    Format(string, sizeof(string), "%s%s%s%s%s%s%s%s", area == 0 ? "All Time" : "", 
+        area & AREA1 ? "Area1 " : "", 
+        area & AREA2 ? "Area2 " : "", 
+        area & AREA3 ? "Area3 " : "", 
+        area & AREA4 ? "Area4 " : "", 
+        area & AREA5 ? "Area5 " : "", 
+        area & AREA6 ? "Area6 " : "", 
+        area & AREA7 ? "Area7 " : "");
+	return string;
+}
 
 enum struct PriorityQueueItem
 {
@@ -274,10 +325,10 @@ stock void DrawWaypoints()
     if (nearestIndex != -1 && GetVectorDistance(GetEyePosition(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(range) && IsVisibleWaypointDebug(GetEyePosition(m_hostEntity), m_paths[nearestIndex].origin))
     {
         // draw the camplines
-        if (m_paths[nearestIndex].flags == WAYPOINT_SNIPER || m_paths[nearestIndex].flags == WAYPOINT_DEFEND || m_paths[nearestIndex].flags == WAYPOINT_SENTRY || m_paths[nearestIndex].flags == WAYPOINT_DEMOMANCAMP || m_paths[nearestIndex].flags == WAYPOINT_TELEPORTERENTER || m_paths[nearestIndex].flags == WAYPOINT_TELEPORTEREXIT)
+        if (m_paths[nearestIndex].flags & WAYPOINT_SNIPER || m_paths[nearestIndex].flags & WAYPOINT_DEFEND || m_paths[nearestIndex].flags & WAYPOINT_SENTRY || m_paths[nearestIndex].flags & WAYPOINT_DEMOMANCAMP || m_paths[nearestIndex].flags & WAYPOINT_TELEPORTERENTER || m_paths[nearestIndex].flags & WAYPOINT_TELEPORTEREXIT)
         {
             float height = 72.0;
-            if (m_paths[nearestIndex].flags == WAYPOINT_CROUCH)
+            if (m_paths[nearestIndex].flags & WAYPOINT_CROUCH)
                 height = 36.0;
 
             // convert int to float
@@ -298,11 +349,11 @@ stock void DrawWaypoints()
                 continue;
 
             float height = 36.0;
-            if (m_paths[nearestIndex].flags == WAYPOINT_CROUCH)
+            if (m_paths[nearestIndex].flags & WAYPOINT_CROUCH)
                 height = 18.0;
             
             float height2 = 36.0;
-            if (m_paths[m_paths[nearestIndex].pathIndex[i]].flags == WAYPOINT_CROUCH)
+            if (m_paths[m_paths[nearestIndex].pathIndex[i]].flags & WAYPOINT_CROUCH)
                 height2 = 18.0;
             
             float indexOrigin[3];
@@ -331,11 +382,11 @@ stock void DrawWaypoints()
             if (IsConnected(m_paths[i].index, m_paths[nearestIndex].index) && !IsConnected(m_paths[nearestIndex].index, m_paths[i].index))
             {
                 float height = 36.0;
-                if (m_paths[nearestIndex].flags == WAYPOINT_CROUCH)
+                if (m_paths[nearestIndex].flags & WAYPOINT_CROUCH)
                     height = 18.0;
                 
                 float height2 = 36.0;
-                if (m_paths[i].flags == WAYPOINT_CROUCH)
+                if (m_paths[i].flags & WAYPOINT_CROUCH)
                     height2 = 18.0;
 
                 float indexOrigin[3];
@@ -357,7 +408,7 @@ stock void DrawWaypoints()
         origin = m_paths[nearestIndex].origin;
         float height = 18.0;
 
-        if (m_paths[nearestIndex].flags == WAYPOINT_CROUCH)
+        if (m_paths[nearestIndex].flags & WAYPOINT_CROUCH)
             height = 9.0;
         
         origin[2] += height;
@@ -426,48 +477,8 @@ stock void DrawWaypoints()
         else if (m_paths[i].team == 5)
             wpteam = "Yellow Only";
         
-        char wpflags[128] = "None";
-        if (m_paths[i].flags == WAYPOINT_AMMO)
-            wpflags = "Ammo";
-        else if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT)
-            wpflags = "Capture";
-        else if (m_paths[i].flags == WAYPOINT_CROUCH)
-            wpflags = "Crouch";
-        else if (m_paths[i].flags == WAYPOINT_DEMOMANCAMP)
-            wpflags = "Demoman Sticky Trap";
-        else if (m_paths[i].flags == WAYPOINT_ROUTE)
-            wpflags = "Route";
-        else if (m_paths[i].flags == WAYPOINT_DOUBLEJUMP)
-            wpflags = "Double Jump";
-        else if (m_paths[i].flags == WAYPOINT_JUMP)
-            wpflags = "Jump";
-        else if (m_paths[i].flags == WAYPOINT_HEALTH)
-            wpflags = "Health";
-        else if (m_paths[i].flags == WAYPOINT_DEFEND)
-            wpflags = "Defend";
-        else if (m_paths[i].flags == WAYPOINT_FALLDAMAGE)
-            wpflags = "Fall Damage";
-        else if (m_paths[i].flags == WAYPOINT_RESUPPLY)
-            wpflags = "Resupply";
-        else if (m_paths[i].flags == WAYPOINT_ROCKETJUMP)
-            wpflags = "Rocket Jump";
-        else if (m_paths[i].flags == WAYPOINT_SENTRY)
-            wpflags = "Sentry";
-        else if (m_paths[i].flags == WAYPOINT_SNIPER)
-            wpflags = "Sniper";
-        else if (m_paths[i].flags == WAYPOINT_TELEPORTERENTER)
-            wpflags = "Teleporter Enter";
-        else if (m_paths[i].flags == WAYPOINT_TELEPORTEREXIT)
-            wpflags = "Teleporter Exit";
-        else if (m_paths[i].flags == WAYPOINT_NOSTRAFE)
-            wpflags = "No Strafe (Safe Movement)";
-        else if (m_paths[i].flags == WAYPOINT_NOSPY)
-            wpflags = "No Spy";
-        else if (m_paths[i].flags == WAYPOINT_DEMOCHARGE)
-            wpflags = "Demo Charge";
-        
-        SetHudTextParams(0.0, 0.0, nextDrawTime + GetGameFrameTime(), 255, 255, 255, 255, 2, 1.0, 0.0, 0.0);
-        ShowHudText(m_hostEntity, -1, "Waypoint Index: %d (%d/%d)\nTeam: %s\nActive Area: %d\nFlags: %s\nRadius: %d\nOrigin: %d %d %d\nAim Start Origin: %d %d %d\nAim End Origin: %d %d %d\nDamage: %d\nDeaths: %d", m_paths[i].index, m_waypointNumber, MaxWaypoints, wpteam, m_paths[i].activeArea, wpflags, RoundFloat(m_paths[i].radius), RoundFloat(m_paths[i].origin[0]), RoundFloat(m_paths[i].origin[1]), RoundFloat(m_paths[i].origin[2]), RoundFloat(m_paths[i].campStart[0]), RoundFloat(m_paths[i].campStart[1]), RoundFloat(m_paths[i].campStart[2]), RoundFloat(m_paths[i].campEnd[0]), RoundFloat(m_paths[i].campEnd[1]), RoundFloat(m_paths[i].campEnd[2]), RoundFloat(GetDamage(i)), (GetDeaths(i) - 1));
+        SetHudTextParams(0.0, -1.0, nextDrawTime + GetGameFrameTime(), 255, 255, 255, 255, 2, 1.0, 0.0, 0.0);
+        ShowHudText(m_hostEntity, -1, "Waypoint Index: %d (%d/%d)\nTeam: %s\nActive Areas: %s\nFlags: %s\nRadius: %d\nOrigin: %d %d %d\nAim Start Origin: %d %d %d\nAim End Origin: %d %d %d\nDamage: %d\nDeaths: %d", m_paths[i].index, m_waypointNumber, MaxWaypoints, wpteam, GetAreaName(m_paths[i].activeArea), GetWaypointName(m_paths[i].flags), RoundFloat(m_paths[i].radius), RoundFloat(m_paths[i].origin[0]), RoundFloat(m_paths[i].origin[1]), RoundFloat(m_paths[i].origin[2]), RoundFloat(m_paths[i].campStart[0]), RoundFloat(m_paths[i].campStart[1]), RoundFloat(m_paths[i].campStart[2]), RoundFloat(m_paths[i].campEnd[0]), RoundFloat(m_paths[i].campEnd[1]), RoundFloat(m_paths[i].campEnd[2]), RoundFloat(GetDamage(i)), (GetDeaths(i) - 1));
     }
 
     for (int i = 0; i < m_waypointNumber; i++)
@@ -493,101 +504,101 @@ stock void DrawWaypoints()
         int color[4] = {0, 255, 0, 255};
         float height = 72.0;
 
-        if (m_paths[i].flags == WAYPOINT_CROUCH)
+        if (m_paths[i].flags & WAYPOINT_CROUCH)
             height = 36.0;
         
-        if (m_paths[i].flags == WAYPOINT_RESUPPLY)
+        if (m_paths[i].flags & WAYPOINT_RESUPPLY)
         {
             color[0] = 188;
             color[1] = 52;
             color[2] = 123;
         }
-        else if (m_paths[i].flags == WAYPOINT_SNIPER)
+        else if (m_paths[i].flags & WAYPOINT_SNIPER)
             color[2] = 255;
-        else if (m_paths[i].flags == WAYPOINT_DEFEND)
+        else if (m_paths[i].flags & WAYPOINT_DEFEND)
         {
             color[0] = 255;
             color[1] = 125;
         }
-        else if (m_paths[i].flags == WAYPOINT_FALLDAMAGE)
+        else if (m_paths[i].flags & WAYPOINT_FALLDAMAGE)
         {
             color[0] = 128;
             color[1] = 128;
             color[2] = 128;
         }
-        else if (m_paths[i].flags == WAYPOINT_JUMP)
+        else if (m_paths[i].flags & WAYPOINT_JUMP)
         {
             color[0] = 255;
             color[2] = 255;
         }
-        else if (m_paths[i].flags == WAYPOINT_HEALTH)
+        else if (m_paths[i].flags & WAYPOINT_HEALTH)
         {
             color[0] = 255;
             color[2] = 255;
         }
-        else if (m_paths[i].flags == WAYPOINT_AMMO)
+        else if (m_paths[i].flags & WAYPOINT_AMMO)
         {
             color[0] = 55;
             color[1] = 64;
             color[2] = 68;
         }
-        else if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT)
+        else if (m_paths[i].flags & WAYPOINT_CAPTUREPOINT)
             color[0] = 255;
-        else if (m_paths[i].flags == WAYPOINT_DOUBLEJUMP)
+        else if (m_paths[i].flags & WAYPOINT_DOUBLEJUMP)
         {
             color[0] = 160;
             color[1] = 240;
             color[2] = 20;
         }
-        else if (m_paths[i].flags == WAYPOINT_NOSTRAFE)
+        else if (m_paths[i].flags & WAYPOINT_NOSTRAFE)
         {
             color[0] = 147;
             color[1] = 128;
             color[2] = 147;
         }
-        else if (m_paths[i].flags == WAYPOINT_ROCKETJUMP)
+        else if (m_paths[i].flags & WAYPOINT_ROCKETJUMP)
         {
             color[0] = 128;
             color[1] = 6;
             color[2] = 150;
         }
-        else if (m_paths[i].flags == WAYPOINT_NOSPY)
+        else if (m_paths[i].flags & WAYPOINT_NOSPY)
         {
             color[0] = 160;
             color[1] = 124;
             color[2] = 122;
         }
-        else if (m_paths[i].flags == WAYPOINT_DEMOCHARGE)
+        else if (m_paths[i].flags & WAYPOINT_DEMOCHARGE)
         {
             color[0] = 139;
             color[1] = 189;
             color[2] = 204;
         }
-        else if (m_paths[i].flags == WAYPOINT_ROUTE)
+        else if (m_paths[i].flags & WAYPOINT_ROUTE)
         {
             color[0] = 70;
             color[1] = 70;
             color[2] = 70;
         }
-        else if (m_paths[i].flags == WAYPOINT_SENTRY)
+        else if (m_paths[i].flags & WAYPOINT_SENTRY)
         {
             color[0] = 163;
             color[1] = 155;
             color[2] = 198;
         }
-        else if (m_paths[i].flags == WAYPOINT_TELEPORTERENTER)
+        else if (m_paths[i].flags & WAYPOINT_TELEPORTERENTER)
         {
             color[0] = 127;
             color[1] = 131;
             color[2] = 168;
         }
-        else if (m_paths[i].flags == WAYPOINT_TELEPORTEREXIT)
+        else if (m_paths[i].flags & WAYPOINT_TELEPORTEREXIT)
         {
             color[0] = 131;
             color[1] = 127;
             color[2] = 168;
         }
-        else if (m_paths[i].flags == WAYPOINT_DEMOMANCAMP)
+        else if (m_paths[i].flags & WAYPOINT_DEMOMANCAMP)
         {
             color[0] = 125;
             color[1] = 47;
@@ -816,8 +827,8 @@ stock void WaypointAdd(float origin[3], bool cdebug = true, int flags = 0, bool 
 
     m_paths[index].origin = origin;
 
-    m_paths[index].campStart = {0.0, 0.0, 0.0};
-    m_paths[index].campEnd = {0.0, 0.0, 0.0};
+    m_paths[index].campStart = NULL_VECTOR;
+    m_paths[index].campEnd = NULL_VECTOR;
 
     for (int i = 0; i < MaxPathIndex; i++)
     {
@@ -1060,7 +1071,7 @@ stock void DeleteWaypointIndex(int index)
 
 stock float HeuristicNormal(int start, int goal)
 {
-    if (m_paths[start].flags == WAYPOINT_DOUBLEJUMP)
+    if (m_paths[start].flags & WAYPOINT_DOUBLEJUMP)
         return 0.0;
 
     return GetWaypointDistance(start, goal);
@@ -1068,18 +1079,18 @@ stock float HeuristicNormal(int start, int goal)
 
 stock float CostNormal(int current, int parent, int client)
 {
-    if (m_paths[current].flags == WAYPOINT_DOUBLEJUMP)
+    if (m_paths[current].flags & WAYPOINT_DOUBLEJUMP)
         return 1.0;
     
     // low health or don't want take any damage
-    if (m_paths[current].flags == WAYPOINT_FALLDAMAGE && (m_lowHealth[client] || m_class[client] == TFClass_Spy || GetRandomInt(1, 3) == 1))
+    if (m_paths[current].flags & WAYPOINT_FALLDAMAGE && (m_lowHealth[client] || m_class[client] == TFClass_Spy || GetRandomInt(1, 3) == 1))
         return 65355.0;
     
     // they don't let us jump and heavy can't jump
-    if (m_paths[current].flags == WAYPOINT_JUMP && (m_hasEnemiesNear[client] || m_class[client] == TFClass_Heavy))
+    if (m_paths[current].flags & WAYPOINT_JUMP && (m_hasEnemiesNear[client] || m_class[client] == TFClass_Heavy))
         return 65355.0;
     
-    if (m_paths[current].flags == WAYPOINT_NOSPY && m_class[client] == TFClass_Spy)
+    if (m_paths[current].flags & WAYPOINT_NOSPY && m_class[client] == TFClass_Spy)
         return 65355.0;
     
     if (m_class[client] == TFClass_Engineer)
@@ -1208,16 +1219,16 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
                 continue;
             
             // blocked waypoint
-            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
+            if (m_paths[self].flags & 0 && m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
+            if (m_paths[self].flags & WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
                 continue;
 
-            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
+            if (m_paths[self].flags & WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
                 continue;
 
-            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
+            if (m_paths[self].flags & WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
                 continue;
             else
             {
@@ -1279,17 +1290,17 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
         {
             if (isPL)
             {
-                if (m_paths[i].activeArea != currentActiveArea)
+                if (!(m_paths[i].activeArea & currentActiveArea))
                     continue;
                 
                 PossiblePath.Push(i);
             }
             else if (isCP || isAD)
             {
-                if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT)
+                if (m_paths[i].flags & WAYPOINT_CAPTUREPOINT)
                     continue;
 
-                if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+                if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
                     continue;
                 
                 PossiblePath.Push(i);
@@ -1392,16 +1403,16 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
                 continue;
             
             // blocked waypoint
-            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
+            if (m_paths[self].flags & 0 && m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
+            if (m_paths[self].flags & WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
                 continue;
 
-            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
+            if (m_paths[self].flags & WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
+            if (m_paths[self].flags & WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
                 continue;
             else
             {
@@ -1509,7 +1520,7 @@ stock bool AStarFindHidingSpot(int srcIndex, int client, float dangerOrigin[3])
                 continue;
             
             // blocked waypoint
-            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
+            if (m_paths[self].flags & 0 && m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
                 continue;
             
             if (m_paths[self].team == 2 && m_team[client] == 3)
@@ -1517,13 +1528,13 @@ stock bool AStarFindHidingSpot(int srcIndex, int client, float dangerOrigin[3])
             else if (m_paths[self].team == 3 && m_team[client] == 2)
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && m_class[client]!= TFClass_Scout)
+            if (m_paths[self].flags & WAYPOINT_DOUBLEJUMP && m_class[client]!= TFClass_Scout)
                 continue;
 
-            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
+            if (m_paths[self].flags & WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
+            if (m_paths[self].flags & WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
                 continue;
             else
             {
@@ -1596,7 +1607,7 @@ stock bool AStarFindHealthPack(int srcIndex, int client)
         currentIndex = openList.RemoveLowest();
 
         // is the current node the goal node?
-        if ((m_paths[currentIndex.index].flags == WAYPOINT_RESUPPLY || (m_paths[currentIndex.index].flags == WAYPOINT_HEALTH && FindNearestHealthPack(m_paths[currentIndex.index].origin, 75.0) != -1)) && !IsVisibleByEnemy(client, currentIndex.index, GetHeight(client)))
+        if ((m_paths[currentIndex.index].flags & WAYPOINT_RESUPPLY || (m_paths[currentIndex.index].flags & WAYPOINT_HEALTH && FindNearestHealthPack(m_paths[currentIndex.index].origin, 75.0) != -1)) && !IsVisibleByEnemy(client, currentIndex.index, GetHeight(client)))
         {
             DeletePathNodes(client);
 
@@ -1627,7 +1638,7 @@ stock bool AStarFindHealthPack(int srcIndex, int client)
                 continue;
             
             // blocked waypoint
-            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
+            if (m_paths[self].flags & 0 && m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
                 continue;
             
             if (m_paths[self].team == 2 && m_team[client] == 3)
@@ -1635,13 +1646,13 @@ stock bool AStarFindHealthPack(int srcIndex, int client)
             else if (m_paths[self].team == 3 && m_team[client] == 2)
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
+            if (m_paths[self].flags & WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
                 continue;
 
-            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
+            if (m_paths[self].flags & WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
+            if (m_paths[self].flags & WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
                 continue;
             else
             {
@@ -1762,7 +1773,7 @@ stock bool AStarFindAmmoPack(int srcIndex, int client)
         currentIndex = openList.RemoveLowest();
 
         // is the current node the goal node?
-        if ((m_paths[currentIndex.index].flags == WAYPOINT_RESUPPLY || ((m_paths[currentIndex.index].flags == WAYPOINT_AMMO || isEngineer) && FindNearestAmmoPack(m_paths[currentIndex.index].origin, 75.0) != -1)) && !IsVisibleByEnemy(client, currentIndex.index, GetHeight(client)))
+        if ((m_paths[currentIndex.index].flags & WAYPOINT_RESUPPLY || ((m_paths[currentIndex.index].flags & WAYPOINT_AMMO || isEngineer) && FindNearestAmmoPack(m_paths[currentIndex.index].origin, 75.0) != -1)) && !IsVisibleByEnemy(client, currentIndex.index, GetHeight(client)))
         {
             DeletePathNodes(client);
 
@@ -1793,7 +1804,7 @@ stock bool AStarFindAmmoPack(int srcIndex, int client)
                 continue;
             
             // blocked waypoint
-            if (m_paths[self].flags == 0 && m_paths[self].activeArea != 0 && m_paths[self].activeArea != currentActiveArea)
+            if (m_paths[self].flags & 0 && m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
                 continue;
             
             if (m_paths[self].team == 2 && m_team[client] == 3)
@@ -1801,13 +1812,13 @@ stock bool AStarFindAmmoPack(int srcIndex, int client)
             else if (m_paths[self].team == 3 && m_team[client] == 2)
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
+            if (m_paths[self].flags & WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
                 continue;
 
-            if (m_paths[self].flags == WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
+            if (m_paths[self].flags & WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
                 continue;
             
-            if (m_paths[self].flags == WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
+            if (m_paths[self].flags & WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
                 continue;
             else
             {
@@ -2044,7 +2055,7 @@ stock int FindNearestWaypoint(float origin[3], float maxDistance = 999999.0, int
     for (int i = 0; i < m_waypointNumber; i++)
     {
         // blocked waypoint
-   		if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+   		if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 			continue;
 
         if (client > 0 && client <= MaxClients)
@@ -2152,28 +2163,28 @@ stock void InitTypes()
 
     for (int i = 0; i < m_waypointNumber; i++)
     {
-        if (m_paths[i].flags == WAYPOINT_RESUPPLY)
+        if (m_paths[i].flags & WAYPOINT_RESUPPLY)
         {
             m_hasHealthWaypoints = true;
             m_hasAmmoWaypoints = true;
         }
-        else if (m_paths[i].flags == WAYPOINT_HEALTH)
+        else if (m_paths[i].flags & WAYPOINT_HEALTH)
             m_hasHealthWaypoints = true;
-        else if (m_paths[i].flags == WAYPOINT_AMMO)
+        else if (m_paths[i].flags & WAYPOINT_AMMO)
             m_hasAmmoWaypoints = true;
-        else if (m_paths[i].flags == WAYPOINT_SNIPER)
+        else if (m_paths[i].flags & WAYPOINT_SNIPER)
             m_hasSniperWaypoints = true;
-        else if (m_paths[i].flags == WAYPOINT_DEMOMANCAMP)
+        else if (m_paths[i].flags & WAYPOINT_DEMOMANCAMP)
             m_hasStickyWaypoints = true;
-        else if (m_paths[i].flags == WAYPOINT_ROUTE)
+        else if (m_paths[i].flags & WAYPOINT_ROUTE)
             m_hasRouteWaypoints = true;
-        else if (m_paths[i].flags == WAYPOINT_SENTRY)
+        else if (m_paths[i].flags & WAYPOINT_SENTRY)
             m_hasSentryWaypoints = true;
-        else if (m_paths[i].flags == WAYPOINT_TELEPORTERENTER)
+        else if (m_paths[i].flags & WAYPOINT_TELEPORTERENTER)
             m_hasTeleporterEnterWaypoints = true;
-        else if (m_paths[i].flags == WAYPOINT_TELEPORTEREXIT)
+        else if (m_paths[i].flags & WAYPOINT_TELEPORTEREXIT)
             m_hasTeleporterExitWaypoints = true;
-        else if (m_paths[i].flags == WAYPOINT_ROCKETJUMP)
+        else if (m_paths[i].flags & WAYPOINT_ROCKETJUMP)
             m_hasRocketJumpWaypoints = true;
     }
 }
@@ -2232,9 +2243,63 @@ stock void WaypointLoad()
         {
             m_paths[i].index = m_pathsOLD[i].index;
             m_paths[i].pathIndex = m_pathsOLD[i].pathIndex;
-            m_paths[i].activeArea = m_pathsOLD[i].activeArea;
+            if (m_pathsOLD[i].activeArea == 1)
+                m_paths[i].activeArea = AREA1;
+            else if (m_pathsOLD[i].activeArea == 2)
+                m_paths[i].activeArea = AREA2;
+            else if (m_pathsOLD[i].activeArea == 3)
+                m_paths[i].activeArea = AREA3;
+            else if (m_pathsOLD[i].activeArea == 4)
+                m_paths[i].activeArea = AREA4;
+            else if (m_pathsOLD[i].activeArea == 5)
+                m_paths[i].activeArea = AREA5;
+            else if (m_pathsOLD[i].activeArea == 6)
+                m_paths[i].activeArea = AREA6;
+            else if (m_pathsOLD[i].activeArea == 7)
+                m_paths[i].activeArea = AREA7;
+            else
+                m_paths[i].activeArea = 0;
             m_paths[i].team = m_pathsOLD[i].team;
-            m_paths[i].flags = m_pathsOLD[i].flags;
+            if (m_pathsOLD[i].flags == 1)
+                m_paths[i].flags = WAYPOINT_JUMP;
+            else if (m_pathsOLD[i].flags == 2)
+                m_paths[i].flags = WAYPOINT_SNIPER;
+            else if (m_pathsOLD[i].flags == 3)
+                m_paths[i].flags = WAYPOINT_DEFEND;
+            else if (m_pathsOLD[i].flags == 4)
+                m_paths[i].flags = WAYPOINT_FALLDAMAGE;
+            else if (m_pathsOLD[i].flags == 5)
+                m_paths[i].flags = WAYPOINT_CROUCH;
+            else if (m_pathsOLD[i].flags == 6)
+                m_paths[i].flags = WAYPOINT_AMMO;
+            else if (m_pathsOLD[i].flags == 7)
+                m_paths[i].flags = WAYPOINT_HEALTH;
+            else if (m_pathsOLD[i].flags == 8)
+                m_paths[i].flags = WAYPOINT_RESUPPLY;
+            else if (m_pathsOLD[i].flags == 9)
+                m_paths[i].flags = WAYPOINT_DOUBLEJUMP;
+            else if (m_pathsOLD[i].flags == 10)
+                m_paths[i].flags = WAYPOINT_ROCKETJUMP;
+            else if (m_pathsOLD[i].flags == 11)
+                m_paths[i].flags = WAYPOINT_DEMOMANCAMP;
+            else if (m_pathsOLD[i].flags == 12)
+                m_paths[i].flags = WAYPOINT_SENTRY;
+            else if (m_pathsOLD[i].flags == 13)
+                m_paths[i].flags = WAYPOINT_ROUTE;
+            else if (m_pathsOLD[i].flags == 14)
+                m_paths[i].flags = WAYPOINT_TELEPORTERENTER;
+            else if (m_pathsOLD[i].flags == 15)
+                m_paths[i].flags = WAYPOINT_TELEPORTEREXIT;
+            else if (m_pathsOLD[i].flags == 16)
+                m_paths[i].flags = WAYPOINT_CAPTUREPOINT;
+            else if (m_pathsOLD[i].flags == 17)
+                m_paths[i].flags = WAYPOINT_NOSTRAFE;
+            else if (m_pathsOLD[i].flags == 18)
+                m_paths[i].flags = WAYPOINT_NOSPY;
+            else if (m_pathsOLD[i].flags == 19)
+                m_paths[i].flags = WAYPOINT_DEMOCHARGE;
+            else
+                m_paths[i].flags = 0;
             m_paths[i].origin = VectorAsFloat(m_pathsOLD[i].origin);
             m_paths[i].campStart = VectorAsFloat(m_pathsOLD[i].campStart);
             m_paths[i].campEnd = VectorAsFloat(m_pathsOLD[i].campEnd);
@@ -2247,6 +2312,87 @@ stock void WaypointLoad()
             m_paths[i].distance[5] = float(m_pathsOLD[i].distance[5]);
             m_paths[i].distance[6] = float(m_pathsOLD[i].distance[6]);
             m_paths[i].distance[7] = float(m_pathsOLD[i].distance[7]);
+        }
+    }
+    else if (header.fileVersion == 2)
+    {
+        Path m_pathsOLD[MaxWaypoints];
+        for (int i = 0; i < m_waypointNumber; i++)
+            fp.Read(m_pathsOLD[i], sizeof(Path), 4);
+
+        for (int i = 0; i < m_waypointNumber; i++)
+        {
+            m_paths[i].index = m_pathsOLD[i].index;
+            m_paths[i].pathIndex = m_pathsOLD[i].pathIndex;
+            if (m_pathsOLD[i].activeArea == 1)
+                m_paths[i].activeArea = AREA1;
+            else if (m_pathsOLD[i].activeArea == 2)
+                m_paths[i].activeArea = AREA2;
+            else if (m_pathsOLD[i].activeArea == 3)
+                m_paths[i].activeArea = AREA3;
+            else if (m_pathsOLD[i].activeArea == 4)
+                m_paths[i].activeArea = AREA4;
+            else if (m_pathsOLD[i].activeArea == 5)
+                m_paths[i].activeArea = AREA5;
+            else if (m_pathsOLD[i].activeArea == 6)
+                m_paths[i].activeArea = AREA6;
+            else if (m_pathsOLD[i].activeArea == 7)
+                m_paths[i].activeArea = AREA7;
+            else
+                m_paths[i].activeArea = 0;
+            m_paths[i].team = m_pathsOLD[i].team;
+            if (m_pathsOLD[i].flags == 1)
+                m_paths[i].flags = WAYPOINT_JUMP;
+            else if (m_pathsOLD[i].flags == 2)
+                m_paths[i].flags = WAYPOINT_SNIPER;
+            else if (m_pathsOLD[i].flags == 3)
+                m_paths[i].flags = WAYPOINT_DEFEND;
+            else if (m_pathsOLD[i].flags == 4)
+                m_paths[i].flags = WAYPOINT_FALLDAMAGE;
+            else if (m_pathsOLD[i].flags == 5)
+                m_paths[i].flags = WAYPOINT_CROUCH;
+            else if (m_pathsOLD[i].flags == 6)
+                m_paths[i].flags = WAYPOINT_AMMO;
+            else if (m_pathsOLD[i].flags == 7)
+                m_paths[i].flags = WAYPOINT_HEALTH;
+            else if (m_pathsOLD[i].flags == 8)
+                m_paths[i].flags = WAYPOINT_RESUPPLY;
+            else if (m_pathsOLD[i].flags == 9)
+                m_paths[i].flags = WAYPOINT_DOUBLEJUMP;
+            else if (m_pathsOLD[i].flags == 10)
+                m_paths[i].flags = WAYPOINT_ROCKETJUMP;
+            else if (m_pathsOLD[i].flags == 11)
+                m_paths[i].flags = WAYPOINT_DEMOMANCAMP;
+            else if (m_pathsOLD[i].flags == 12)
+                m_paths[i].flags = WAYPOINT_SENTRY;
+            else if (m_pathsOLD[i].flags == 13)
+                m_paths[i].flags = WAYPOINT_ROUTE;
+            else if (m_pathsOLD[i].flags == 14)
+                m_paths[i].flags = WAYPOINT_TELEPORTERENTER;
+            else if (m_pathsOLD[i].flags == 15)
+                m_paths[i].flags = WAYPOINT_TELEPORTEREXIT;
+            else if (m_pathsOLD[i].flags == 16)
+                m_paths[i].flags = WAYPOINT_CAPTUREPOINT;
+            else if (m_pathsOLD[i].flags == 17)
+                m_paths[i].flags = WAYPOINT_NOSTRAFE;
+            else if (m_pathsOLD[i].flags == 18)
+                m_paths[i].flags = WAYPOINT_NOSPY;
+            else if (m_pathsOLD[i].flags == 19)
+                m_paths[i].flags = WAYPOINT_DEMOCHARGE;
+            else
+                m_paths[i].flags = 0;
+            m_paths[i].origin = m_pathsOLD[i].origin;
+            m_paths[i].campStart = m_pathsOLD[i].campStart;
+            m_paths[i].campEnd = m_pathsOLD[i].campEnd;
+            m_paths[i].radius = m_pathsOLD[i].radius;
+            m_paths[i].distance[0] = m_pathsOLD[i].distance[0];
+            m_paths[i].distance[1] = m_pathsOLD[i].distance[1];
+            m_paths[i].distance[2] = m_pathsOLD[i].distance[2];
+            m_paths[i].distance[3] = m_pathsOLD[i].distance[3];
+            m_paths[i].distance[4] = m_pathsOLD[i].distance[4];
+            m_paths[i].distance[5] = m_pathsOLD[i].distance[5];
+            m_paths[i].distance[6] = m_pathsOLD[i].distance[6];
+            m_paths[i].distance[7] = m_pathsOLD[i].distance[7];
         }
     }
     else

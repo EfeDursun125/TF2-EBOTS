@@ -123,6 +123,8 @@ public void UpdateProcess(int client)
 			PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client]), GetProcessName(CurrentProcess[client]));
 			CurrentProcess[client] = RememberedProcess[client];
 			CurrentProcessTime[client] = RememberedProcessTime[client];
+			RememberedProcess[client] = PRO_DEFAULT;
+			RememberedProcessTime[client] = 0.0;
 			return;
 		}
 
@@ -187,6 +189,8 @@ stock void FinishCurrentProcess(int client, bool nodbg = false, const char[] deb
 			PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client]), GetProcessName(CurrentProcess[client]));
 			CurrentProcess[client] = RememberedProcess[client];
 			CurrentProcessTime[client] = RememberedProcessTime[client];
+			RememberedProcess[client] = PRO_DEFAULT;
+			RememberedProcessTime[client] = 0.0;
 			return;
 		}
 
