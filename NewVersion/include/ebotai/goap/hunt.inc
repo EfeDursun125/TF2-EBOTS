@@ -48,4 +48,5 @@ stock void HuntEnd(int client)
 {
 	m_goalEntity[client] = -1;
 	RememberedProcess[client] = PRO_DEFAULT;
+	RememberedProcessTime[client] = 0.0;
 }

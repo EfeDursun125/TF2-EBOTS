@@ -100,22 +100,20 @@ stock void PickTeleEnterSpot(int client, float area[3] = NULL_VECTOR)
 		ArrayList AllTeleEnterSpots = new ArrayList();
 		for (int i = 0; i < m_waypointNumber; i++)
 		{
-			if (m_paths[i].flags != _:WAYPOINT_TELEPORTERENTER)
+			if (!(m_paths[i].flags & WAYPOINT_TELEPORTERENTER))
 				continue;
 			
 			// blocked waypoint
-   			if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+   			if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 				continue;
 			
 			if (m_lastFailedWaypoint[client] == i)
 				continue;
 			
     		// not for our team
-			int cteam = GetClientTeam(client);
- 			if (cteam == 3 && m_paths[i].team == 2)
+ 			if (m_team[client] == 3 && m_paths[i].team == 2)
     			continue;
-				
-   			if (cteam == 2 && m_paths[i].team == 3)
+   			else if (m_team[client] == 2 && m_paths[i].team == 3)
         		continue;
 
 			if (!IsWaypointUsed(i))
@@ -146,8 +144,6 @@ stock void PickTeleEnterSpot(int client, float area[3] = NULL_VECTOR)
 			}
 			else
 				area = m_paths[index].origin;
-			
-			return;
 		}
 	}
 }

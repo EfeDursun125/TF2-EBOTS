@@ -17,7 +17,7 @@ stock bool MustFindObjective(int client, int index, int current)
 	if (current <= 0)
 		return true;
 	
-	if (index <= 0 || ((m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092) && m_paths[current].flags == WAYPOINT_SNIPER) || m_paths[index].flags == WAYPOINT_ROUTE || (m_paths[index].activeArea != 0 && m_paths[index].activeArea != currentActiveArea) || (current > 0 && (m_paths[current].flags == WAYPOINT_ROUTE || m_paths[current].flags == WAYPOINT_RESUPPLY || m_paths[current].flags == WAYPOINT_HEALTH || m_paths[current].flags == WAYPOINT_AMMO || m_paths[current].flags == WAYPOINT_CAPTUREPOINT)))
+	if (index <= 0 || ((m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092) && m_paths[current].flags & WAYPOINT_SNIPER) || m_paths[index].flags & WAYPOINT_ROUTE || (m_paths[index].activeArea != 0 && !(m_paths[index].activeArea & currentActiveArea)) || (current > 0 && (m_paths[current].flags & WAYPOINT_ROUTE || m_paths[current].flags & WAYPOINT_RESUPPLY || m_paths[current].flags & WAYPOINT_HEALTH || m_paths[current].flags & WAYPOINT_AMMO || m_paths[current].flags & WAYPOINT_CAPTUREPOINT)))
 		return true;
 
 	if (isCP)
@@ -95,7 +95,7 @@ public void DefaultUpdate(int client)
 		FollowPath(client, m_goalPosition[client], -1, index);
 	}
 
-	if (index != -1 && (m_paths[index].flags == WAYPOINT_DEMOMANCAMP || m_paths[index].flags == WAYPOINT_SNIPER || m_paths[index].flags == WAYPOINT_DEFEND) && GetVectorDistance(GetOrigin(client), m_paths[index].origin, true) <= Squared(128))
+	if (index != -1 && (m_paths[index].flags & WAYPOINT_DEMOMANCAMP || m_paths[index].flags & WAYPOINT_SNIPER || m_paths[index].flags & WAYPOINT_DEFEND) && GetVectorDistance(GetOrigin(client), m_paths[index].origin, true) <= Squaredf(128.0))
 	{
 		if (IsSniper(client))
 		{
@@ -111,7 +111,7 @@ public void DefaultUpdate(int client)
 		else
 			m_tackEntity[client] = -1;
 
-		if (m_class[client] == TFClass_DemoMan && m_paths[index].flags == WAYPOINT_DEMOMANCAMP)
+		if (m_class[client] == TFClass_DemoMan && m_paths[index].flags & WAYPOINT_DEMOMANCAMP)
 		{
 			if (m_stickyCount[client] < 4)
 				m_lookAt[client] = m_paths[index].campStart;
@@ -168,7 +168,7 @@ public void SelectObjective(int client)
 	if (m_hasWaypoints && m_hasSniperWaypoints && IsSniper(client) && !TF2_HasTheFlag(client))
 	{
 		int myindex = m_goalIndex[client];
-		if (myindex != -1 && m_paths[myindex].flags == WAYPOINT_SNIPER && (m_paths[myindex].activeArea == 0 || m_paths[myindex].activeArea == currentActiveArea))
+		if (myindex != -1 && m_paths[myindex].flags & WAYPOINT_SNIPER && (m_paths[myindex].activeArea == 0 || m_paths[myindex].activeArea & currentActiveArea))
 			return;
 		
 		int index = -1;
@@ -176,11 +176,11 @@ public void SelectObjective(int client)
 		ArrayList AllSniperPoints = new ArrayList();
 		for (int i = 0; i < m_waypointNumber; i++)
 		{
-			if (m_paths[i].flags != _:WAYPOINT_SNIPER)
+			if (!(m_paths[i].flags & WAYPOINT_SNIPER))
 				continue;
 			
 			// blocked waypoint
-   			if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+   			if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 				continue;
 
     		// not for our team
@@ -227,7 +227,7 @@ public void SelectObjective(int client)
 	if (m_hasWaypoints && m_hasStickyWaypoints && m_class[client] == TFClass_DemoMan && !TF2_HasTheFlag(client))
 	{
 		int myindex = m_goalIndex[client];
-		if (myindex != -1 && m_paths[myindex].flags == WAYPOINT_DEMOMANCAMP && (m_paths[myindex].activeArea == 0 || m_paths[myindex].activeArea == currentActiveArea))
+		if (myindex != -1 && m_paths[myindex].flags & WAYPOINT_DEMOMANCAMP && (m_paths[myindex].activeArea == 0 || m_paths[myindex].activeArea & currentActiveArea))
 			return;
 		
 		int index = -1;
@@ -235,11 +235,11 @@ public void SelectObjective(int client)
 		ArrayList AllSniperPoints = new ArrayList();
 		for (int i = 0; i < m_waypointNumber; i++)
 		{
-			if (m_paths[i].flags != _:WAYPOINT_DEMOMANCAMP)
+			if (!(m_paths[i].flags & WAYPOINT_DEMOMANCAMP))
 				continue;
 			
 			// blocked waypoint
-   			if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+   			if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 				continue;
 
     		// not for our team
@@ -314,7 +314,7 @@ public void SelectObjective(int client)
 			for (int i = 0; i < m_waypointNumber; i++)
 			{
 				// blocked waypoint
-   				if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+   				if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 					continue;
 
     			// not for our team
@@ -323,13 +323,13 @@ public void SelectObjective(int client)
             	else if (m_paths[i].team == 3 && m_team[client] == 2)
                 	continue;
 				
-				if (m_paths[i].flags == WAYPOINT_CAPTUREPOINT && m_team[client] != GetTeamNumber(m_capturePoint))
+				if (m_paths[i].flags & WAYPOINT_CAPTUREPOINT && m_team[client] != GetTeamNumber(m_capturePoint))
 				{
 					index = i
 					break;
 				}
 				
-				if (m_paths[i].flags != WAYPOINT_DEFEND)
+				if (!(m_paths[i].flags & WAYPOINT_DEFEND))
 					continue;
 
 				if (!IsWaypointUsed(i))
@@ -391,7 +391,7 @@ public void SelectObjective(int client)
 						continue;
 
 					// blocked waypoint
-   					if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+   					if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 						continue;
 
     				// not for our team
@@ -400,7 +400,7 @@ public void SelectObjective(int client)
             		else if (m_paths[i].team == 3 && m_team[client] == 2)
              		   	continue;
 				
-					if (m_paths[i].flags != _:WAYPOINT_DEFEND)
+					if (!(m_paths[i].flags & WAYPOINT_DEFEND))
 						continue;
 
 					if (!IsWaypointUsed(i))
@@ -522,7 +522,7 @@ public void SelectObjective(int client)
 					continue;
 				
 				// blocked waypoint
-   				if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+   				if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 					continue;
 
     			// not for our team
@@ -531,10 +531,10 @@ public void SelectObjective(int client)
             	else if (m_paths[i].team == 3 && m_team[client] == 2)
              	   	continue;
 				
-				if (m_paths[i].flags == _:WAYPOINT_CAPTUREPOINT)
+				if (m_paths[i].flags & WAYPOINT_CAPTUREPOINT)
 					ControlPoints.Push(i);
 				
-				if (m_paths[i].flags != _:WAYPOINT_DEFEND)
+				if (!(m_paths[i].flags & WAYPOINT_DEFEND))
 					continue;
 
 				if (!IsWaypointUsed(i))
@@ -643,7 +643,7 @@ stock void ObjectiveMovement(int client)
 	if (m_hasWaypoints && m_class[client] == TFClass_DemoMan && m_hasStickyWaypoints)
 	{
 		int index = m_goalIndex[client];
-		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea == currentActiveArea))
+		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea & currentActiveArea))
 		{
 			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squaredf(4.0))
 			{
@@ -661,7 +661,7 @@ stock void ObjectiveMovement(int client)
 	else if (m_hasWaypoints && IsSniper(client) && m_hasSniperWaypoints)
 	{
 		int index = m_goalIndex[client];
-		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea == currentActiveArea))
+		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea & currentActiveArea))
 		{
 			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) <= Squaredf(4.0))
 			{

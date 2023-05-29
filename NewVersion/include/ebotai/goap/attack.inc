@@ -21,7 +21,7 @@ stock bool AttackRequirements(int client)
 	if (IsWeaponSlotActive(client, 2))
 		return false;
 	
-	if (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags == WAYPOINT_NOSTRAFE)
+	if (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags & WAYPOINT_NOSTRAFE)
 		return false;
 	
 	if (TF2_HasTheFlag(client))

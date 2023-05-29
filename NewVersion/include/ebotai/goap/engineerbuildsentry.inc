@@ -84,22 +84,20 @@ public void PickSentrySpot(int client, float area[3])
 		ArrayList AllSentrySpots = new ArrayList();
 		for (int i = 0; i < m_waypointNumber; i++)
 		{
-			if (m_paths[i].flags != _:WAYPOINT_SENTRY)
+			if (!(m_paths[i].flags & WAYPOINT_SENTRY))
 				continue;
 			
 			// blocked waypoint
-   			if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+   			if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 				continue;
 			
 			if (m_lastFailedWaypoint[client] == i)
 				continue;
 			
     		// not for our team
-			int cteam = GetClientTeam(client);
- 			if (cteam == 3 && m_paths[i].team == 2)
+ 			if (m_team[client] == 3 && m_paths[i].team == 2)
     			continue;
-				
-   			if (cteam == 2 && m_paths[i].team == 3)
+   			else if (m_team[client] == 2 && m_paths[i].team == 3)
         		continue;
 
 			if (!IsWaypointUsed(i))
@@ -130,17 +128,12 @@ public void PickSentrySpot(int client, float area[3])
 			}
 			else
 				area = m_paths[index].origin;
-			
-			return;
 		}
 	}
 	else // do navmesh version
 	{
 		int search = GetRandomInt(1, MaxClients + 1);
 		if (IsValidClient(search) && GetClientTeam(client) != GetClientTeam(search))
-		{
 			area = GetOrigin(search);
-			return;
-		}
 	}
 }
