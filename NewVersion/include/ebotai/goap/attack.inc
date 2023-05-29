@@ -50,7 +50,7 @@ stock void AttackUpdate(int client)
 		}
 	}	
 
-	if (m_isSlowThink[client] || !IsPlayerAlive(m_nearestEnemy[client]))
+	if (m_isSlowThink[client] || (IsValidClient(m_nearestEnemy[client]) && !IsPlayerAlive(m_nearestEnemy[client])))
 	{
 		FindFriendsAndEnemiens(client);
 		FindEnemyEntities(client);

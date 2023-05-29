@@ -77,7 +77,7 @@ public void EngineerIdleUpdate(int client)
 		if (WantsBuildTeleporterEnter[client] && GetRandomInt(1, 3) == 1)
 			SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter");
 
-		if (WantsBuildTeleporterExit[client] && (GetRandomInt(1, 3) == 1 || IsValidEntity(TeleporterEnter[client])))
+		if (WantsBuildTeleporterExit[client] && IsValidEntity(TeleporterEnter[client]))
 			SetProcess(client, PRO_BUILDTELEPORTEREXIT, 80.0, "| process started -> trying to build teleporter exit");
 	}
 
@@ -153,7 +153,7 @@ public void EngineerIdleUpdate(int client)
 
 	if (IsValidEntity(Dispenser[client]) && (!DispenserIsMaxLevel[client] || !DispenserHealthIsFull[client]))
 	{
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(200.0) && IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(Dispenser[client]), true) <= Squaredf(200.0) && IsVisible(GetEyePosition(client), GetCenter(Dispenser[client])))
 		{
 			if (IsWeaponSlotActive(client, 2))
 			{

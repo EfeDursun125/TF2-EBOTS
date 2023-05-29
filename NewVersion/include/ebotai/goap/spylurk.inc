@@ -57,11 +57,7 @@ public void SpyLurkUpdate(int client)
 		CheckHealth(client);
 		CheckAmmo(client);
 		SelectBestCombatWeapon(client);
-
-		if (m_hasEnemiesNear[client])
-			LookAtEnemiens(client);
-		else
-			LookAround(client);
+		SpyAimLogic(client);
 
 		if (IsValidEntity(m_knownSentry[client]))
 		{
