@@ -73,6 +73,7 @@ public void OnPluginStart()
 	RegConsoleCmd("ebot_waypoint_add_path", PathAdd);
 	RegConsoleCmd("ebot_waypoint_select", Select);
 	RegConsoleCmd("ebot_waypoint_delete_path", PathDelete);
+	RegConsoleCmd("ebot_waypoint_set_radius", SetRadius);
 	RegConsoleCmd("ebot_waypoint_add_radius", AddRadius, "after 128 it will be 0");
 	RegConsoleCmd("ebot_waypoint_set_flag", SetFlag);
 	RegConsoleCmd("ebot_waypoint_add_flag", AddFlag);
@@ -141,74 +142,6 @@ public void OnPluginStart()
 	}
 }
 
-public void OnNavMeshLoaded()
-{
-	CreateTimer(2.0, AddWaypoints);
-}
-
-public Action AddWaypoints(Handle timer)
-{
-    if (!m_hasWaypoints)
-	{
-		// add waypoints
-		for (int i = 0; i < MaxWaypoints; i++)
-		{
-			CNavArea area = NavMesh_FindAreaByID(i);
-			if (area != INVALID_NAV_AREA)
-			{
-				float areaCenter[3];
-				area.GetCenter(areaCenter);
-				WaypointAdd(areaCenter, false);
-			}
-		}
-
-		for (int x = 0; x <= GetMaxEntities(); x++)
-		{
-			if (IsValidHealthPack(x))
-				WaypointAdd(GetOrigin(x), false, 7);
-		
-			if (IsValidAmmoPack(x))
-				WaypointAdd(GetOrigin(x), false, 6);
-		}
-
-		CreateTimer(0.2, DeleteWaypoints);
-		m_hasWaypoints = true;
-	}
-
-	return Plugin_Handled;
-}
-
-public Action DeleteWaypoints(Handle timer)
-{
-	// remove useless waypoints
-	for (int c = 0; c < MaxPathIndex; c++)
-	{
-		for (int i = 0; i < m_waypointNumber; i++)
-		{
-			int oneway = 0;
-			for (int x = 0; x < MaxPathIndex; x++)
-			{
-				int n = m_paths[i].pathIndex[x];
-				if (n != -1)
-					oneway++;
-			}
-
-			if (oneway <= 1)
-				DeleteWaypointIndex(i);
-		}
-	}
-
-	CreateTimer(0.2, SaveWaypoints);
-
-	return Plugin_Handled;
-}
-
-public Action SaveWaypoints(Handle timer)
-{
-	WaypointSaveNAV();
-	return Plugin_Handled;
-}
-
 public void OnMapStart()
 {
 	m_isAlive[0] = false;
@@ -225,7 +158,7 @@ public void OnMapStart()
 	m_laserIndex = PrecacheModel("materials/sprites/laserbeam.vmt");
 	m_beamIndex = PrecacheModel("materials/sprites/lgtning.vmt");
 
-	currentActiveArea = GetBluControlPointCount() + 1;
+	currentActiveArea = (1 << GetBluControlPointCount() + 1);
 	healthpacks = 0;
 	ammopacks = 0;
 	BotCheckTimer = 0.0;
@@ -513,6 +446,23 @@ public Action SaveWaypoint(int client, int args)
 	return Plugin_Handled;
 }
 
+public Action SetRadius(int client, int args)
+{
+	char radius[32];
+    GetCmdArgString(radius, sizeof(radius));
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	{
+		m_paths[nearestIndex].radius = float(StringToInt(radius));
+		if (m_paths[nearestIndex].radius < 0.0)
+			m_paths[nearestIndex].radius = 0.0;
+		PrintHintTextToAll("Current radius is %d", RoundFloat(m_paths[nearestIndex].radius));
+	}
+	else
+		PrintHintTextToAll("Move closer to waypoint");
+	
+	return Plugin_Handled;
+}
+
 public Action AddRadius(int client, int args)
 {
 	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
@@ -535,7 +485,15 @@ public Action SetFlag(int client, int args)
     GetCmdArgString(flag, sizeof(flag));
 	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
-		int intflag = (1 << StringToInt(flag));
+		int flagone = StringToInt(flag);
+		if (flagone <= 0)
+		{
+			m_paths[nearestIndex].flags = 0;
+			PrintHintTextToAll("Waypoint Flag Set: None");
+			return Plugin_Handled;
+		}
+
+		int intflag = (1 << flagone);
 		if (intflag & WAYPOINT_DEFEND || intflag & WAYPOINT_SENTRY || intflag & WAYPOINT_DEMOMANCAMP || intflag & WAYPOINT_SNIPER || intflag & WAYPOINT_TELEPORTERENTER || intflag & WAYPOINT_TELEPORTEREXIT)
 		{
 			float origin[3];
@@ -545,7 +503,7 @@ public Action SetFlag(int client, int args)
 		}
 
 		m_paths[nearestIndex].flags = intflag;
-		PrintHintTextToAll("Waypoint Flag Set: %d", GetWaypointName(intflag));
+		PrintHintTextToAll("Waypoint Flag Set: %s", GetWaypointName(intflag));
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
@@ -559,13 +517,15 @@ public Action AddFlag(int client, int args)
     GetCmdArgString(flag, sizeof(flag));
 	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
-		int intflag = (1 << StringToInt(flag));
-		if (intflag <= 0)
+		int value = StringToInt(flag);
+		if (value <= 0)
 		{
 			PrintHintTextToAll("You cannot add this number");
 			return Plugin_Handled;
 		}
-		else if (intflag & WAYPOINT_DEFEND || intflag & WAYPOINT_SENTRY || intflag & WAYPOINT_DEMOMANCAMP || intflag & WAYPOINT_SNIPER || intflag & WAYPOINT_TELEPORTERENTER || intflag & WAYPOINT_TELEPORTEREXIT)
+
+		int intflag = (1 << value);
+		if (intflag & WAYPOINT_DEFEND || intflag & WAYPOINT_SENTRY || intflag & WAYPOINT_DEMOMANCAMP || intflag & WAYPOINT_SNIPER || intflag & WAYPOINT_TELEPORTERENTER || intflag & WAYPOINT_TELEPORTEREXIT)
 		{
 			float origin[3];
 			GetAimOrigin(m_hostEntity, origin);
@@ -578,7 +538,7 @@ public Action AddFlag(int client, int args)
 		}
 
 		m_paths[nearestIndex].flags |= intflag;
-		PrintHintTextToAll("Waypoint Flag Added: %d", GetWaypointName(intflag));
+		PrintHintTextToAll("Waypoint Flag Added: %s", GetWaypointName(intflag));
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
@@ -592,14 +552,15 @@ public Action RemoveFlag(int client, int args)
     GetCmdArgString(flag, sizeof(flag));
 	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
-		int intflag = (1 << StringToInt(flag));
-		if (intflag <= 0)
+		int value = StringToInt(flag);
+		if (value <= 0)
 		{
 			PrintHintTextToAll("You cannot remove this number");
 			return Plugin_Handled;
 		}
+		int intflag = (1 << value);
 		m_paths[nearestIndex].flags &= ~intflag;
-		PrintHintTextToAll("Waypoint Flag Removed: %d", GetWaypointName(intflag));
+		PrintHintTextToAll("Waypoint Flag Removed: %s", GetWaypointName(intflag));
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
@@ -671,8 +632,17 @@ public Action SetArea(int client, int args)
     GetCmdArgString(area, sizeof(area));
 	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
-		m_paths[nearestIndex].activeArea = (1 << StringToInt(area));
-		PrintHintTextToAll("Waypoint Area Set: %s", GetAreaName((1 << StringToInt(area))));
+		int value = StringToInt(area);
+		if (value <= 0)
+		{
+			m_paths[nearestIndex].activeArea = 0;
+			PrintHintTextToAll("Waypoint Area Set: All Time");
+		}
+		else
+		{
+			m_paths[nearestIndex].activeArea = (1 << value);
+			PrintHintTextToAll("Waypoint Area Set: %s", GetAreaName((1 << value)));
+		}
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
@@ -686,12 +656,14 @@ public Action AddArea(int client, int args)
     GetCmdArgString(area, sizeof(area));
 	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
-		int intarea = (1 << StringToInt(area));
-		if (intarea <= 0)
+		int value = StringToInt(area);
+		if (value <= 0)
 		{
 			PrintHintTextToAll("You cannot add this number");
 			return Plugin_Handled;
 		}
+
+		int intarea = (1 << value);
 		m_paths[nearestIndex].activeArea |= intarea;
 		PrintHintTextToAll("Waypoint Area Added: %s", GetAreaName(intarea));
 	}
@@ -707,12 +679,14 @@ public Action RemoveArea(int client, int args)
     GetCmdArgString(area, sizeof(area));
 	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
-		int intarea = (1 << StringToInt(area));
-		if (intarea <= 0)
+		int value = StringToInt(area);
+		if (value <= 0)
 		{
 			PrintHintTextToAll("You cannot remove this number");
 			return Plugin_Handled;
 		}
+
+		int intarea = (1 << value);
 		m_paths[nearestIndex].activeArea &= ~intarea;
 		PrintHintTextToAll("Waypoint Area Removed: %s", GetAreaName(intarea));
 	}
@@ -860,7 +834,7 @@ public void OnGameFrame()
 
 	if (autoupdate < GetGameTime())
 	{
-		int newArea = GetBluControlPointCount() + 1;
+		int newArea = (1 << GetBluControlPointCount() + 1);
 		if (newArea != currentActiveArea)
 		{
 			currentActiveArea = newArea;
