@@ -12,6 +12,7 @@ float autoupdate = 0.0;
 
 float DJTime[TFMaxPlayers];
 float NoDodge[TFMaxPlayers];
+float CrouchTime[TFMaxPlayers];
 float m_spawnTime[TFMaxPlayers];
 
 char PlayerName[TFMaxPlayers][64];
@@ -25,7 +26,7 @@ public Plugin myinfo =
 	name = "[TF2] E-BOT",
 	author = "EfeDursun125",
 	description = "",
-	version = "0.06",
+	version = "0.2",
 	url = "https://steamcommunity.com/id/EfeDursun91/"
 }
 
@@ -74,8 +75,12 @@ public void OnPluginStart()
 	RegConsoleCmd("ebot_waypoint_delete_path", PathDelete);
 	RegConsoleCmd("ebot_waypoint_add_radius", AddRadius, "after 128 it will be 0");
 	RegConsoleCmd("ebot_waypoint_set_flag", SetFlag);
+	RegConsoleCmd("ebot_waypoint_add_flag", AddFlag);
+	RegConsoleCmd("ebot_waypoint_remove_flag", RemoveFlag);
 	RegConsoleCmd("ebot_waypoint_set_team", SetTeam);
 	RegConsoleCmd("ebot_waypoint_set_area", SetArea);
+	RegConsoleCmd("ebot_waypoint_add_area", AddArea);
+	RegConsoleCmd("ebot_waypoint_remove_area", RemoveArea);
 	RegConsoleCmd("ebot_waypoint_set_aim_start", SetAim1);
 	RegConsoleCmd("ebot_waypoint_set_aim_end", SetAim2);
 	RegConsoleCmd("ebot_addbot", AddEBot);
@@ -89,7 +94,6 @@ public void OnPluginStart()
 	HookEvent("teamplay_point_unlocked", PointUnlocked, EventHookMode_Post);
 	HookEvent("teamplay_point_captured", PointCaptured, EventHookMode_Post);
 	HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Post);
-	HookEventEx("nav_blocked", NavAreaBlocked);
 	//HookEvent("teamplay_waiting_ends", PlayAnimation, EventHookMode_Post);
 	EBotDebug = CreateConVar("ebot_debug", "0", "", FCVAR_NONE);
 	EBotFPS = CreateConVar("ebot_run_fps", "0.1", "0.0333 = 30 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS | 0.2 = 5 FPS", FCVAR_NONE);
@@ -134,27 +138,6 @@ public void OnPluginStart()
 		m_team[i] = GetClientTeam(i);
 		m_isAlive[i] = IsPlayerAlive(i);
 		m_ignoreEnemies[i] = 0.0;
-	}
-}
-
-public void NavAreaBlocked(Event event, const char[] name, bool dB)
-{
-	if (!m_hasWaypoints || !NavMesh_Exists())
-		return;
-
-	int iAreaID = event.GetInt("area");
-	CNavArea iAreaIndex = NavMesh_FindAreaByID(iAreaID);
-	if (iAreaIndex != INVALID_NAV_AREA)
-	{
-		bool bBlocked = view_as<bool>(event.GetInt("blocked"));
-		for (int i = 0; i < m_waypointNumber; i++)
-		{
-			if (m_paths[i].activeArea > 0)
-				continue;
-			
-			if (iAreaIndex.IsOverlappingPoint(m_paths[i].origin))
-				m_paths[i].activeArea = bBlocked ? -1 : 0;
-		}
 	}
 }
 
@@ -552,8 +535,8 @@ public Action SetFlag(int client, int args)
     GetCmdArgString(flag, sizeof(flag));
 	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
-		int intflag = StringToInt(flag);
-		if (intflag == WAYPOINT_DEFEND || intflag == WAYPOINT_SENTRY || intflag == WAYPOINT_DEMOMANCAMP || intflag == WAYPOINT_SNIPER || intflag == WAYPOINT_TELEPORTERENTER || intflag == WAYPOINT_TELEPORTEREXIT)
+		int intflag = (1 << StringToInt(flag));
+		if (intflag & WAYPOINT_DEFEND || intflag & WAYPOINT_SENTRY || intflag & WAYPOINT_DEMOMANCAMP || intflag & WAYPOINT_SNIPER || intflag & WAYPOINT_TELEPORTERENTER || intflag & WAYPOINT_TELEPORTEREXIT)
 		{
 			float origin[3];
 			GetAimOrigin(m_hostEntity, origin);
@@ -561,8 +544,62 @@ public Action SetFlag(int client, int args)
 			m_paths[nearestIndex].campEnd = origin;
 		}
 
-		m_paths[nearestIndex].flags = StringToInt(flag);
-		PrintHintTextToAll("Waypoint Flag Added: %d", StringToInt(flag));
+		m_paths[nearestIndex].flags = intflag;
+		PrintHintTextToAll("Waypoint Flag Set: %d", GetWaypointName(intflag));
+	}
+	else
+		PrintHintTextToAll("Move closer to waypoint");
+
+	return Plugin_Handled;
+}
+
+public Action AddFlag(int client, int args)
+{
+	char flag[32];
+    GetCmdArgString(flag, sizeof(flag));
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	{
+		int intflag = (1 << StringToInt(flag));
+		if (intflag <= 0)
+		{
+			PrintHintTextToAll("You cannot add this number");
+			return Plugin_Handled;
+		}
+		else if (intflag & WAYPOINT_DEFEND || intflag & WAYPOINT_SENTRY || intflag & WAYPOINT_DEMOMANCAMP || intflag & WAYPOINT_SNIPER || intflag & WAYPOINT_TELEPORTERENTER || intflag & WAYPOINT_TELEPORTEREXIT)
+		{
+			float origin[3];
+			GetAimOrigin(m_hostEntity, origin);
+
+			if (IsNullVector(m_paths[nearestIndex].campStart))
+				m_paths[nearestIndex].campStart = origin;
+
+			if (IsNullVector(m_paths[nearestIndex].campEnd))
+				m_paths[nearestIndex].campEnd = origin;
+		}
+
+		m_paths[nearestIndex].flags |= intflag;
+		PrintHintTextToAll("Waypoint Flag Added: %d", GetWaypointName(intflag));
+	}
+	else
+		PrintHintTextToAll("Move closer to waypoint");
+
+	return Plugin_Handled;
+}
+
+public Action RemoveFlag(int client, int args)
+{
+	char flag[32];
+    GetCmdArgString(flag, sizeof(flag));
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	{
+		int intflag = (1 << StringToInt(flag));
+		if (intflag <= 0)
+		{
+			PrintHintTextToAll("You cannot remove this number");
+			return Plugin_Handled;
+		}
+		m_paths[nearestIndex].flags &= ~intflag;
+		PrintHintTextToAll("Waypoint Flag Removed: %d", GetWaypointName(intflag));
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
@@ -634,8 +671,50 @@ public Action SetArea(int client, int args)
     GetCmdArgString(area, sizeof(area));
 	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
 	{
-		m_paths[nearestIndex].activeArea = StringToInt(area);
-		PrintHintTextToAll("Waypoint Area Set: %d", StringToInt(area));
+		m_paths[nearestIndex].activeArea = (1 << StringToInt(area));
+		PrintHintTextToAll("Waypoint Area Set: %s", GetAreaName((1 << StringToInt(area))));
+	}
+	else
+		PrintHintTextToAll("Move closer to waypoint");
+	
+	return Plugin_Handled;
+}
+
+public Action AddArea(int client, int args)
+{
+	char area[32];
+    GetCmdArgString(area, sizeof(area));
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	{
+		int intarea = (1 << StringToInt(area));
+		if (intarea <= 0)
+		{
+			PrintHintTextToAll("You cannot add this number");
+			return Plugin_Handled;
+		}
+		m_paths[nearestIndex].activeArea |= intarea;
+		PrintHintTextToAll("Waypoint Area Added: %s", GetAreaName(intarea));
+	}
+	else
+		PrintHintTextToAll("Move closer to waypoint");
+	
+	return Plugin_Handled;
+}
+
+public Action RemoveArea(int client, int args)
+{
+	char area[32];
+    GetCmdArgString(area, sizeof(area));
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	{
+		int intarea = (1 << StringToInt(area));
+		if (intarea <= 0)
+		{
+			PrintHintTextToAll("You cannot remove this number");
+			return Plugin_Handled;
+		}
+		m_paths[nearestIndex].activeArea &= ~intarea;
+		PrintHintTextToAll("Waypoint Area Removed: %s", GetAreaName(intarea));
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
@@ -886,6 +965,8 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 		buttons |= IN_JUMP;
 		DJTime[client] = GetGameTime() + 999999.0;
 	}
+	else if (CrouchTime[client] > GetGameTime())
+		buttons |= IN_DUCK;
 	
 	// check if client pressing any buttons and set them
 	if (m_buttons[client] != 0)
@@ -963,7 +1044,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 
 		vel = m_moveVel[client];
 
-		if (m_currentIndex[client] > 0 && m_paths[m_currentIndex[client]].flags == WAYPOINT_DEMOCHARGE && m_class[client] == TFClass_DemoMan)
+		if (m_currentIndex[client] > 0 && m_paths[m_currentIndex[client]].flags & WAYPOINT_DEMOCHARGE && m_class[client] == TFClass_DemoMan)
 		{
 			m_currentWaypointIndex[client]--;
 			m_targetNode[client]--;
@@ -1024,7 +1105,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 						{
 							if (GetClientTeam(client) == 3)
 							{
-								if (currentActiveArea == 1)
+								if (currentActiveArea & AREA1)
 									TF2_SetPlayerClass(client, TFClass_Sniper);
 								else 
 									TF2_SetPlayerClass(client, TFClass_DemoMan);
@@ -1190,6 +1271,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_stopTime[client] = 0.0;
 		m_pauseTime[client] = 0.0;
 		m_ignoreEnemies[client] = 0.0;
+		CrouchTime[client] = 0.0;
 		DeletePathNodes(client);
 
 		if (TF2_GetPlayerClass(client) == TFClass_Engineer)
@@ -1211,11 +1293,11 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 			ArrayList RouteWaypoints = new ArrayList();
 			for (int i = 0; i < m_waypointNumber; i++)
 			{
-				if (m_paths[i].flags != WAYPOINT_ROUTE)
+				if (!(m_paths[i].flags & WAYPOINT_ROUTE))
 					continue;
 				
 				// blocked waypoint
-   				if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+   				if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 					continue;
 
 				if (m_lastFailedWaypoint[client] == i)
@@ -1393,14 +1475,14 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 {
 	if (StrContains(currentMap, "arena_" , false) != -1)
 	{
-		currentActiveArea = 1;
+		currentActiveArea = AREA1;
 
 		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active area: %d", currentActiveArea);
 	}
 	else
 	{
-		currentActiveArea = GetBluControlPointCount() + 1;
+		currentActiveArea = (1 << GetBluControlPointCount() + 1);
 
 		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active area: %d", currentActiveArea);
@@ -1427,11 +1509,11 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 			ArrayList RouteWaypoints = new ArrayList();
 			for (int i = 0; i < m_waypointNumber; i++)
 			{
-				if (m_paths[i].flags != _:WAYPOINT_ROUTE)
+				if (!(m_paths[i].flags & WAYPOINT_ROUTE))
 					continue;
 				
 				// blocked waypoint
-   				if (m_paths[i].activeArea != 0 && m_paths[i].activeArea != currentActiveArea)
+   				if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 					continue;
 
 				if (m_lastFailedWaypoint[client] == i)
@@ -1467,7 +1549,7 @@ public Action PointStartCapture(Handle event, char[] name, bool dontBroadcast)
 {
 	if (StrContains(currentMap, "arena_" , false) != -1)
 	{
-		currentActiveArea = 2;
+		currentActiveArea = AREA2;
 
 		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active area: %d", currentActiveArea);
@@ -1475,13 +1557,13 @@ public Action PointStartCapture(Handle event, char[] name, bool dontBroadcast)
 	else
 	{
 		int currentArea = GetEventInt(event, "cp");
-		currentActiveArea = currentArea + 1;
+		currentActiveArea = (1 << currentArea + 1);
 
-		if (currentActiveArea >= 7)
-			currentActiveArea = 1;
+		if (currentActiveArea >= AREA7)
+			currentActiveArea = AREA1;
 
-		if (currentActiveArea < 1)
-			currentActiveArea = 1;
+		if (currentActiveArea < AREA1)
+			currentActiveArea = AREA1;
 
 		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active area: %d", currentActiveArea);
@@ -1494,7 +1576,7 @@ public Action PointUnlocked(Handle event, char[] name, bool dontBroadcast)
 {
 	if (StrContains(currentMap, "arena_" , false) != -1)
 	{
-		currentActiveArea = 2;
+		currentActiveArea = AREA2;
 
 		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active area: %d", currentActiveArea);
@@ -1502,13 +1584,13 @@ public Action PointUnlocked(Handle event, char[] name, bool dontBroadcast)
 	else
 	{
 		int currentArea = GetEventInt(event, "cp");
-		currentActiveArea = currentArea + 1;
+		currentActiveArea = (1 << currentArea + 1);
 
-		if (currentActiveArea >= 7)
-			currentActiveArea = 1;
+		if (currentActiveArea >= AREA7)
+			currentActiveArea = AREA1;
 
-		if (currentActiveArea < 1)
-			currentActiveArea = 1;
+		if (currentActiveArea < AREA1)
+			currentActiveArea = AREA1;
 
 		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active area: %d", currentActiveArea);
@@ -1521,7 +1603,7 @@ public Action PointCaptured(Handle event, char[] name, bool dontBroadcast)
 {
 	if (StrContains(currentMap, "arena_" , false) != -1)
 	{
-		currentActiveArea = 2;
+		currentActiveArea = AREA2;
 
 		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active area: %d", currentActiveArea);
@@ -1532,15 +1614,15 @@ public Action PointCaptured(Handle event, char[] name, bool dontBroadcast)
 		int team = GetEventInt(event, "team");
 
 		if (team == 3)
-			currentActiveArea = currentArea + 1;
+			currentActiveArea = (1 << currentArea + 1)
 		else
-			currentActiveArea = currentArea - 1;
+			currentActiveArea = (1 << currentArea - 1);
 
-		if (currentActiveArea >= 7)
-			currentActiveArea = 1;
+		if (currentActiveArea >= AREA7)
+			currentActiveArea = AREA1;
 
-		if (currentActiveArea < 1)
-			currentActiveArea = 1;
+		if (currentActiveArea < AREA1)
+			currentActiveArea = AREA1;
 
 		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active area: %d", currentActiveArea);
