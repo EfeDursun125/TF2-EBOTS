@@ -1,6 +1,6 @@
 stock void FollowPath(int client, float targetposition[3], int entity = -1, int index = -1)
 {
-	if (m_spawnTime[client] + 2.0 > GetGameTime())
+	if (m_spawnTime[client] + 1.0 > GetGameTime())
 	{
 		SelectObjective(client);
 		return;
@@ -191,7 +191,7 @@ stock void FollowPath(int client, float targetposition[3], int entity = -1, int 
 
 stock void FindPath(int client, float targetposition2[3], int entity = -1, int index = -1)
 {
-	if (m_spawnTime[client] + 2.0 > GetGameTime())
+	if (m_spawnTime[client] + 1.0 > GetGameTime())
 	{
 		SelectObjective(client);
 		return;

@@ -1219,7 +1219,7 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
                 continue;
             
             // blocked waypoint
-            if (m_paths[self].flags & 0 && m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
+            if (m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
                 continue;
             
             if (m_paths[self].flags & WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
@@ -1403,7 +1403,7 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
                 continue;
             
             // blocked waypoint
-            if (m_paths[self].flags & 0 && m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
+            if (m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
                 continue;
             
             if (m_paths[self].flags & WAYPOINT_DOUBLEJUMP && m_class[client] != TFClass_Scout)
@@ -1520,7 +1520,7 @@ stock bool AStarFindHidingSpot(int srcIndex, int client, float dangerOrigin[3])
                 continue;
             
             // blocked waypoint
-            if (m_paths[self].flags & 0 && m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
+            if (m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
                 continue;
             
             if (m_paths[self].team == 2 && m_team[client] == 3)
@@ -1638,7 +1638,7 @@ stock bool AStarFindHealthPack(int srcIndex, int client)
                 continue;
             
             // blocked waypoint
-            if (m_paths[self].flags & 0 && m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
+            if (m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
                 continue;
             
             if (m_paths[self].team == 2 && m_team[client] == 3)
@@ -1804,7 +1804,7 @@ stock bool AStarFindAmmoPack(int srcIndex, int client)
                 continue;
             
             // blocked waypoint
-            if (m_paths[self].flags & 0 && m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
+            if (m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
                 continue;
             
             if (m_paths[self].team == 2 && m_team[client] == 3)
