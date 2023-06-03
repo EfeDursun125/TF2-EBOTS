@@ -68,6 +68,12 @@ public void DefaultUpdate(int client)
 	
 	if (m_useTeleporter[client] && IsValidEntity(m_teleporterEntity[client]))
 	{
+		if (GetEntProp(m_teleporterEntity[client], Prop_Send, "m_iState") != 2 && GetEntProp(m_teleporterEntity[client], Prop_Send, "m_iState") != 6)
+		{
+			m_useTeleporter[client] = false;
+			return;
+		}
+
 		DeletePathNodes(client);
 		m_nextStuckCheck[client] = GetGameTime() + 5.0;
 		if (GetVectorDistance(GetOrigin(client), GetOrigin(m_teleporterEntity[client]), true) <= Squaredf(24.0))
