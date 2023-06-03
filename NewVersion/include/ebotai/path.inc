@@ -203,7 +203,7 @@ stock void FindPath(int client, float targetposition2[3], int entity = -1, int i
 			SelectObjective(client);
 
 		if (index == -1)
-			index = FindNearestWaypoint(targetposition2, 999999.0, client);
+			index = FindWaypointFast(targetposition2, client);
 			
 		AStarFindPath(m_currentIndex[client], index, client, targetposition2);
 		return;

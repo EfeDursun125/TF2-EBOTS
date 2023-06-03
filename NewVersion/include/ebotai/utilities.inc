@@ -32,8 +32,6 @@ bool m_hasSandwich[TFMaxPlayers];
 int SentryGun[TFMaxPlayers];
 int Dispenser[TFMaxPlayers];
 
-int m_tackEntity[TFMaxPlayers];
-
 int CurrentProcess[TFMaxPlayers];
 
 int currentActiveArea;
@@ -330,8 +328,10 @@ stock int GetTeamsCount(int team)
 {
 	int count = 0;
 	for (int i = 1; i < MaxClients; i++)
+	{
 		if (IsValidClient(i) && GetClientTeam(i) == team)
 			count++;
+	}
 	return count;
 }
 
@@ -339,8 +339,10 @@ stock int GetBotCount()
 {
 	int count = 0;
 	for (int i = 1; i < MaxClients; i++)
+	{
 		if (IsValidClient(i) && IsEBot(i))
 			count++;
+	}
 	return count;
 }
 
@@ -348,8 +350,10 @@ stock int GetPlayersCount()
 {
 	int count = 0;
 	for (int i = 1; i < MaxClients; i++)
+	{
 		if (IsValidClient(i) && !IsEBot(i) && GetClientTeam(i) != 1)
 			count++;
+	}
 	return count;
 }
 
@@ -357,8 +361,10 @@ stock int GetPlayersCountRed()
 {
 	int count = 0;
 	for (int i = 1; i < MaxClients; i++)
+	{
 		if (IsValidClient(i) && GetClientTeam(i) == 2)
 			count++;
+	}
 	return count;
 }
 
@@ -366,8 +372,10 @@ stock int GetPlayersCountBlu()
 {
 	int count = 0;
 	for (int i = 1; i < MaxClients; i++)
+	{
 		if (IsValidClient(i) && GetClientTeam(i) == 3)
 			count++;
+	}
 	return count;
 }
 
@@ -375,8 +383,10 @@ stock int GetTotalPlayersCount()
 {
 	int count = 0;
 	for (int i = 1; i < MaxClients; i++)
+	{
 		if (IsValidClient(i) && GetClientTeam(i) != 1)
 			count++;
+	}
 	return count;
 }
 
@@ -597,61 +607,26 @@ stock int FindNearestEnemy(int client, float flMaxDistance = 9999999999.0)
 	return iBestTarget;
 }
 
-stock void LookAtPosition(int client, float flGoal[3], float eye_ang[3], int trackEntity = -1)
+float m_aimInterval[TFMaxPlayers];
+stock void LookAtPosition(const int client, const float flGoal[3], float flAng[3])
 {
-	float frametime = GetGameFrameTime();
-	if (frametime < 0.00001)
-		return;
-	
-	float fps = GetConVarFloat(EBotFPS);
+	float delta = GetGameTime() - m_aimInterval[client];
+	m_aimInterval[client] = GetGameTime();
 
-	float flAimSpeed = 2.0;
-	flAimSpeed -= fps;
-
-	float tempGoal[3];
-	tempGoal = flGoal;
-
-	if (IsValidEntity(trackEntity))
-	{
-		float flVel[3];
-		GetEntPropVector(trackEntity, Prop_Data, "m_vecAbsVelocity", flVel);
-		float time = GetGameTime() - m_thinkTimer[client];
-		tempGoal[0] += flVel[0] * time;
-		tempGoal[1] += flVel[1] * time;
-		tempGoal[2] += flVel[2] * time;
-		trackEntity = -1;
-	}
-
-	float eye_to_target[3];
-	SubtractVectors(tempGoal, GetEyePosition(client), eye_to_target);
+	float flPos[3];
+    GetClientEyePosition(client, flPos);
+    
+    // get normalised direction from target to client
+    float desired_dir[3];
+    MakeVectorFromPoints(flPos, flGoal, desired_dir);
+    GetVectorAngles(desired_dir, desired_dir);
 	
-	NormalizeVector(eye_to_target, eye_to_target);
-	
-	float ang_to_target[3];
-	GetVectorAngles(eye_to_target, ang_to_target);
-	
-	float eye_vec[3];
-	GetAngleVectors(eye_ang, eye_vec, NULL_VECTOR, NULL_VECTOR);
-	
-	m_cosError[client] = GetVectorDotProduct(eye_to_target, eye_vec);
-	
-	float max_angvel = 1024.0 + (1024.0 * fps);
-	
-	if (m_cosError[client] > 0.7)
-		max_angvel *= Sine((3.14 * 0.5) * (1.0 + ((-49.0 * 0.06666666666) * (m_cosError[client] - 0.7))));
-	
-	if (m_itAimStart[client] != -1 && (GetGameTime() - m_itAimStart[client] < 0.25))
-		max_angvel *= 4.0 * (GetGameTime() - m_itAimStart[client]);
-	
-	float new_eye_angle[3];
-	new_eye_angle[0] = ApproachAngle(ang_to_target[0], eye_ang[0], (max_angvel * frametime) * flAimSpeed);
-	new_eye_angle[1] = ApproachAngle(ang_to_target[1], eye_ang[1], (max_angvel * frametime) * (flAimSpeed * 1.5));
-
-	new_eye_angle[0] = AngleNormalize(new_eye_angle[0]);
-	new_eye_angle[1] = AngleNormalize(new_eye_angle[1]);
-	new_eye_angle[2] = 0.0;
-	
-	SnapEyeAngles(client, new_eye_angle);
+	float aimSpeed = 16.0 * delta;
+    
+    // ease the current direction to the target direction
+    flAng[0] += AngleNormalize(desired_dir[0] - flAng[0]) * aimSpeed;
+    flAng[1] += AngleNormalize(desired_dir[1] - flAng[1]) * aimSpeed;
+	SnapEyeAngles(client, flAng);
 }
 
 stock float AngleNormalize(float angle)
@@ -1482,14 +1457,17 @@ stock bool CheckForward(int client)
 
 stock void ClampAngle(float fAngles[3])
 {
-	while (fAngles[0] > 89.0)
-		fAngles[0]-=360.0;
-	while (fAngles[0] < -89.0)
-		fAngles[0]+=360.0;
-	while (fAngles[1] > 180.0)
-		fAngles[1]-=360.0;
-	while (fAngles[1] <-180.0)
-		fAngles[1]+=360.0;
+	if (fAngles[0] > 89.0)
+		fAngles[0] -= 360.0;
+
+	if (fAngles[0] < -89.0)
+		fAngles[0] += 360.0;
+
+	if (fAngles[1] > 180.0)
+		fAngles[1] -= 360.0;
+
+	if (fAngles[1] <-180.0)
+		fAngles[1] += 360.0;
 }
 
 public bool WaypointFilter(int entity, int mask)

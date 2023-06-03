@@ -223,6 +223,9 @@ public void CheckSlowThink(int client)
 
 						if (GetVectorDistance(GetOrigin(iSticky), GetOrigin(search), true) > Squaredf(125.0))
 							continue;
+
+						if (!IsVisible(GetCenter(iSticky), GetCenter(search)))
+							continue;
 						
 						m_buttons[client] |= IN_ATTACK2;
 					}

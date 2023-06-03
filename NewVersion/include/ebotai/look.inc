@@ -6,8 +6,6 @@ stock void LookAtEnemiens(int client)
 		return;
 	}
 
-	m_tackEntity[client] = m_nearestEnemy[client];
-
 	float distance = GetVectorDistance(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client]), true);
 	if (distance <= Squaredf(128.0))
 	{
@@ -153,7 +151,6 @@ stock void LookAtEnemiens(int client)
 float m_searchTime[TFMaxPlayers];
 stock void LookAround(int client)
 {
-	m_tackEntity[client] = -1;
 	if (m_pauseTime[client] >= GetGameTime())
 		return;
 

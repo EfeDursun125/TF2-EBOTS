@@ -21,49 +21,52 @@ stock void LookUpdate(int client, bool lookaround = true)
 			EquipWeaponSlot(client, 0);
 	}
 
-	if (m_hasEnemiesNear[client] && m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
+	if (m_hasEnemiesNear[client] || m_hasEntitiesNear[client])
 	{
-		float center[3];
-		center = GetCenter(m_nearestEntity[client]);
-
-		if (m_enemyDistance[client] < GetVectorDistance(GetOrigin(client), center, true))
-			LookAtEnemiens(client);
-		else
-			m_lookAt[client] = center;
-
-		if (CurrentProcess[client] != PRO_SPYSAP)
+		if (m_class[client] == TFClass_Engineer || m_class[client] == TFClass_Medic || m_class[client] == TFClass_Spy)
 		{
-			AutoAttack(client);
-			SelectBestCombatWeapon(client);
+			if (m_hasEnemiesNear[client] && m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
+			{
+				float center[3];
+				center = GetCenter(m_nearestEntity[client]);
+
+				if (m_enemyDistance[client] < GetVectorDistance(GetOrigin(client), center, true))
+					LookAtEnemiens(client);
+				else
+					m_lookAt[client] = center;
+
+				if (CurrentProcess[client] != PRO_SPYSAP)
+				{
+					AutoAttack(client);
+					SelectBestCombatWeapon(client);
+				}
+
+				m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+			}
+			else if (m_hasEnemiesNear[client])
+			{
+				LookAtEnemiens(client);
+				AutoAttack(client);
+				SelectBestCombatWeapon(client);
+				m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+				}
+			else if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
+			{
+				m_lookAt[client] = GetCenter(m_nearestEntity[client]);
+
+				if (CurrentProcess[client] != PRO_SPYSAP)
+				{
+					AutoAttack(client);
+					SelectBestCombatWeapon(client);
+				}
+
+				m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+			}
 		}
+
+		return;
+	}
 		
-		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
-
-		return;
-	}
-	else if (m_hasEnemiesNear[client])
-	{
-		LookAtEnemiens(client);
-		AutoAttack(client);
-		SelectBestCombatWeapon(client);
-		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
-
-		return;
-	}
-	else if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
-	{
-		m_lookAt[client] = GetCenter(m_nearestEntity[client]);
-
-		if (CurrentProcess[client] != PRO_SPYSAP)
-		{
-			AutoAttack(client);
-			SelectBestCombatWeapon(client);
-		}
-		
-		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
-
-		return;
-	}
 
 	if (lookaround)
 		LookAround(client);

@@ -293,7 +293,7 @@ stock void UpdateWaypoints()
             damageWPT[i] = 0.0;
     }
     
-    waypointUpdate = GetGameTime() + m_waypointNumber > 1024 ? 100.0 : 10.0;
+    waypointUpdate = GetGameTime() + m_waypointNumber > 1024 ? 6.0 : 2.0;
 }
 
 stock void DrawWaypoints()
@@ -1137,8 +1137,8 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
         return false;
     }
 
-	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
-		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
+	if (srcIndex <= 0 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
+		srcIndex = FindWaypoint(GetOrigin(client), client);
     
     if (srcIndex == destIndex)
 		return false;
@@ -1332,8 +1332,8 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
         return false;
     }
     
-	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
-		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
+	if (srcIndex <= 0 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
+		srcIndex = FindWaypoint(GetOrigin(client), client);
     
     if (srcIndex == destIndex)
 		return false;
@@ -1460,8 +1460,8 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, int client, float 
 
 stock bool AStarFindHidingSpot(int srcIndex, int client, float dangerOrigin[3])
 {
-	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
-		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
+	if (srcIndex <= 0 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
+		srcIndex = FindWaypoint(GetOrigin(client), client);
 
     AStar_t astar[MaxWaypoints];
     for (int i = 0; i < m_waypointNumber; i++)
@@ -1577,8 +1577,8 @@ stock bool AStarFindHidingSpot(int srcIndex, int client, float dangerOrigin[3])
 
 stock bool AStarFindHealthPack(int srcIndex, int client)
 {
-	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
-		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
+	if (srcIndex <= 0 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
+		srcIndex = FindWaypoint(GetOrigin(client), client);
 
     AStar_t astar[MaxWaypoints];
     for (int i = 0; i < m_waypointNumber; i++)
@@ -1739,8 +1739,8 @@ stock bool IsValidHealthPack(int entity)
 
 stock bool AStarFindAmmoPack(int srcIndex, int client)
 {
-	if (srcIndex <= 0 || !IsVisible(m_paths[srcIndex].origin, GetEyePosition(client)))
-		srcIndex = FindNearestWaypoint(GetOrigin(client), 999999.0, client);
+	if (srcIndex <= 0 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
+		srcIndex = FindWaypoint(GetOrigin(client), client);
 
     AStar_t astar[MaxWaypoints];
     for (int i = 0; i < m_waypointNumber; i++)
@@ -2047,10 +2047,11 @@ stock void AddToPath(int currentIndex, int client)
 }
 
 // find the nearest node to that origin, and return the index to this node
-stock int FindNearestWaypoint(float origin[3], float maxDistance = 999999.0, int client = -1)
+stock int FindNearestWaypoint(const float origin[3], const float maxDistance = 9999999.0, const int client = -1)
 {
     int index = -1;
     float normalDist = maxDistance * maxDistance;
+    bool isValid = IsValidClient(client);
 
     for (int i = 0; i < m_waypointNumber; i++)
     {
@@ -2058,7 +2059,7 @@ stock int FindNearestWaypoint(float origin[3], float maxDistance = 999999.0, int
    		if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 			continue;
 
-        if (client > 0 && client <= MaxClients)
+        if (isValid)
         {
             if (m_paths[i].team == 2 && m_team[client] == 3)
                 continue;
@@ -2077,7 +2078,66 @@ stock int FindNearestWaypoint(float origin[3], float maxDistance = 999999.0, int
     return index;
 }
 
-stock void DeletePathNodes(int client)
+stock int FindWaypoint(float origin[3], const int client = -1)
+{
+    int index = -1;
+    float normalDist = 999999999999999.0;
+    float eyePosition[3];
+    eyePosition = GetEyePosition(client);
+    float height = GetHeight(client);
+
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        // blocked waypoint
+   		if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
+			continue;
+
+        if (!IsVisibleToWaypoint(eyePosition, i, height))
+            continue;
+        
+        float distance = GetFastDistance(m_paths[i].origin, origin);
+        if (distance < normalDist)
+        {
+            index = i;
+            normalDist = distance;
+        }
+    }
+    
+    return index;
+}
+
+stock int FindWaypointFast(float origin[3], const int client = -1)
+{
+    int index = -1;
+    float normalDist = 999999999999999.0;
+    bool isValid = IsValidClient(client);
+
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        // blocked waypoint
+   		if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
+			continue;
+
+        if (isValid)
+        {
+            if (m_paths[i].team == 2 && m_team[client] == 3)
+                continue;
+            else if (m_paths[i].team == 3 && m_team[client] == 2)
+                continue;
+        }
+        
+        float distance = GetFastDistance(m_paths[i].origin, origin);
+        if (distance < normalDist)
+        {
+            index = i;
+            normalDist = distance;
+        }
+    }
+    
+    return index;
+}
+
+stock void DeletePathNodes(const int client)
 {
 	if (m_positions[client] == null)
 	{
@@ -2098,7 +2158,7 @@ stock void DeletePathNodes(int client)
 		m_pathIndex[client].Clear();
 }
 
-stock void WaypointClear(int index)
+stock void WaypointClear(const int index)
 {
     m_paths[index].index = index;
     m_paths[index].activeArea = 0;
@@ -2115,7 +2175,7 @@ stock void WaypointClear(int index)
     }
 }
 
-stock float GetWaypointDistance(int srcIndex, int destIndex)
+stock float GetWaypointDistance(const int srcIndex, const int destIndex)
 {
     for (int i = 0; i < MaxPathIndex; i++)
     {
@@ -2126,24 +2186,24 @@ stock float GetWaypointDistance(int srcIndex, int destIndex)
     return GetFastDistance2D(m_paths[srcIndex].origin, m_paths[destIndex].origin);
 }
 
-stock bool IsWaypointUsed(int index)
+stock bool IsWaypointUsed(const int index)
 {
     for (int i = 0; i < MaxClients; i++)
     {
         if (!IsValidClient(i))
             continue;
         
-        if (!IsPlayerAlive(i))
+        if (!m_isAlive[i])
             continue;
 
-        if (m_goalIndex[i] == index || GetVectorDistance(GetOrigin(i), m_paths[index].origin, true) <= Squared(64))
+        if (m_goalIndex[i] == index || m_currentIndex[i] == index || GetVectorDistance(GetOrigin(i), m_paths[index].origin, true) <= Squaredf(64.0))
             return true;
     }
 
     return false;
 }
 
-stock void SetGoalIndex(int client, int index)
+stock void SetGoalIndex(const int client, const int index)
 {
     if (index != -1)
         m_goalIndex[client] = index;
@@ -2204,10 +2264,7 @@ stock void WaypointLoad()
 
         if (fp == null)
         {
-            if (NavMesh_Exists())
-                m_aboutTheWaypoint = "No waypoint file found\nNavmesh file will be used";
-            else
-                m_aboutTheWaypoint = "No waypoint file found\nNo navmesh file found\nBots will be idle";
+            m_aboutTheWaypoint = "No waypoint file found\nBots will be idle";
             return;
         }
     }
@@ -2223,7 +2280,6 @@ stock void WaypointLoad()
         fp.Close();
         return;
     }
-
     else if (header.fileVersion > WaypointVersion)
     {
         Format(m_aboutTheWaypoint, sizeof(m_aboutTheWaypoint), "Waypoint version is too high\nPlease update your ebot!\nThis waypoint file will be ignored %s", header.fileVersion);
@@ -2448,40 +2504,6 @@ stock void WaypointSave()
     
     fp.Close();
     PrintHintTextToAll("%d waypoints saved sucsessfully!", m_waypointNumber);
-}
-
-stock void WaypointSaveNAV()
-{
-    if (m_waypointNumber <= 0)
-        return;
-
-    WaypointHeader header;
-    header.author = "navmesh";
-
-    char filepath[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/waypoints/nav/%s.nav", currentMap);
-    
-    // remember the original waypoint author
-    File rf = OpenFile(filepath, "rb");
-    if (rf != null)
-    {
-        rf.Read(header, sizeof(header), 4);
-        rf.Close();
-    }
-    
-    header.fileVersion = WaypointVersion;
-    header.pointNumber = m_waypointNumber;
-    
-    File fp = OpenFile(filepath, "wb");
-
-    // write the all waypoint data
-    fp.Write(header, sizeof(header), 4);
-
-    // save the waypoint paths...
-    for (int i = 0; i < m_waypointNumber; i++)
-        fp.Write(m_paths[i], sizeof(Path), 4);
-    
-    fp.Close();
 }
 
 /*stock void Analyze()
