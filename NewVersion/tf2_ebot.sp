@@ -346,6 +346,7 @@ public void OnClientPutInServer(int client)
 			FakeClientCommandEx(ebot, "joinclass soldier");
 		else
 			FakeClientCommandEx(ebot, "joinclass auto");
+		m_aimInterval[ebot] = GetGameTime();
 	}
 
 	if (IsValidClient(client) && IsFakeClient(client))
@@ -985,8 +986,49 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 		}
 		else
 		{
-			LookAtPosition(client, m_lookAt[client], angles, m_tackEntity[client]);
-			
+			if (m_class[client] != TFClass_Engineer && m_class[client] != TFClass_Medic && m_class[client] != TFClass_Spy)
+			{
+				if (m_hasEnemiesNear[client] && m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
+				{
+					float center[3];
+					center = GetCenter(m_nearestEntity[client]);
+
+					if (m_enemyDistance[client] < GetVectorDistance(GetOrigin(client), center, true))
+						LookAtEnemiens(client);
+					else
+						m_lookAt[client] = center;
+
+					if (CurrentProcess[client] != PRO_SPYSAP)
+					{
+						AutoAttack(client);
+						SelectBestCombatWeapon(client);
+					}
+
+					m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+				}
+				else if (m_hasEnemiesNear[client])
+				{
+					LookAtEnemiens(client);
+					AutoAttack(client);
+					SelectBestCombatWeapon(client);
+					m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+				}
+				else if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
+				{
+					m_lookAt[client] = GetCenter(m_nearestEntity[client]);
+
+					if (CurrentProcess[client] != PRO_SPYSAP)
+					{
+						AutoAttack(client);
+						SelectBestCombatWeapon(client);
+					}
+
+					m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+				}
+			}
+
+			LookAtPosition(client, m_lookAt[client], angles);
+
 			if (m_duckTimer[client] < GetGameTime())
 			{
 				int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
@@ -1246,6 +1288,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_pauseTime[client] = 0.0;
 		m_ignoreEnemies[client] = 0.0;
 		CrouchTime[client] = 0.0;
+		m_aimInterval[client] = GetGameTime();
 		DeletePathNodes(client);
 
 		if (TF2_GetPlayerClass(client) == TFClass_Engineer)
