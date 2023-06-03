@@ -34,9 +34,10 @@ stock void GetHealthStart(int client)
 
 stock void GetHealthUpdate(int client)
 {
-	if (GetClientHealth(client) >= GetMaxHealth(client))
+	if (GetClientHealth(client) > (GetMaxHealth(client) / 1.4))
 	{
 		FinishCurrentProcess(client);
+		DeletePathNodes(client);
 		return;
 	}
 	else

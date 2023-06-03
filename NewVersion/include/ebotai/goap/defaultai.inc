@@ -102,15 +102,7 @@ public void DefaultUpdate(int client)
 			if (m_primaryID[client] != 1098 && !TF2_IsPlayerInCondition(client, TFCond_Zoomed) && !IsMoving(client))
 				m_buttons[client] |= IN_ATTACK2;
 		}
-			
-		if (m_hasEnemiesNear[client])
-		{
-			LookAtEnemiens(client);
-			AutoAttack(client);
-		}
-		else
-			m_tackEntity[client] = -1;
-
+		
 		if (m_class[client] == TFClass_DemoMan && m_paths[index].flags & WAYPOINT_DEMOMANCAMP)
 		{
 			if (m_stickyCount[client] < 4)
