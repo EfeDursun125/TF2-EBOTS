@@ -2102,6 +2102,9 @@ stock int FindWaypoint(float origin[3], const int client = -1)
             normalDist = distance;
         }
     }
+
+    if (index == -1)
+        return FindNearestWaypoint(origin, 9999999.0, client);
     
     return index;
 }
