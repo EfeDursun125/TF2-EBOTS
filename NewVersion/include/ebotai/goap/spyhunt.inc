@@ -34,7 +34,7 @@ public void SpyHuntUpdate(int client)
 			m_moveVel[client][2] = 0.0;
 		}
 		else
-			MoveToWaypoint(client, GetOrigin(m_teleporterEntity[client]), GetOrigin(m_teleporterEntity[client]));
+			MoveToWaypoint(client, GetOrigin(m_teleporterEntity[client]));
 		return;
 	}
 
@@ -43,6 +43,10 @@ public void SpyHuntUpdate(int client)
 		LookAround(client);
 		if (IsValidClient(m_goalEntity[client]) || IsValidEntity(m_goalEntity[client]))
 			FollowPath(client, GetOrigin(m_goalEntity[client]));
+
+		// avoid bumping!!!
+		if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) <= Squaredf(200.0))
+			BackstabMove(client, m_nearestEnemy[client], false);
 
 		return;
 	}
@@ -171,7 +175,7 @@ public void SpyHuntUpdate(int client)
 	EquipWeaponSlot(client, isKnifeFight ? 2 : 0);
 	bool isMovingTowardVictim = true;
 
-	if (IsWeaponSlotActive(client, 2))
+	if (isKnifeFight && IsWeaponSlotActive(client, 2))
 	{
 		const float circleStrafeRange = 200.0;
 
@@ -196,19 +200,19 @@ public void SpyHuntUpdate(int client)
 			}
 
 			// don't continue to close in if we're already very close so we don't bump them and give ourselves away
-			if (threatRange < Squaredf(72.0)) 
+			if (threatRange <= Squaredf(72.0)) 
 				m_moveVel[client][0] = -300.0;
-			else if (threatRange > Squaredf(84.0))
+			else if (threatRange >= Squaredf(84.0))
 				m_moveVel[client][0] = 300.0;
 		}
 
-		if (threatRange <= Squaredf(80.0))
+		if (threatRange <= Squaredf(84.0))
 		{
 			// if we're still disguised, go for the backstab
 			if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
 			{
 				// we're behind them (or they're onto us) - backstab!
-				if (isBehindVictim)
+				if ((m_difficulty[client] != 4 && isBehindVictim) || GetClientHealth(playerThreat) <= 40)
 					m_buttons[client] |= IN_ATTACK;
 				else if (m_isCoverBlown[client])
 				{
@@ -228,7 +232,7 @@ public void SpyHuntUpdate(int client)
 			}
 		}
 	}
-	else if (IsWeaponSlotActive(client, 0))
+	else if (!isKnifeFight && IsWeaponSlotActive(client, 0))
 		m_attackTimer[client] = GetGameTime() + 0.20;
 
 	if (isMovingTowardVictim)
@@ -256,6 +260,10 @@ public void SpyHuntUpdate(int client)
 	}
 	else
 		DeletePathNodes(client);
+
+	// avoid bumping!!!
+	if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) <= Squaredf(200.0))
+		BackstabMove(client, m_nearestEnemy[client], false);
 }
 
 public void SpyHuntEnd(int client)

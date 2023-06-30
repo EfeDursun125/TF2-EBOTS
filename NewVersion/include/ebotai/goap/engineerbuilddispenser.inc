@@ -41,7 +41,7 @@ public void BuildDispenserUpdate(int client)
 
 			if (IsVisible(GetEyePosition(client), randomArea) || IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
 			{
-				m_ignoreEnemies[client] = GetGameTime() + 0.5;
+				m_ignoreEnemies[client] = GetGameTime() + 1.0;
 				m_buttons[client] |= IN_ATTACK;
 			}
 		}
@@ -64,5 +64,5 @@ public void BuildDispenserUpdate(int client)
 
 public void BuildDispenserEnd(int client)
 {
-	// :(
+	EquipWeaponSlot(client, 0);
 }

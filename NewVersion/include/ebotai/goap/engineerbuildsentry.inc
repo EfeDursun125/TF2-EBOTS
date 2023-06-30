@@ -1,4 +1,4 @@
-public bool BuildSentryRequirements(int client)
+public bool BuildSentryRequirements(const int client)
 {
 	if (GetMetal(client) < 130.0)
 		return false;
@@ -10,33 +10,35 @@ public bool BuildSentryRequirements(int client)
 }
 
 float sentrybuildarea[3];
-public void BuildSentryStart(int client)
+public void BuildSentryStart(const int client)
 {
 	DeletePathNodes(client); // NEVER EVER EVER DELETE THIS LINE
 	PickSentrySpot(client, sentrybuildarea);
 }
 
-public void BuildSentryUpdate(int client)
+public void BuildSentryUpdate(const int client)
 {
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
-	LookUpdate(client);
 	
 	float range = GetVectorDistance(GetOrigin(client), sentrybuildarea, true);
 	if (range <= Squaredf(300.0))
 	{
-		m_ignoreEnemies[client] = GetGameTime() + 0.5;
+		m_ignoreEnemies[client] = GetGameTime() + 1.0;
 		if (!IsWeaponSlotActive(client, 5) && !IsMoving(client))
 			FakeClientCommandThrottled(client, "build 2 0");
 
-		int index = m_goalIndex[client];
-		if (m_hasWaypoints && index != -1)
+		if (m_goalIndex[client] != -1 && (m_hasWaypoints || m_hasNavpoints))
+		{
+			int index = m_goalIndex[client];
 			m_lookAt[client] = m_paths[index].campStart;
+			LookAtPosition(client, m_lookAt[client], GetEyeAngles(client));
+		}
 		else
-			m_lookAt[client] = sentrybuildarea;
+			LookUpdate(client);
 		
-		if (IsWeaponSlotActive(client, 5) && !IsMoving(client) && range <= Squaredf(128.0))
+		if (IsWeaponSlotActive(client, 5) && !IsMoving(client) && range <= Squaredf(128.0) && IsClientAimingToPosition(client, m_lookAt[client]))
 		{
 			m_buttons[client] |= IN_ATTACK;
 		
@@ -54,30 +56,33 @@ public void BuildSentryUpdate(int client)
 			return;
 		}
 	}
+	else
+		LookUpdate(client);
 
 	if (range > Squaredf(70.0))
 		FollowPath(client, sentrybuildarea);
 	else
-		MoveToWaypoint(client, sentrybuildarea, sentrybuildarea);
+		MoveToWaypoint(client, sentrybuildarea);
 	
 	int sentry = TF2_GetObject(client, TFObject_Sentry, TFObjectMode_None);
 	if (IsValidEntity(sentry))
 	{
-		FinishCurrentProcess(client);
 		EngineerMoveSentryTimer[client] = GetGameTime() + GetRandomFloat(90.0, 160.0);
 		WantsBuildSentryGun[client] = false;
 		WantsMoveSentryGun[client] = false;
+		FinishCurrentProcess(client);
+		FakeClientCommand(client, "tournament_player_readystate 1");
 	}
 }
 
-public void BuildSentryEnd(int client)
+public void BuildSentryEnd(const int client)
 {
-	// :(
+	EquipWeaponSlot(client, 0);
 }
 
-public void PickSentrySpot(int client, float area[3])
+public void PickSentrySpot(const int client, float area[3])
 {
-	if (m_hasWaypoints && m_hasSentryWaypoints)
+	if ((m_hasWaypoints || m_hasNavpoints) && m_hasSentryWaypoints)
 	{
 		int index = -1;
 		ArrayList GoodSentrySpots = new ArrayList();
@@ -97,7 +102,8 @@ public void PickSentrySpot(int client, float area[3])
     		// not for our team
  			if (m_team[client] == 3 && m_paths[i].team == 2)
     			continue;
-   			else if (m_team[client] == 2 && m_paths[i].team == 3)
+
+   			if (m_team[client] == 2 && m_paths[i].team == 3)
         		continue;
 
 			if (!IsWaypointUsed(i))

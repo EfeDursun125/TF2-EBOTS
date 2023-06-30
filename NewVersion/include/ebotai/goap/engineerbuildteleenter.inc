@@ -32,12 +32,11 @@ public void BuildTeleEnterUpdate(int client)
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
-	LookUpdate(client);
 	
 	float range = GetVectorDistance(GetOrigin(client), teleenterbuildarea, true);
 	if (range <= Squaredf(300.0))
 	{
-		m_ignoreEnemies[client] = GetGameTime() + 0.5;
+		m_ignoreEnemies[client] = GetGameTime() + 1.0;
 
 		if (!IsWeaponSlotActive(client, 5) && !IsMoving(client))
 		{
@@ -45,7 +44,7 @@ public void BuildTeleEnterUpdate(int client)
 			m_buttons[client] |= IN_ATTACK;
 		}
 
-		if (m_hasWaypoints)
+		if ((m_hasWaypoints || m_hasNavpoints) && m_isSlowThink[client])
 		{
 			int index = m_goalIndex[client];
 			if (index != -1)
@@ -56,6 +55,8 @@ public void BuildTeleEnterUpdate(int client)
 					m_lookAt[client] = m_paths[index].campEnd;
 			}
 		}
+
+		LookAtPosition(client, m_lookAt[client], GetEyeAngles(client));
 
 		if (IsWeaponSlotActive(client, 5))
 		{
@@ -72,11 +73,13 @@ public void BuildTeleEnterUpdate(int client)
 			return;
 		}
 	}
+	else
+		LookUpdate(client);
 
 	if (range > Squaredf(70.0))
 		FollowPath(client, teleenterbuildarea);
 	else
-		MoveToWaypoint(client, teleenterbuildarea, teleenterbuildarea);
+		MoveToWaypoint(client, teleenterbuildarea);
 
 	int teleenter = TF2_GetObject(client, TFObject_Teleporter, TFObjectMode_Entrance);
 	if (IsValidEntity(teleenter))
@@ -89,11 +92,12 @@ public void BuildTeleEnterUpdate(int client)
 public void BuildTeleEnterEnd(int client)
 {
 	m_enterFail[client] = true;
+	EquipWeaponSlot(client, 0);
 }
 
 stock void PickTeleEnterSpot(int client, float area[3] = NULL_VECTOR)
 {
-	if (m_hasWaypoints && m_hasTeleporterEnterWaypoints)
+	if ((m_hasWaypoints || m_hasNavpoints) && m_hasTeleporterEnterWaypoints)
 	{
 		int index = -1;
 		ArrayList GoodTeleEnterSpots = new ArrayList();

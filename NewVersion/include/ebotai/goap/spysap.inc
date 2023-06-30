@@ -48,7 +48,7 @@ public void SpySapUpdate(int client)
 			m_moveVel[client][2] = 0.0;
 		}
 		else
-			MoveToWaypoint(client, GetOrigin(m_teleporterEntity[client]), GetOrigin(m_teleporterEntity[client]));
+			MoveToWaypoint(client, GetOrigin(m_teleporterEntity[client]));
 		return;
 	}
 
@@ -60,6 +60,10 @@ public void SpySapUpdate(int client)
 		if (IsValidClient(m_goalEntity[client]) || IsValidEntity(m_goalEntity[client]))
 			FollowPath(client, GetOrigin(m_goalEntity[client]));
 		
+		// avoid bumping!!!
+		if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) <= Squaredf(200.0))
+			BackstabMove(client, m_nearestEnemy[client], false);
+
 		return;
 	}
 
@@ -73,23 +77,26 @@ public void SpySapUpdate(int client)
 		return;
 	}
 
-	FollowPath(client, GetOrigin(m_goalEntity[client]));
-	
 	if (!m_hasEntitiesNear[client])
 		SpyReactChecker(client);
-
+	
 	if (!HasEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") || GetEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") != 0)
 		FinishCurrentProcess(client);
 	else
 	{
-		float distance = GetVectorDistance(GetOrigin(client), GetCenter(m_goalEntity[client]), true);
 		float range = Squaredf(300.0);
+		float distance = GetVectorDistance(GetOrigin(client), GetCenter(m_goalEntity[client]), true);
+		if (distance > Squaredf(300.0) || !IsVisible(GetEyePosition(client), GetCenter(m_goalEntity[client])))
+			FollowPath(client, GetOrigin(m_goalEntity[client]));
+		else
+			MoveToWaypoint(client, GetOrigin(m_goalEntity[client]));
 
 		if (distance <= range)
 		{
 			if (IsWeaponSlotActive(client, 1))
 			{
 				m_lookAt[client] = GetCenter(m_goalEntity[client]);
+
 				if (GetRandomInt(1, 2) == 1)
 					FakeClientCommandThrottled(client, "build 3 0");
 				else
@@ -108,6 +115,10 @@ public void SpySapUpdate(int client)
 	}
 
 	SpyAimLogic(client);
+
+	// avoid bumping!!!
+	if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) <= Squaredf(200.0))
+		BackstabMove(client, m_nearestEnemy[client], false);
 }
 
 public void SpySapEnd(int client)

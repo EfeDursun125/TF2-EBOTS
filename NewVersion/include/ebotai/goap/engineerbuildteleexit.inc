@@ -32,17 +32,16 @@ public void BuildTeleExitUpdate(int client)
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
-	LookUpdate(client);
 	
 	float range = GetVectorDistance(GetOrigin(client), teleexitbuildarea, true);
 	if (range <= Squaredf(300.0))
 	{
-		m_ignoreEnemies[client] = GetGameTime() + 0.5;
+		m_ignoreEnemies[client] = GetGameTime() + 1.0;
 
 		if (!IsWeaponSlotActive(client, 5) && !IsMoving(client))
 			FakeClientCommandThrottled(client, "build 1 1");
 			
-		if (m_hasWaypoints)
+		if ((m_hasWaypoints || m_hasNavpoints) && m_isSlowThink[client])
 		{
 			int index = m_goalIndex[client];
 			if (index != -1)
@@ -53,6 +52,8 @@ public void BuildTeleExitUpdate(int client)
 					m_lookAt[client] = m_paths[index].campEnd;
 			}
 		}
+
+		LookAtPosition(client, m_lookAt[client], GetEyeAngles(client));
 
 		if (IsWeaponSlotActive(client, 5))
 		{
@@ -69,11 +70,13 @@ public void BuildTeleExitUpdate(int client)
 			return;
 		}
 	}
+	else
+		LookUpdate(client);
 
 	if (range > Squaredf(70.0))
 		FollowPath(client, teleexitbuildarea);
 	else
-		MoveToWaypoint(client, teleexitbuildarea, teleexitbuildarea);
+		MoveToWaypoint(client, teleexitbuildarea);
 	
 	int teleexit = TF2_GetObject(client, TFObject_Teleporter, TFObjectMode_Exit);
 	if (IsValidEntity(teleexit))
@@ -86,11 +89,12 @@ public void BuildTeleExitUpdate(int client)
 public void BuildTeleExitEnd(int client)
 {
 	m_exitFail[client] = true;
+	EquipWeaponSlot(client, 0);
 }
 
 stock void PickTeleExitSpot(int client, float area[3] = NULL_VECTOR)
 {
-	if (m_hasWaypoints && m_hasTeleporterExitWaypoints)
+	if ((m_hasWaypoints || m_hasNavpoints) && m_hasTeleporterExitWaypoints)
 	{
 		int index = -1;
 		ArrayList GoodTeleExitSpots = new ArrayList();

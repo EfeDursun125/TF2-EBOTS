@@ -1,9 +1,9 @@
-public bool DefaultRequirements(int client)
+public bool DefaultRequirements(const int client)
 {
 	return true;
 }
 
-public void DefaultStart(int client)
+public void DefaultStart(const int client)
 {
 	if (!GameRules_GetProp("m_bPlayingMedieval") && m_class[client] == TFClass_Engineer)
 		SetProcess(client, PRO_ENGINEERIDLE, 99999.0, "", true);
@@ -12,7 +12,7 @@ public void DefaultStart(int client)
 		SetProcess(client, PRO_SPYLURK, 99999.0, "", true);
 }
 
-stock bool MustFindObjective(int client, int index, int current)
+stock bool MustFindObjective(const int client, const int index, const int current)
 {
 	if (current <= 0)
 		return true;
@@ -40,7 +40,7 @@ stock bool MustFindObjective(int client, int index, int current)
 	return false;
 }
 
-public void DefaultUpdate(int client)
+public void DefaultUpdate(const int client)
 {
 	if (IsMedic(client) || HasCrossbow(client))
 	{
@@ -64,7 +64,7 @@ public void DefaultUpdate(int client)
 	FindEnemyEntities(client);
 
 	if (m_hasEnemiesNear[client])
-		SetProcess(client, PRO_ATTACK, 180.0, "", true);
+		SetProcess(client, PRO_ATTACK, 180.0, "", true, false);
 	
 	if (m_useTeleporter[client] && IsValidEntity(m_teleporterEntity[client]))
 	{
@@ -83,7 +83,8 @@ public void DefaultUpdate(int client)
 			m_moveVel[client][2] = 0.0;
 		}
 		else
-			MoveToWaypoint(client, GetOrigin(m_teleporterEntity[client]), GetOrigin(m_teleporterEntity[client]));
+			MoveToWaypoint(client, GetOrigin(m_teleporterEntity[client]));
+		
 		return;
 	}
 
@@ -99,6 +100,7 @@ public void DefaultUpdate(int client)
 	{
 		SelectObjective(client);
 		FollowPath(client, m_goalPosition[client], -1, index);
+		return;
 	}
 
 	if (index != -1 && (m_paths[index].flags & WAYPOINT_DEMOMANCAMP || m_paths[index].flags & WAYPOINT_SNIPER || m_paths[index].flags & WAYPOINT_DEFEND) && GetVectorDistance(GetOrigin(client), m_paths[index].origin, true) <= Squaredf(128.0))
@@ -148,7 +150,7 @@ public void DefaultUpdate(int client)
 	LookUpdate(client);
 }
 
-public void DefaultEnd(int client)
+public void DefaultEnd(const int client)
 {
 	if (m_class[client] == TFClass_Spy)
 		return;
@@ -161,9 +163,9 @@ public void DefaultEnd(int client)
 	m_goalPosition[client] = NULL_VECTOR;
 }
 
-public void SelectObjective(int client)
+public void SelectObjective(const int client)
 {
-	if (m_hasWaypoints && m_hasSniperWaypoints && IsSniper(client) && !TF2_HasTheFlag(client))
+	if ((m_hasWaypoints || m_hasNavpoints) && m_hasSniperWaypoints && IsSniper(client) && !TF2_HasTheFlag(client))
 	{
 		int myindex = m_goalIndex[client];
 		if (myindex != -1 && m_paths[myindex].flags & WAYPOINT_SNIPER && (m_paths[myindex].activeArea == 0 || m_paths[myindex].activeArea & currentActiveArea))
@@ -222,7 +224,7 @@ public void SelectObjective(int client)
 		}
 	}
 
-	if (m_hasWaypoints && m_hasStickyWaypoints && m_class[client] == TFClass_DemoMan && !TF2_HasTheFlag(client))
+	if ((m_hasWaypoints || m_hasNavpoints) && m_hasStickyWaypoints && m_class[client] == TFClass_DemoMan && !TF2_HasTheFlag(client))
 	{
 		int myindex = m_goalIndex[client];
 		if (myindex != -1 && m_paths[myindex].flags & WAYPOINT_DEMOMANCAMP && (m_paths[myindex].activeArea == 0 || m_paths[myindex].activeArea & currentActiveArea))
@@ -286,7 +288,7 @@ public void SelectObjective(int client)
 		m_goalEntity[client] = FindNearestEnemy(client);
 		if (IsValidClient(m_goalEntity[client]))
 			m_goalPosition[client] = GetOrigin(m_goalEntity[client]);
-		else if (m_hasWaypoints)
+		else if (m_hasWaypoints || m_hasNavpoints)
 		{
 			m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
 			if (m_paths[m_goalIndex[client]].radius > 0.0)
@@ -304,7 +306,20 @@ public void SelectObjective(int client)
 
 	if (isKOTH)
 	{
-		if (m_hasWaypoints)
+		if (!IsValidEntity(m_capturePoint) || !HasEntProp(m_capturePoint, Prop_Send, "m_iTeamNum"))
+		{
+			int iControlPoint = -1;
+			while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+			{
+				if (!IsValidEntity(iControlPoint))
+					continue;
+
+				m_capturePoint = iControlPoint;
+				break;
+			}
+		}
+
+		if (m_hasCaptureWaypoints && (m_hasWaypoints || m_hasNavpoints))
 		{
 			int index = -1;
 			ArrayList GoodDefendPoints = new ArrayList();
@@ -368,15 +383,21 @@ public void SelectObjective(int client)
 					SetGoalIndex(client, GetRandomInt(1, m_waypointNumber));
 			}
 		}
-		else
+		else if (IsValidEntity(m_capturePoint))
 			m_goalEntity[client] = m_capturePoint;
+		else
+		{
+			m_goalEntity[client] = FindNearestEnemy(client);
+			if (IsValidClient(m_goalEntity[client]))
+				m_goalPosition[client] = GetOrigin(m_goalEntity[client]);
+		}
 	}
 	else if (isPL)
 	{
 		if (!IsValidEntity(m_bluPayload))
 			FindPayload();
-		
-		if (m_hasWaypoints)
+
+		if (m_hasWaypoints || m_hasNavpoints)
 		{
 			if (m_team[client] == 2)
 			{
@@ -508,7 +529,7 @@ public void SelectObjective(int client)
 	}
 	else if (isMVM || isAD)
 	{
-		if (m_hasWaypoints)
+		if (m_hasWaypoints || m_hasNavpoints)
 		{
 			int index = -1;
 			ArrayList ControlPoints = new ArrayList();
@@ -607,7 +628,7 @@ public void SelectObjective(int client)
 			m_goalEntity[client] = GetNearestEnemyControlPoint(client);
 				
 	}
-	else if (m_hasWaypoints)
+	else if (m_hasWaypoints || m_hasNavpoints)
 	{
 		m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
 		if (m_paths[m_goalIndex[client]].radius > 0.0)
@@ -623,11 +644,11 @@ public void SelectObjective(int client)
 		m_goalEntity[client] = FindNearestEnemy(client);
 }
 
-stock void ObjectiveMovement(int client)
+stock void ObjectiveMovement(const int client)
 {
 	if (GetConVarBool(EBotForceHuntEnemy))
 	{
-		if (m_hasWaypoints)
+		if (m_hasWaypoints || m_hasNavpoints)
 			FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
 		else
 		{
@@ -638,7 +659,7 @@ stock void ObjectiveMovement(int client)
 		return;
 	}
 
-	if (m_hasWaypoints && m_class[client] == TFClass_DemoMan && m_hasStickyWaypoints)
+	if ((m_hasWaypoints || m_hasNavpoints) && m_class[client] == TFClass_DemoMan && m_hasStickyWaypoints)
 	{
 		int index = m_goalIndex[client];
 		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea & currentActiveArea))
@@ -656,7 +677,7 @@ stock void ObjectiveMovement(int client)
 		else
 			SelectObjective(client);
 	}
-	else if (m_hasWaypoints && IsSniper(client) && m_hasSniperWaypoints)
+	else if ((m_hasWaypoints || m_hasNavpoints) && IsSniper(client) && m_hasSniperWaypoints)
 	{
 		int index = m_goalIndex[client];
 		if (index != -1 && (m_paths[index].activeArea == 0 || m_paths[index].activeArea & currentActiveArea))
@@ -676,17 +697,17 @@ stock void ObjectiveMovement(int client)
 	}
 	else if (isKOTH)
 	{
-		if (m_hasWaypoints)
+		if (m_hasWaypoints || m_hasNavpoints)
 			FollowPath(client, m_goalPosition[client]);
-		else if (IsValidEntity(m_goalEntity[client]))
+		else if (IsValidEntity(m_capturePoint) && HasEntProp(m_capturePoint, Prop_Send, "m_iTeamNum"))
 		{
 			float cappointpos[3];
-			cappointpos = GetOrigin(m_goalEntity[client]);
-			if (GetTeamNumber(m_goalEntity[client]) == m_team[client])
+			cappointpos = GetOrigin(m_capturePoint);
+			if (GetTeamNumber(m_capturePoint) == m_team[client])
 			{
 				m_goalPosition[client][0] = cappointpos[0] + GetRandomFloat(-768.0, 768.0);
 				m_goalPosition[client][1] = cappointpos[1] + GetRandomFloat(-768.0, 768.0);
-				m_goalPosition[client][2] = cappointpos[2] + GetRandomFloat(-768.0, 768.0);
+				m_goalPosition[client][2] = cappointpos[2] + GetRandomFloat(-128.0, 128.0);
 			}
 			else
 			{
@@ -697,17 +718,19 @@ stock void ObjectiveMovement(int client)
 			
 			FollowPath(client, m_goalPosition[client]);
 		}
+		else
+			FollowPath(client, m_goalPosition[client]);
 	}
 	else if (isPL)
 	{
-		if (m_hasWaypoints)
+		if (m_hasWaypoints || m_hasNavpoints)
 			FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
 		else
 			FollowPath(client, m_goalPosition[client]);
 	}
 	else if (isPLR)
 	{
-		if (m_hasWaypoints)
+		if (m_hasWaypoints || m_hasNavpoints)
 			FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
 		else
 			FollowPath(client, m_goalPosition[client]);
@@ -759,20 +782,20 @@ stock void ObjectiveMovement(int client)
 	}
 	else if (isAD || isCP)
 		FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
-	else if (m_hasWaypoints)
+	else if (m_hasWaypoints || m_hasNavpoints)
 	{
 		FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
 		if (m_isSlowThink[client])
 			SelectObjective(client);
 	}
-	else
+	else if (IsValidEntity(m_goalEntity[client]))
 	{
 		m_goalPosition[client] = GetOrigin(m_goalEntity[client]);
 		FollowPath(client, m_goalPosition[client]);
 	}
 }
 
-stock void NavMeshControlPoint(int client)
+stock void NavMeshControlPoint(const int client)
 {
 	if (!m_isSlowThink[client])
 		return;

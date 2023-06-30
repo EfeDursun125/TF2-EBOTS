@@ -42,7 +42,7 @@ public void SpyLurkUpdate(int client)
 			m_moveVel[client][2] = 0.0;
 		}
 		else
-			MoveToWaypoint(client, GetOrigin(m_teleporterEntity[client]), GetOrigin(m_teleporterEntity[client]));
+			MoveToWaypoint(client, GetOrigin(m_teleporterEntity[client]));
 		return;
 	}
 
@@ -105,6 +105,10 @@ public void SpyLurkUpdate(int client)
 			}
 		}
 	}
+
+	// avoid bumping!!!
+	if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) <= Squaredf(200.0))
+		BackstabMove(client, m_nearestEnemy[client], false);
 }
 
 public void SpyLurkEnd(int client)
