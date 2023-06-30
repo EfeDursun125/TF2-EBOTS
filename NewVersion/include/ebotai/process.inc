@@ -3,7 +3,7 @@ int RememberedProcess[TFMaxPlayers];
 float CurrentProcessTime[TFMaxPlayers];
 float RememberedProcessTime[TFMaxPlayers];
 
-stock void SetProcess(int client, int process, float time = 9999.0, const char[] debugnote = "clear", bool ignoredebug = false, bool remember = true)
+stock void SetProcess(const int client, const int process, const float time = 9999.0, const char[] debugnote = "clear", const bool ignoredebug = false, const bool remember = true)
 {
 	if (FailedProcess[client] == process)
 		return;
@@ -26,7 +26,7 @@ stock void SetProcess(int client, int process, float time = 9999.0, const char[]
 	}
 }
 
-public void StartProcess(int client, int process)
+public void StartProcess(const int client, const int process)
 {
 	switch (process)
 	{
@@ -67,7 +67,7 @@ public void StartProcess(int client, int process)
 	}
 }
 
-public void EndProcess(int client, int process)
+public void EndProcess(const int client, const int process)
 {
 	CurrentProcessTime[client] = GetGameTime();
 	
@@ -110,7 +110,7 @@ public void EndProcess(int client, int process)
 	}
 }
 
-public void UpdateProcess(int client)
+public void UpdateProcess(const int client)
 {
 	if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcessTime[client] < GetGameTime() && CurrentProcess[client] != PRO_SPYLURK && CurrentProcess[client] != PRO_SPYHUNT)
 	{
@@ -174,7 +174,7 @@ public void UpdateProcess(int client)
 		SetProcess(client, PRO_HIDE, 60.0, "", true);
 }
 
-stock void FinishCurrentProcess(int client, bool nodbg = false, const char[] debugnote = "finished by the system")
+stock void FinishCurrentProcess(const int client, const bool nodbg = false, const char[] debugnote = "finished by the system")
 {
 	if (CurrentProcess[client] != PRO_DEFAULT)
 	{
@@ -199,7 +199,7 @@ stock void FinishCurrentProcess(int client, bool nodbg = false, const char[] deb
 	}
 }
 
-stock void SetFailedProcess(int client, bool nodbg = false, const char[] debugnote = "finished by the system")
+stock void SetFailedProcess(const int client, const bool nodbg = false, const char[] debugnote = "finished by the system")
 {
 	if (CurrentProcess[client] != PRO_DEFAULT)
 	{
@@ -208,7 +208,7 @@ stock void SetFailedProcess(int client, bool nodbg = false, const char[] debugno
 	}
 }
 
-public bool IsReadyForTheProcess(int client, int process)
+public bool IsReadyForTheProcess(const int client, const int process)
 {
 	switch (process)
 	{
@@ -251,7 +251,7 @@ public bool IsReadyForTheProcess(int client, int process)
 	return true;
 }
 
-stock char[] GetProcessName(int process)
+stock char[] GetProcessName(const int process)
 {
 	char string[64] = "UNKNOWN";
 	switch (process)

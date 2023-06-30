@@ -16,19 +16,7 @@ stock void LookAtEnemiens(int client)
 	float BestAimPosition[3];
 
 	if (IsSniper(client) && m_primaryID[client] != 230 && IsWeaponSlotActive(client, 0))
-	{
-		int iBone = LookupBone(m_nearestEnemy[client], "bip_head");
-		if (iBone != -1)
-		{
-			float AimPositon[3];
-			float Null[3];
-			GetBonePosition(m_nearestEnemy[client], iBone, AimPositon, Null);
-			AimPositon[2] += 3.0;
-			m_lookAt[client] = AimPositon;
-		}
-		else
-			m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
-	}
+		m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
 	else if (m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092)
 	{
 		if (m_difficulty[client] >= 2)
@@ -126,19 +114,7 @@ stock void LookAtEnemiens(int client)
 		}
 	}
 	else if (m_class[client] == TFClass_Spy && (TF2_GetPlayerWeaponID(client, 0) == 61 || TF2_GetPlayerWeaponID(client, 0) == 1006))
-	{
-		int iBone = LookupBone(m_nearestEnemy[client], "bip_head");
-		if (iBone != -1)
-		{
-			float AimPositon[3];
-			float Null[3];
-			GetBonePosition(m_nearestEnemy[client], iBone, AimPositon, Null);
-			AimPositon[2] += 3.0;
-			m_lookAt[client] = AimPositon;
-		}
-		else
-			m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
-	}
+		m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
 	else
 	{
 		if (IsWeaponSlotActive(client, 2))
@@ -207,10 +183,10 @@ stock void LookAround(int client)
 			}
 			else
 			{
-				CNavArea area = NavMesh_GetNearestArea(GetEyePosition(search), true, 768.0, false, false);
-				if (area != INVALID_NAV_AREA)
+				CNavArea area = NavMesh.GetNearestNavArea(GetEyePosition(search), true, 768.0, false, false, m_team[client]);
+				if (area != NULL_AREA)
 				{
-					area.GetRandomPoint(PlayerArea);
+					GetRandomPoint(area, PlayerArea);
 					float fw[3];
 					EyeVectors(client, fw);
 					PlayerArea[0] += (fw[0] * 256.0);
@@ -267,9 +243,9 @@ stock void LookAround(int client)
 		}
 		else
 		{
-			CNavArea area = NavMesh_GetNearestArea(BestLookPos, true, 512.0, false, false);
-			if (area != INVALID_NAV_AREA)
-				area.GetRandomPoint(SelectRandom);
+			CNavArea area = NavMesh.GetNearestNavArea(BestLookPos, true, 512.0, false, false, m_team[client]);
+			if (area != NULL_AREA)
+				GetRandomPoint(area, SelectRandom);
 		}
 		
 		m_searchTime[client] = GetGameTime() + 0.2;
@@ -299,19 +275,16 @@ stock void LookAround(int client)
 		}
 		else
 		{
-			CNavArea area = NavMesh_GetNearestArea(m_pathAhead[client], true, 512.0, false, false);
-			if (area != INVALID_NAV_AREA)
+			CNavArea area = NavMesh.GetNearestNavArea(m_pathAhead[client], true, 512.0, false, false, m_team[client]);
+			if (area != NULL_AREA)
 			{
 				float fw[3];
 				EyeVectors(client, fw);
-				area.GetRandomPoint(m_lookAt[client]);
+				GetRandomPoint(area, m_lookAt[client]);
 				m_lookAt[client][0] += fw[0] * 256.0;
 				m_lookAt[client][1] += fw[0] * 256.0;
 				m_lookAt[client][2] += GetHeight(client);
 			}
 		}
 	}
-
-	if (m_cosError[client] > 0.98)
-		m_itAimStart[client] = GetGameTime();
 }
