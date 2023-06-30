@@ -1,6 +1,7 @@
 # TF2-EBOTS (NEW)
 Works with waypoints, if no waypoint file found uses (and requires) navmesh/cbasenpc [Click HERE](https://github.com/TF2-DMB/CBaseNPC/releases)
-Requires tf2items [Click HERE]https://builds.limetech.io/?project=tf2items
+
+Requires tf2items [Click HERE](https://builds.limetech.io/?project=tf2items)
 
 put ebot folder that contains name & waypoints to tf\addons\sourcemod
 
