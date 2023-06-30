@@ -1,5 +1,8 @@
 # TF2-EBOTS (NEW)
-Works with waypoints, if no waypoint file found uses (and requires) navmesh https://github.com/KitRifty/sourcepawn-navmesh
+Works with waypoints, if no waypoint file found uses (and requires) navmesh/cbasenpc [Click HERE](https://github.com/TF2-DMB/CBaseNPC/releases)
+Requires tf2items [Click HERE]https://builds.limetech.io/?project=tf2items
+
+put ebot folder that contains name & waypoints to tf\addons\sourcemod
 
 Supported gamemodes:
 1. CAPTURE THE FLAG
@@ -10,9 +13,6 @@ Supported gamemodes:
 6. DEATHMATCH
 7. ARENA
 8. MEDIEVAL
-
-Known Issues
-1. Bots sometimes stop moving...
 
 # OLD
 Requires PathFollower & tf2.pets gamedata
