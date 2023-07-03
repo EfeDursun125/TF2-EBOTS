@@ -769,11 +769,26 @@ stock void ObjectiveMovement(const int client)
 							}
 						}
 						else // go to flag capture area
-							FollowPath(client, m_team[client] == 2 ? m_redFlagCapPoint : m_bluFlagCapPoint);
+						{	
+							if (m_team[client] == 2) {
+								m_goalPosition[client] = m_redFlagCapPoint;
+							}
+							else if (m_team[client] == 3) {
+								m_goalPosition[client] = m_bluFlagCapPoint;
+							}
+							
+						}
 					}
 					else
 					{
-						m_goalPosition[client] = m_team[client] == 2 ? m_redFlagCapPoint : m_bluFlagCapPoint;
+						
+						if (m_team[client] == 2) {
+							m_goalPosition[client] = m_bluFlagCapPoint;
+						}
+						else if (m_team[client] == 3) {
+							m_goalPosition[client] = m_redFlagCapPoint;
+						}
+
 						FollowPath(client, GetOrigin(flag));
 					}
 				}
