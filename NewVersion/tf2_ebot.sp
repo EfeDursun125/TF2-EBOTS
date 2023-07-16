@@ -121,6 +121,9 @@ public void OnPluginStart()
 	EBotDistance = CreateConVar("ebot_waypoint_auto_distance", "250.0", "", FCVAR_NONE);
 	EBotForceHuntEnemy = CreateConVar("ebot_force_hunt_enemy", "0", "", FCVAR_NONE);
 	EBotAllowAttackButtons = CreateConVar("ebot_allow_attack_buttons", "1", "", FCVAR_NONE);
+	EBotAFKPlayers = CreateConVar("ebot_afk_take_over_auto", "1", "", FCVAR_NOTIFY);
+	EBotAFKCommand = CreateConVar("ebot_afk_by_command", "1", "", FCVAR_NONE);
+	EBotAFKTime = CreateConVar("ebot_afk_time", "120", "", FCVAR_NONE);
 
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -224,6 +227,12 @@ public Action Command_Afk(int client, int args)
 	
 	if (args == 0) // For People
 	{
+		if (GetConVarInt(EBotAFKCommand) != 1)
+		{
+			PrintToChat(client, "[E-BOT] AFK-BOT is disabled for players.");
+			return Plugin_Handled;
+		}
+
 		if (!m_isAFK[client])
 		{
 			PrintToChat(client, "[E-BOT] AFK-BOT is enabled.");
@@ -243,7 +252,6 @@ public Action Command_Afk(int client, int args)
 		
 		return Plugin_Handled;
 	}
-	
 	else if (args == 2)
 	{
 		char arg1[PLATFORM_MAX_PATH];
@@ -933,27 +941,24 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 		m_isAlive[client] = IsPlayerAlive(client);
 		m_team[client] = GetClientTeam(client);
 
-		if (!IsFakeClient(client))
+		if (!IsFakeClient(client) && GetConVarInt(EBotAFKPlayers) == 1)
 		{
-			if (IsMoving(client) || IsAttacking(client))
-				m_afkTime[client] = GetGameTime() + 60.0;
-			else if (m_afkTime[client] < GetGameTime())
+			if (m_team[client] == 2 || m_team[client] == 3)
 			{
-				m_isAFK[client] = true;
-				GetClientName(client, PlayerName[client], 64);
-				char afkName[64];
-				Format(afkName, sizeof(afkName), "%s (AFK)", PlayerName[client]);
-				SetClientName(client, afkName);
+				if (IsAttacking(client) || IsMoving(client))
+					m_afkTime[client] = GetGameTime() + GetConVarFloat(EBotAFKTime);
+				else if (m_afkTime[client] < GetGameTime())
+				{
+					m_isAFK[client] = true;
+					GetClientName(client, PlayerName[client], 64);
+					char afkName[64];
+					Format(afkName, sizeof(afkName), "%s (AFK)", PlayerName[client]);
+					SetClientName(client, afkName);
+				}
 			}
 		}
 
 		return Plugin_Continue;
-	}
-
-	if (m_isAFK[client])
-	{
-		PrintToChat(client, "[AFK Bot] You are set AFK.\nType '!afk' in chat to get out of it.");
-		PrintCenterText(client, "You are being controlled by a bot, Type !afk to exit.");
 	}
 
 	// auto backstab
