@@ -31,7 +31,7 @@ stock bool MustFindObjective(const int client, const int index, const int curren
 			return true;
 	}
 
-	if (isVSH || isDM)
+	if (isDM)
 	{
 		if (!IsValidClient(m_goalEntity[client]) || m_team[client] == m_team[m_goalEntity[client]])
 			return true;
@@ -283,7 +283,7 @@ public void SelectObjective(const int client)
 		}
 	}
 
-	if (isVSH || isDM || GetConVarBool(EBotForceHuntEnemy))
+	if (isDM || GetConVarBool(EBotForceHuntEnemy))
 	{
 		m_goalEntity[client] = FindNearestEnemy(client);
 		if (IsValidClient(m_goalEntity[client]))
@@ -768,27 +768,21 @@ stock void ObjectiveMovement(const int client)
 								}
 							}
 						}
-						else // go to flag capture area
+						else
 						{	
-							if (m_team[client] == 2) {
+							if (m_team[client] == 2)
 								m_goalPosition[client] = m_redFlagCapPoint;
-							}
-							else if (m_team[client] == 3) {
+							else if (m_team[client] == 3)
 								m_goalPosition[client] = m_bluFlagCapPoint;
-							}
-							
 						}
 					}
 					else
 					{
-						
-						if (m_team[client] == 2) {
+						if (m_team[client] == 2)
 							m_goalPosition[client] = m_bluFlagCapPoint;
-						}
-						else if (m_team[client] == 3) {
+						else if (m_team[client] == 3)
 							m_goalPosition[client] = m_redFlagCapPoint;
-						}
-
+							
 						FollowPath(client, GetOrigin(flag));
 					}
 				}

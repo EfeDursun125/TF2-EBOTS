@@ -1,5 +1,8 @@
-stock bool AttackRequirements(int client)
+stock bool AttackRequirements(const int client)
 {
+	if (isVSH)
+		return false;
+
 	if (m_lowHealth[client])
 		return false;
 	
@@ -33,13 +36,13 @@ stock bool AttackRequirements(int client)
 	return true;
 }
 
-stock void AttackStart(int client)
+stock void AttackStart(const int client)
 {
 	m_goalEntity[client] = -1;
 }
 
 float m_wasdTimer[TFMaxPlayers];
-stock void AttackUpdate(int client)
+stock void AttackUpdate(const int client)
 {
 	if (m_class[client] == TFClass_Spy && m_lowHealth[client])
 	{
@@ -122,7 +125,7 @@ stock void AttackUpdate(int client)
 	}
 }
 
-stock void RandomMovement(int client)
+stock void RandomMovement(const int client)
 {
 	if (m_wasdTimer[client] <= GetGameTime())
 	{
@@ -161,7 +164,7 @@ stock void RandomMovement(int client)
 	}
 }
 
-stock void AttackEnd(int client)
+stock void AttackEnd(const int client)
 {
 	if (ChanceOf(GetConVarInt(m_eBotDodgeRangeChance)))
 		m_eBotDodgeRange[client] = GetRandomInt(GetConVarInt(m_eBotDodgeRangeMin), GetConVarInt(m_eBotDodgeRangeMax));
