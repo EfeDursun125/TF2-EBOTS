@@ -154,6 +154,9 @@ Handle EBotChangeClass;
 Handle EBotChangeClassRandom;
 Handle EBotAllowAttackButtons;
 Handle EBotForceHuntEnemy;
+Handle EBotAFKPlayers;
+Handle EBotAFKCommand;
+Handle EBotAFKTime;
 
 Handle g_hCustomTaunt;
 
@@ -175,7 +178,7 @@ stock void GetRandomPoint(CNavArea area, float buffer[3])
 
 bool m_isEBot[TFMaxPlayers];
 
-stock bool IsEBot(int bot)
+stock bool IsEBot(const int bot)
 {
 	if (m_isEBot[bot])
 		return true;
@@ -200,7 +203,7 @@ public void InitGamedata()
 	}
 }
 
-stock bool IsSniper(int client)
+stock bool IsSniper(const int client)
 {
 	if (IsEBot(client) || m_isAFK[client])
 		return m_isSniper[client];
@@ -208,7 +211,7 @@ stock bool IsSniper(int client)
 		return m_class[client] == TFClass_Sniper;
 }
 
-stock bool IsMedic(int client)
+stock bool IsMedic(const int client)
 {
 	if (IsEBot(client) || m_isAFK[client])
 		return m_isMedic[client];
@@ -216,7 +219,7 @@ stock bool IsMedic(int client)
 		return m_class[client] == TFClass_Medic;
 }
 
-stock bool HasCrossbow(int client)
+stock bool HasCrossbow(const int client)
 {
 	if (IsEBot(client) || m_isAFK[client])
 		return m_hasCrossbow[client];
@@ -224,7 +227,7 @@ stock bool HasCrossbow(int client)
 		return false;
 }
 
-stock bool HasSandwich(int client)
+stock bool HasSandwich(const int client)
 {
 	if (IsEBot(client) || m_isAFK[client])
 		return m_hasSandwich[client];
@@ -232,12 +235,12 @@ stock bool HasSandwich(int client)
 		return false;
 }
 
-stock bool GotDamageByLast(int client, float value)
+stock bool GotDamageByLast(const int client, const float value)
 {
 	return m_damageTime[client] > GetGameTime() + value;
 }
 
-stock bool ActiveCloak(int client)
+stock bool ActiveCloak(const int client)
 {
 	if (!TF2_IsPlayerInCondition(client, TFCond_Cloaked) && !TF2_IsPlayerInCondition(client, TFCond_DeadRingered))
 		m_buttons[client] |= IN_ATTACK2;
@@ -245,7 +248,7 @@ stock bool ActiveCloak(int client)
 	return true;
 }
 
-stock bool DeactiveCloak(int client)
+stock bool DeactiveCloak(const int client)
 {
 	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) || TF2_IsPlayerInCondition(client, TFCond_DeadRingered))
 	{
@@ -302,7 +305,7 @@ stock int FindBotByName(const char[] name)
 	return -1;
 }
 
-stock int GetTeamsCount(int team)
+stock int GetTeamsCount(const int team)
 {
 	int count = 0;
 	for (int i = 1; i < MaxClients; i++)
@@ -369,42 +372,42 @@ stock int GetTotalPlayersCount()
 }
 
 // squared int value
-stock int Squared(int number)
+stock int Squared(const int number)
 {
 	return number * number;
 }
 
 // squared float value
-stock float Squaredf(float number)
+stock float Squaredf(const float number)
 {
 	return number * number;
 }
 
-stock float[] GetEyePosition(int client)
+stock float[] GetEyePosition(const int client)
 {
 	float vector[3];
 	GetClientEyePosition(client, vector);
 	return vector;
 }
 
-stock bool ChanceOf(int number)
+stock bool ChanceOf(const int number)
 {
 	return GetRandomInt(1, 100) <= number;
 }
 
-stock float[] GetOrigin(int entity)
+stock float[] GetOrigin(const int entity)
 {
 	float vector[3];
 	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vector);
 	return vector;
 }
 
-stock int GetEnemyTeam(int team)
+stock int GetEnemyTeam(const int team)
 {
 	return team == 2 ? 3 : 2;
 }
 
-stock void EyeVectors(int client, float fw[3] = NULL_VECTOR, float right[3] = NULL_VECTOR, float up[3] = NULL_VECTOR)
+stock void EyeVectors(const int client, float fw[3] = NULL_VECTOR, float right[3] = NULL_VECTOR, float up[3] = NULL_VECTOR)
 {
 	GetAngleVectors(GetEyeAngles(client), fw, right, up);
 }
@@ -414,14 +417,14 @@ stock void MakeVectors(float defaultangle[3] = NULL_VECTOR, float fw[3] = NULL_V
 	GetAngleVectors(defaultangle, fw, right, up);
 }
 
-stock float[] GetEyeAngles(int client)
+stock float[] GetEyeAngles(const int client)
 {
 	float vector[3];
 	GetClientEyeAngles(client, vector);
 	return vector;
 }
 
-stock float[] GetCenter(int entity)
+stock float[] GetCenter(const int entity)
 {
 	float center[3];
 	CBaseEntity cbase = view_as<CBaseEntity>(entity);
@@ -429,7 +432,7 @@ stock float[] GetCenter(int entity)
 	return center;
 }
 
-stock void EquipWeaponSlot(int client, int slot)
+stock void EquipWeaponSlot(const int client, const int slot)
 {
 	if (IsWeaponSlotActive(client, slot))
 		return;
@@ -439,7 +442,7 @@ stock void EquipWeaponSlot(int client, int slot)
 		EquipWeapon(client, iWeapon);
 }
 
-stock void EquipWeapon(int client, int weapon)
+stock void EquipWeapon(const int client, const int weapon)
 {
 	char class[80];
 	GetEntityClassname(weapon, class, sizeof(class));
@@ -448,7 +451,7 @@ stock void EquipWeapon(int client, int weapon)
 }
 
 float g_flNextCommand[TFMaxPlayers];
-stock bool FakeClientCommandThrottled(int client, const char[] command)
+stock bool FakeClientCommandThrottled(const int client, const char[] command)
 {
 	if (g_flNextCommand[client] > GetGameTime())
 		return false;
@@ -457,7 +460,7 @@ stock bool FakeClientCommandThrottled(int client, const char[] command)
 	return true;
 }
 
-stock void PlayTaunt(int client, int tauntid = 463)
+stock void PlayTaunt(const int client, const int tauntid = 463)
 {
 	if (g_hCustomTaunt != null)
 	{
@@ -1601,15 +1604,15 @@ stock int TF2_GetObject(int client, TFObjectType type, TFObjectMode mode)
 	return iObject;
 }
 
-stock float GetPercentInvisible(int client)
+stock float GetPercentInvisible(const int client)
 {
 	int offset = FindSendPropInfo("CTFPlayer", "m_flInvisChangeCompleteTime") - 8;
 	return GetEntDataFloat(client, offset);
 }
 
-stock void DisguiseAsEnemy(int client)
+stock void DisguiseAsEnemy(const int client)
 {
-	if (isVSH && GetClientTeam(client) == 3)
+	if (isVSH && m_team[client] == 3)
 		return;
 
 	ArrayList class = new ArrayList();
@@ -1633,7 +1636,7 @@ stock void DisguiseAsEnemy(int client)
 		class.Push(9);
 	}
 	
-	TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), view_as<TFClassType>(class.Get(GetRandomInt(0, class.Length - 1))));
+	TF2_DisguisePlayer(client, (m_team[client] == 2 ? TFTeam_Blue : TFTeam_Red), view_as<TFClassType>(class.Get(GetRandomInt(0, class.Length - 1))));
 	delete class;
 }
 
@@ -1676,26 +1679,28 @@ stock void GetAimOrigin(int client, float aimorigin[3])
     delete trace;
 }
 
-stock int Max(int one, int two)
+stock int Max(const int one, const int two)
 {
 	if (one > two)
 		return one;
 	return two;
 }
 
-stock int Min(int one, int two)
+stock int Min(const int one, const int two)
 {
 	if (one < two)
 		return one;
 	return two;
 }
 
-stock int Abs(int value)
+stock int Abs(const int value)
 {
-   return value < 0 ? -value : value;
+	if (value < 0)
+		return -value;
+	return value;
 }
 
-stock bool HasSapper(int entity)
+stock bool HasSapper(const int entity)
 {
 	if (!HasEntProp(entity, Prop_Send, "m_bHasSapper"))
 		return false;
@@ -1733,8 +1738,12 @@ stock bool ClientViews(int Viewer, int Target, float fThreshold = 0.70)
 
 stock bool ClientViewsOrigin(int Viewer, float fTargetPos[3], float fThreshold = 0.70)
 {
-    float fViewPos[3];   GetClientEyePosition(Viewer, fViewPos);
-    float fViewAng[3];   GetClientEyeAngles(Viewer, fViewAng);
+    float fViewPos[3];
+	GetClientEyePosition(Viewer, fViewPos);
+
+    float fViewAng[3];
+	GetClientEyeAngles(Viewer, fViewAng);
+
     float fViewDir[3];
     float fTargetDir[3];
     float fDistance[3];
@@ -1769,7 +1778,7 @@ stock bool NameAlreadyTakenByPlayer(const char[] name)
 	return false;
 }
 
-stock bool AttackToSpy(int client)
+stock bool AttackToSpy(const int client)
 {
 	if (isVSH)
 		return true;
@@ -1792,7 +1801,7 @@ stock bool AttackToSpy(int client)
 	return false;
 }
 
-stock bool ScreetSpy(int client)
+stock bool ScreetSpy(const int client)
 {
 	if (TF2_IsPlayerInCondition(client, TFCond_DeadRingered))
 		return true;
@@ -1842,7 +1851,7 @@ stock bool ScreetSpy(int client)
 	return false;
 }
 
-stock bool IsStealthed(int client)
+stock bool IsStealthed(const int client)
 {
 	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 		return true;
@@ -1856,7 +1865,7 @@ stock bool IsStealthed(int client)
 	return TF2_IsPlayerInCondition(client, TFCond_StealthedUserBuffFade);
 }
 
-stock bool IsRevealedSpy(int client)
+stock bool IsRevealedSpy(const int client)
 {
 	if (isVSH)
 		return true;
@@ -1885,7 +1894,7 @@ stock bool IsRevealedSpy(int client)
 	return false;
 }
 
-stock bool IsRevealedSpyByTarget(int client, target)
+stock bool IsRevealedSpyByTarget(const int client, const int target)
 {
 	if (isVSH)
 		return true;

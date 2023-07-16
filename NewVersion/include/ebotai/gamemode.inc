@@ -45,7 +45,7 @@ stock void AutoLoadGamemode()
 		isDM = true;
 }
 
-stock bool IsOnDefanse(int client)
+stock bool IsOnDefanse(const int client)
 {
 	if (m_team[client] == 2)
 	{
@@ -62,7 +62,7 @@ stock bool IsOnDefanse(int client)
 	return false;
 }
 
-stock bool IsOnOffanse(int client)
+stock bool IsOnOffanse(const int client)
 {
 	if (m_team[client] == 3)
 	{

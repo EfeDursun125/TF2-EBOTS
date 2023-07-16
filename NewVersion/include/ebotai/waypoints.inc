@@ -1129,7 +1129,7 @@ stock float CostDistance(const int current, const int parent)
 // A* Pathfinding
 stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetposition[3] = NULL_VECTOR)
 {
-    if (!DeactiveCloak(client) || CurrentProcess[client] == PRO_HIDE)
+    if (!DeactiveCloak(client) || (!isVSH && CurrentProcess[client] == PRO_HIDE))
         return AStarFindHidingSpot(srcIndex, client, targetposition);
 
     if (CurrentProcess[client] == PRO_GETHEALTH)
@@ -1137,6 +1137,9 @@ stock bool AStarFindPath(int srcIndex, int destIndex, int client, float targetpo
     
     if (CurrentProcess[client] == PRO_GETAMMO)
         return AStarFindAmmoPack(srcIndex, client);
+
+    if (isVSH)
+        return AStarVSH(srcIndex, client);
 
     if (m_waypointNumber > 2048)
         return AStarFindShortestPath(srcIndex, destIndex, client, targetposition);
@@ -1506,6 +1509,126 @@ stock bool AStarFindHidingSpot(int srcIndex, int client, float dangerOrigin[3])
 
         // is the current node the goal node?
         if (!(m_paths[currentIndex.index].flags & WAYPOINT_DONTHIDE) && !IsVisibleToWaypoint(dangerOrigin, currentIndex.index, height) && !IsVisibleByEnemy(client, currentIndex.index, height))
+        {
+            DeletePathNodes(client);
+
+            // build the complete path
+            while (currentIndex.index != -1)
+            {
+				AddToPath(currentIndex.index, client);
+                currentIndex.index = astar[currentIndex.index].parent;
+			}
+
+            return true;
+        }
+
+        if (astar[currentIndex.index].state != OPEN)
+            continue;
+
+        // put current node into CLOSED list
+        astar[currentIndex.index].state = CLOSED;
+
+        // now expand the current node
+        for (int i = 0; i < MaxPathIndex; i++)
+        {
+            int self = m_paths[currentIndex.index].pathIndex[i];
+            if (self == -1)
+                continue;
+
+            if (self == m_lastFailedWaypoint[client])
+                continue;
+            
+            // blocked waypoint
+            if (m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
+                continue;
+            
+            if (m_paths[self].team == 2 && m_team[client] == 3)
+                continue;
+            else if (m_paths[self].team == 3 && m_team[client] == 2)
+                continue;
+            
+            if (m_paths[self].flags & WAYPOINT_DOUBLEJUMP && m_class[client]!= TFClass_Scout)
+                continue;
+
+            if (m_paths[self].flags & WAYPOINT_ROCKETJUMP && (m_class[client] != TFClass_Soldier || m_lowHealth[client]))
+                continue;
+            
+            if (m_paths[self].flags & WAYPOINT_DEMOCHARGE && m_class[client] != TFClass_DemoMan)
+                continue;
+            else
+            {
+                int wearable = MaxClients + 1;
+	            while ((wearable = FindEntityByClassname(wearable, "tf_wearable_demoshield*")) > MaxClients)
+	            {
+    	        	if (GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity") != client)
+                        continue;
+                }
+            }
+
+            float f = GetFastDistance(m_paths[self].origin, dangerOrigin);
+            if (astar[self].state == NEW || astar[self].f > f)
+            {
+                // put the current child into open list
+                astar[self].parent = currentIndex.index;
+                astar[self].state = OPEN;
+                astar[self].f = f;
+
+                PriorityQueueItem next;
+                next.SetValue(self, astar[self].f);
+                openList.Insert(next);
+            }
+        }
+    }
+
+    ArrayList PossiblePath = new ArrayList();
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        if (astar[i].state == CLOSED)
+            PossiblePath.Push(i);
+    }
+
+    // just roam around :(
+    if (PossiblePath.Length > 0)
+        return AStarFindShortestPath(srcIndex, PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1)), client, NULL_VECTOR);
+
+    return false;
+}
+
+stock bool AStarVSH(int srcIndex, const int client)
+{
+	if (srcIndex <= 0 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
+		srcIndex = FindWaypoint(GetOrigin(client), client);
+
+    AStar_t astar[MaxWaypoints];
+    for (int i = 0; i < m_waypointNumber; i++)
+    {
+        astar[i].f = 0.0;
+        astar[i].parent = -1;
+        astar[i].state = NEW;
+    }
+
+    float dangerOrigin[3];
+    dangerOrigin = GetOrigin(client);
+
+    astar[srcIndex].f = GetFastDistance(m_paths[srcIndex].origin, dangerOrigin);
+    astar[srcIndex].state = OPEN;
+    
+    PriorityQueueItem start;
+    start.SetValue(srcIndex, astar[srcIndex].f);
+
+    PriorityQueue openList;
+    openList.NewQueue();
+    openList.Insert(start);
+    while (!openList.IsEmpty())
+    {
+        // set current node to the node with the highest f value
+        PriorityQueueItem currentIndex;
+        currentIndex = openList.RemoveHighest();
+		
+        float height = GetHeight(client);
+
+        // is the current node the goal node?
+        if ((m_team[client] == 3 && IsEnemyInDistance(client, currentIndex.index, height, 256.0)) || (m_team[client] != 3 && !IsEnemyInDistance(client, currentIndex.index, height, 600.0) && IsVisibleByEnemy(client, currentIndex.index, height)))
         {
             DeletePathNodes(client);
 
@@ -1992,7 +2115,7 @@ stock bool IsPathPossibleWaypoint(int srcIndex, int destIndex)
     return false;
 }
 
-stock bool IsVisibleByEnemy(int client, int waypointIndex, float height)
+stock bool IsVisibleByEnemy(const int client, const int waypointIndex, const float height)
 {
     float origin[3];
     origin = m_paths[waypointIndex].origin;
@@ -2010,6 +2133,30 @@ stock bool IsVisibleByEnemy(int client, int waypointIndex, float height)
 			continue;
         
         if (IsVisible(origin, GetEyePosition(i)))
+            return true;
+    }
+
+    return false;
+}
+
+stock bool IsEnemyInDistance(const int client, const int waypointIndex, const float height, const float distance)
+{
+    float origin[3];
+    origin = m_paths[waypointIndex].origin;
+    origin[2] += height;
+
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (!IsValidClient(i))
+			continue;
+		
+		if (!m_isAlive[i])
+			continue;
+		
+		if (m_team[i] == m_team[client])
+			continue;
+        
+        if (GetVectorDistance(origin, GetEyePosition(i), true) < Squaredf(distance))
             return true;
     }
 

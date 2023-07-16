@@ -252,7 +252,6 @@ stock void FindPath(int client, float targetposition2[3], int entity = -1, int i
 		NavDirType iNavDirection;
 		
 		float flCenterPortal[3], flClosestPoint[3];
-		const float stepInDist = 6.0;
 
 		m_positions[client].PushArray(targetposition2, 3);
 		while (parentArea)
@@ -265,7 +264,7 @@ stock void FindPath(int client, float targetposition2[3], int entity = -1, int i
 			tempArea.ComputePortal(parentArea, iNavDirection, flCenterPortal);
 			tempArea.ComputeClosestPointInPortal(parentArea, iNavDirection, flCenterPortal, flClosestPoint);
 
-			AddDirectionVector(flClosestPoint, iNavDirection, stepInDist);
+			AddDirectionVector(flClosestPoint, iNavDirection, GetRandomFloat(6.0, 12.0));
 			
 			flClosestPoint[2] = tempArea.GetZVector(flClosestPoint);
 			m_positions[client].PushArray(flClosestPoint, 3);

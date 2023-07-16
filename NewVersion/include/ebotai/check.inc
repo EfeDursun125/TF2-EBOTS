@@ -1,10 +1,16 @@
 float m_checkTimer[TFMaxPlayers];
 
-public void CheckSlowThink(int client)
+public void CheckSlowThink(const int client)
 {
 	if (m_checkTimer[client] < GetGameTime())
 	{
 		m_isSlowThink[client] = true;
+
+		if (m_isAFK[client])
+		{
+			PrintToChat(client, "[AFK Bot] You are set AFK.\nType '!afk' in chat to get out of it.");
+			PrintCenterText(client, "You are being controlled by a bot, Type !afk to exit.");
+		}
 
 		m_class[client] = TF2_GetPlayerClass(client);
 		m_isSniper[client] = false;
@@ -287,7 +293,7 @@ public void CheckSlowThink(int client)
 }
 
 // automaticly triggers the hiding process
-public void CheckHideFromDanger(int client)
+public void CheckHideFromDanger(const int client)
 {
 	if (!m_hasWaypoints)
 		return;
@@ -327,7 +333,7 @@ public void CheckHideFromDanger(int client)
 }
 
 // automaticly triggers the collect health pack process
-public void CheckHealth(int client)
+public void CheckHealth(const int client)
 {
 	if (!m_isSlowThink[client])
 		return;
@@ -352,7 +358,7 @@ public void CheckHealth(int client)
 }
 
 // automaticly triggers the collect health pack process
-public void CheckAmmo(int client)
+public void CheckAmmo(const int client)
 {
 	if (!m_isSlowThink[client])
 		return;
@@ -366,13 +372,13 @@ public void CheckAmmo(int client)
 		SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack");
 }
 
-public void CheckWalls(int client)
+public void CheckWalls(const int client)
 {
 	if (!m_hasEnemiesNear[client] && CheckWall(client))
 		m_buttons[client] |= IN_JUMP;
 }
 
-stock bool TryToHide(int client)
+stock bool TryToHide(const int client)
 {
 	if (m_class[client] == TFClass_Pyro && GetVectorDistance(GetOrigin(client), m_lookAt[client], true) > Squaredf(512.0))
 		return true;
