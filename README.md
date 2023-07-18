@@ -1,4 +1,6 @@
 # TF2-EBOTS (NEW)
+[Click HERE To Join My Discord Server](http://discord.gg/v7PesBamXt)
+
 Works with waypoints, if no waypoint file found uses (and requires) navmesh/cbasenpc [Click HERE](https://github.com/TF2-DMB/CBaseNPC/releases)
 
 Requires tf2items [Click HERE](https://builds.limetech.io/?project=tf2items)
