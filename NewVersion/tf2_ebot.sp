@@ -1,4 +1,4 @@
-const int TFMaxPlayers = 34;
+const int TFMaxPlayers = 101;
 
 #include <sourcemod>
 #include <sdktools>
@@ -239,7 +239,7 @@ public Action Command_Afk(int client, int args)
 			m_isAFK[client] = true;
 			GetClientName(client, PlayerName[client], 64);
 			char afkName[64];
-			Format(afkName, sizeof(afkName), "%s (AFK)", PlayerName[client]);
+			FormatEx(afkName, sizeof(afkName), "%s (AFK)", PlayerName[client]);
 			SetClientName(client, afkName);
 		}
 		else
@@ -789,12 +789,12 @@ public void AddEBotConsole()
 	if (BotNames.Length > 0)
 		BotNames.GetString(GetRandomInt(0, BotNames.Length - 1), ChosenName, sizeof(ChosenName));
 	else
-		Format(ChosenName, sizeof(ChosenName), "ebot %d", GetRandomInt(0, 9999));
+		FormatEx(ChosenName, sizeof(ChosenName), "ebot %d", GetRandomInt(0, 9999));
 	
 	if (GetRandomInt(1, 10) == 1 && !NameAlreadyTakenByPlayer("Rick May"))
-		Format(ChosenName, sizeof(ChosenName), "Rick May");
+		FormatEx(ChosenName, sizeof(ChosenName), "Rick May");
 	else if (GetRandomInt(1, 10) == 1 && !NameAlreadyTakenByPlayer("Engineer Gaming"))
-		Format(ChosenName, sizeof(ChosenName), "Engineer Gaming");
+		FormatEx(ChosenName, sizeof(ChosenName), "Engineer Gaming");
 	
 	SetConVarInt(FindConVar("sv_cheats"), 1, false, false);
 	ServerCommand("bot -name \"%s\"", ChosenName);
@@ -952,7 +952,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 					m_isAFK[client] = true;
 					GetClientName(client, PlayerName[client], 64);
 					char afkName[64];
-					Format(afkName, sizeof(afkName), "%s (AFK)", PlayerName[client]);
+					FormatEx(afkName, sizeof(afkName), "%s (AFK)", PlayerName[client]);
 					SetClientName(client, afkName);
 				}
 			}
