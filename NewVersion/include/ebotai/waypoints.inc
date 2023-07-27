@@ -52,7 +52,7 @@ enum
 stock char[] GetWaypointName(int waypoint)
 {
 	char string[512] = "None";
-    Format(string, sizeof(string), "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", waypoint == 0 ? "None" : "", 
+    FormatEx(string, sizeof(string), "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", waypoint == 0 ? "None" : "", 
         waypoint & WAYPOINT_JUMP ? "Jump " : "", 
         waypoint & WAYPOINT_SNIPER ? "Sniper " : "", 
         waypoint & WAYPOINT_DEFEND ? "Defend " : "", 
@@ -90,7 +90,7 @@ enum
 stock char[] GetAreaName(int area)
 {
 	char string[256] = "All Time";
-    Format(string, sizeof(string), "%s%s%s%s%s%s%s%s", area == 0 ? "All Time" : "", 
+    FormatEx(string, sizeof(string), "%s%s%s%s%s%s%s%s", area == 0 ? "All Time" : "", 
         area & AREA1 ? "Area1 " : "", 
         area & AREA2 ? "Area2 " : "", 
         area & AREA3 ? "Area3 " : "", 
@@ -106,7 +106,7 @@ enum struct PriorityQueueItem
     float cost;
     int index;
 
-    void SetValue(int newIndex, float newCost)
+    void SetValue(const int newIndex, const float newCost)
     {
         this.cost = newCost;
         this.index = newIndex;
@@ -139,44 +139,58 @@ enum struct PriorityQueue
 
     PriorityQueueItem RemoveLowest()
     {
-        // can someone fix this???
-        /*if (this.pque.Length > 1)
+        if (this.pque.Length > 1)
         {
-            float max = 999999999999999999999999999.0;
-            int swapIndex = 0;
+            float min = 999999999999999999999999999.0;
+            int swapIndex = -1;
 
-            for (int i = 0; i < this.pque.Length - 1; i++)
-	    	{
-               PriorityQueueItem nx;
-		    	this.pque.GetArray(i, nx, 2);
+            for (int i = 0; i < this.pque.Length; i++)
+            {
+                PriorityQueueItem nx;
+                this.pque.GetArray(i, nx);
 
-                if (nx.cost < max)
+                if (nx.cost < min)
                 {
-                    max = nx.cost;
+                    min = nx.cost;
                     swapIndex = i;
                 }
             }
 
-            if (swapIndex != 0)
-                this.pque.SwapAt(0, swapIndex);
+            if (swapIndex != -1)
+                this.pque.SwapAt(swapIndex, 0);
         }
 
         PriorityQueueItem item;
-        this.pque.GetArray(0, item, 2);
-        return item;*/
-
-        PriorityQueueItem item;
-        this.pque.Sort(Sort_Ascending, Sort_Float);
-        this.pque.GetArray(0, item, 2);
+        this.pque.GetArray(0, item);
         this.pque.Erase(0);
         return item;
     }
 
     PriorityQueueItem RemoveHighest()
     {
+        if (this.pque.Length > 1)
+        {
+            float max = 0.0;
+            int swapIndex = -1;
+
+            for (int i = 0; i < this.pque.Length; i++)
+            {
+                PriorityQueueItem nx;
+                this.pque.GetArray(i, nx);
+
+                if (nx.cost > max)
+                {
+                    max = nx.cost;
+                    swapIndex = i;
+                }
+            }
+
+            if (swapIndex != -1)
+                this.pque.SwapAt(swapIndex, 0);
+        }
+
         PriorityQueueItem item;
-        this.pque.Sort(Sort_Descending, Sort_Float);
-        this.pque.GetArray(0, item, 2);
+        this.pque.GetArray(0, item);
         this.pque.Erase(0);
         return item;
     }
@@ -2486,12 +2500,12 @@ stock void WaypointLoad()
     }
     else if (header.fileVersion > WaypointVersion)
     {
-        Format(m_aboutTheWaypoint, sizeof(m_aboutTheWaypoint), "Waypoint version is too high\nPlease update your ebot!\nThis waypoint file will be ignored %s", header.fileVersion);
+        FormatEx(m_aboutTheWaypoint, sizeof(m_aboutTheWaypoint), "Waypoint version is too high\nPlease update your ebot!\nThis waypoint file will be ignored %s", header.fileVersion);
         fp.Close();
         return;
     }
 
-    Format(m_aboutTheWaypoint, sizeof(m_aboutTheWaypoint), "Waypoint file by %s\n%d waypoints loaded", header.author, m_waypointNumber);
+    FormatEx(m_aboutTheWaypoint, sizeof(m_aboutTheWaypoint), "Waypoint file by %s\n%d waypoints loaded", header.author, m_waypointNumber);
 
     if (header.fileVersion == 1)
     {

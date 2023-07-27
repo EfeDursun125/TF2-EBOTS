@@ -446,7 +446,7 @@ stock void EquipWeapon(const int client, const int weapon)
 {
 	char class[80];
 	GetEntityClassname(weapon, class, sizeof(class));
-	Format(class, sizeof(class), "use %s", class);
+	FormatEx(class, sizeof(class), "use %s", class);
 	FakeClientCommandThrottled(client, class);
 }
 

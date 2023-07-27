@@ -7,7 +7,7 @@ stock void CallVoiceCommand(int client, const char[] voicecommand)
 		return;
 	
 	FakeClientCommandThrottled(client, voicecommand);
-	Format(m_lastVoice[client], 32, voicecommand);
+	FormatEx(m_lastVoice[client], 32, voicecommand);
 }
 
 stock void UseVoiceCommand(int client)
