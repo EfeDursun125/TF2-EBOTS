@@ -28,6 +28,7 @@ bool m_isMedic[TFMaxPlayers];
 bool m_hasCrossbow[TFMaxPlayers];
 bool m_hasWrench[TFMaxPlayers];
 bool m_hasSandwich[TFMaxPlayers];
+bool m_hasSticky[TFMaxPlayers];
 
 int SentryGun[TFMaxPlayers];
 int Dispenser[TFMaxPlayers];
@@ -231,6 +232,14 @@ stock bool HasSandwich(const int client)
 {
 	if (IsEBot(client) || m_isAFK[client])
 		return m_hasSandwich[client];
+	else
+		return false;
+}
+
+stock bool HasSticky(const int client)
+{
+	if (IsEBot(client) || m_isAFK[client])
+		return m_hasSticky[client];
 	else
 		return false;
 }
