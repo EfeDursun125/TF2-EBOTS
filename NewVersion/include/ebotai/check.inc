@@ -18,6 +18,7 @@ public void CheckSlowThink(const int client)
 		m_hasCrossbow[client] = false;
 		m_hasWrench[client] = false;
 		m_hasSandwich[client] = false;
+		m_hasSticky[client] = false;
 
 		int primaryWeapon = GetPlayerWeaponSlot(client, 0);
 		if (IsValidEntity(primaryWeapon))
@@ -43,6 +44,8 @@ public void CheckSlowThink(const int client)
 				m_isMedic[client] = true;
 			else if (StrEqual(m_secondaryClassName[client], "tf_weapon_lunchbox"))
 				m_hasSandwich[client] = true;
+			else if (StrEqual(m_secondaryClassName[client], "tf_weapon_pipebomblauncher"))
+				m_hasSticky[client] = true;
 		}
 
 		int meleeWeapon = GetPlayerWeaponSlot(client, 2);
@@ -76,8 +79,6 @@ public void CheckSlowThink(const int client)
 				else if (m_goalIndex[client] != -1 && !(m_paths[m_goalIndex[client]].activeArea & currentActiveArea))
 					SelectObjective(client);
 			}
-			else if (m_hasEnemiesNear[client] && m_class[client] == TFClass_DemoMan)
-				m_buttons[client] |= IN_ATTACK2;
 		}
 
 		if (!m_hasWaypoints)
@@ -159,6 +160,56 @@ public void CheckSlowThink(const int client)
 					m_buttons[client] |= IN_ATTACK;
 			}
 		}
+		
+		if (!m_hasEnemiesNear[client] && m_class[client] == TFClass_Engineer && m_meleeID[client] == 589)
+		{
+			if (GetClientHealth(client) < (GetMaxHealth(client) / 1.4))
+			{
+				EquipWeaponSlot(client, 2);
+				if (IsWeaponSlotActive(client, 2) && (GetClientHealth(client) < (GetMaxHealth(client) / 1.4)))
+					FakeClientCommand(client, "eureka_teleport 0");
+			}
+		}
+		
+		if (!m_hasEnemiesNear[client] && !m_hasFriendsNear[client] && m_class[client] == TFClass_Medic)
+		{
+			if (m_meleeID[client] == 304)
+			{
+				EquipWeaponSlot(client, 2);
+			}
+			if (m_secondaryID[client] == 35)
+			{
+				if (GetClientHealth(client) < (GetMaxHealth(client) / 1.4))
+				{	
+					EquipWeaponSlot(client, 1);
+					if (IsWeaponSlotActive(client, 1) && (GetClientHealth(client) < (GetMaxHealth(client) / 1.4)))
+						FakeClientCommand(client, "taunt");
+				}
+			}
+		}
+		
+		if (m_class[client] == TFClass_Medic && m_secondaryID[client] == 998)
+		{
+			int iProjectile = -1;
+			char weaponclass[64];
+			GetEntityNetClass(GetPlayerWeaponSlot(client, 1), weaponclass, sizeof(weaponclass));
+			if (TF2_IsPlayerInCondition(client, TFCond_OnFire))
+			{
+				SetEntData(GetPlayerWeaponSlot(client, 1), FindSendPropInfo(weaponclass, "m_nChargeResistType"), 2);
+			}
+			else if ((iProjectile = FindEntityByClassname(iProjectile, "tf_projectile_*")) != INVALID_ENT_REFERENCE)
+			{	
+				if (IsValidEntity(iProjectile) && m_team[client] != GetTeamNumber(iProjectile))
+				{
+					if (GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client), true) <= Squaredf(750.0))
+					{
+						SetEntData(GetPlayerWeaponSlot(client, 1), FindSendPropInfo(weaponclass, "m_nChargeResistType"), 1);
+					}
+				}
+			}
+			else
+				SetEntData(GetPlayerWeaponSlot(client, 1), FindSendPropInfo(weaponclass, "m_nChargeResistType"), 0);
+		}
 
 		if (m_class[client] == TFClass_Pyro && m_primaryID[client] != 594)
 		{
@@ -200,43 +251,48 @@ public void CheckSlowThink(const int client)
 
 		if (m_class[client] == TFClass_DemoMan)
 		{
-			m_stickyCount[client] = GetPlayerStickyCount(client);
-			
-			if (m_stickyCount[client] > 0)
-			{
-				int iSticky = -1;
-				while ((iSticky = FindEntityByClassname(iSticky, "tf_projectile_pipe_remote")) != INVALID_ENT_REFERENCE)
+			if (HasSticky(client))
+			{	
+				m_stickyCount[client] = GetPlayerStickyCount(client);
+				
+				if (m_stickyCount[client] > 0)
 				{
-					if (!IsValidEntity(iSticky))
-						continue;
-
-					if (GetEntityThrower(iSticky) != client)
-						continue;
-
-					for (int search = 1; search <= MaxClients; search++)
+					int iSticky = -1;
+					while ((iSticky = FindEntityByClassname(iSticky, "tf_projectile_pipe_remote")) != INVALID_ENT_REFERENCE)
 					{
-						if (!IsValidClient(search))
+						if (!IsValidEntity(iSticky))
 							continue;
-
-						if (!m_isAlive[search])
+	
+						if (GetEntityThrower(iSticky) != client)
 							continue;
-
-						if (m_team[client] == m_team[search])
-							continue;
-
-						if (TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
-							continue;
-
-						if (GetVectorDistance(GetOrigin(iSticky), GetOrigin(search), true) > Squaredf(125.0))
-							continue;
-
-						if (!IsVisible(GetCenter(iSticky), GetCenter(search)))
-							continue;
-						
-						m_buttons[client] |= IN_ATTACK2;
+	
+						for (int search = 1; search <= MaxClients; search++)
+						{
+							if (!IsValidClient(search))
+								continue;
+	
+							if (!m_isAlive[search])
+								continue;
+	
+							if (m_team[client] == m_team[search])
+								continue;
+	
+							if (TF2_IsPlayerInCondition(search, TFCond_Ubercharged))
+								continue;
+	
+							if (GetVectorDistance(GetOrigin(iSticky), GetOrigin(search), true) > Squaredf(125.0))
+								continue;
+	
+							if (!IsVisible(GetCenter(iSticky), GetCenter(search)))
+								continue;
+							
+							m_buttons[client] |= IN_ATTACK2;
+						}
 					}
 				}
 			}
+			else if (m_hasEnemiesNear[client]) // we have shield
+				m_buttons[client] |= IN_ATTACK2;
 		}
 
 		if (m_ignoreEnemies[client] < GetGameTime() && ChanceOf(m_eBotSenseChance[client])) // any sus?
