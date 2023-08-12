@@ -20,6 +20,20 @@ stock void LookUpdate(int client, bool lookaround = true)
 		else
 			EquipWeaponSlot(client, 0);
 	}
+	else if (m_class[client] == TFClass_Pyro && m_secondaryID[client] == 595 && m_hasFriendsNear[client] && m_friendDistance[client] <= Squaredf(384.0) && TF2_IsPlayerInCondition(m_nearestFriend[client], TFCond_OnFire))
+	{
+		if (IsWeaponSlotActive(client, 1))
+		{
+			m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
+			if (m_friendDistance[client] <= Squaredf(192.0))
+				m_buttons[client] |= IN_ATTACK2;
+			else
+				MoveTo(client, GetOrigin(m_nearestFriend[client]));
+			return;
+		}
+		else
+			EquipWeaponSlot(client, 1);
+	}
 
 	if (m_hasEnemiesNear[client] || m_hasEntitiesNear[client])
 	{
