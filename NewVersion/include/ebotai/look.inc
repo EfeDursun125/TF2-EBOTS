@@ -15,7 +15,7 @@ stock void LookAtEnemiens(int client)
 
 	float BestAimPosition[3];
 
-	if (IsSniper(client) && m_primaryID[client] != 230 && IsWeaponSlotActive(client, 0))
+	if (IsSniper(client) && IsWeaponSlotActive(client, 0))
 		m_lookAt[client] = GetEyePosition(m_nearestEnemy[client]);
 	else if (m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092)
 	{
