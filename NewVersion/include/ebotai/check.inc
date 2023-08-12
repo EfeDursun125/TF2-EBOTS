@@ -161,7 +161,7 @@ public void CheckSlowThink(const int client)
 			}
 		}
 		
-		if (!m_hasEnemiesNear[client] && m_class[client] == TFClass_Engineer && m_meleeID[client] == 589)
+		if (m_hasEnemiesNear[client] && m_class[client] == TFClass_Engineer && m_meleeID[client] == 589)
 		{
 			if (GetClientHealth(client) < (GetMaxHealth(client) / 1.4))
 			{
