@@ -161,12 +161,12 @@ public void CheckSlowThink(const int client)
 			}
 		}
 		
-		if (!m_hasEnemiesNear[client] && m_class[client] == TFClass_Engineer && m_meleeID[client] == 589)
+		if (m_hasEnemiesNear[client] && m_class[client] == TFClass_Engineer && m_meleeID[client] == 589)
 		{
-			if (GetClientHealth(client) < (GetMaxHealth(client) / 1.4))
+			if (GetClientHealth(client) < (GetMaxHealth(client) / 1.3))
 			{
 				EquipWeaponSlot(client, 2);
-				if (IsWeaponSlotActive(client, 2) && (GetClientHealth(client) < (GetMaxHealth(client) / 1.4)))
+				if (IsWeaponSlotActive(client, 2) && (GetClientHealth(client) < (GetMaxHealth(client) / 1.3)))
 					FakeClientCommand(client, "eureka_teleport 0");
 			}
 		}
