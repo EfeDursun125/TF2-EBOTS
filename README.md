@@ -7,6 +7,8 @@ Requires tf2items [Click HERE](https://builds.limetech.io/?project=tf2items)
 
 put ebot folder that contains name & waypoints to tf\addons\sourcemod
 
+<a href="https://www.buymeacoffee.com/efedursun125"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=efedursun125&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" /></a>
+
 Supported gamemodes:
 1. CAPTURE THE FLAG
 2. CONTROL POINTS
