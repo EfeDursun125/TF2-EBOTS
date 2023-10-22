@@ -9,7 +9,7 @@ stock bool HideRequirements(int client)
 	if (TF2_HasTheFlag(client))
 		return false;
 
-	return false;
+	return true;
 }
 
 stock void HideStart(int client)
