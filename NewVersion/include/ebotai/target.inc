@@ -1,19 +1,29 @@
 float m_ignoreEnemies[TFMaxPlayers];
 
-public void FindFriendsAndEnemiens(int client)
+public void FindFriendsAndEnemiens(const int client)
 {
 	m_enemyDistance[client] = 999999999999999999999.0;
 	m_friendDistance[client] = 999999999999999999999.0;
 	m_enemiesNearCount[client] = 0;
 	m_friendsNearCount[client] = 0;
+	m_enemiesNearPower[client] = 0;
+	m_friendsNearPower[client] = (GetClientHealth(client) * 3) + GetMaxHealth(client);
 	m_hasEnemiesNear[client] = false;
 	m_hasFriendsNear[client] = false;
-	float medicdist = 999999999999999999999.0;
+	static float medicdist;
+	medicdist = 999999999999999999999.0;
 
 	if (m_ignoreEnemies[client] > GetGameTime())
 		return;
 	
-	for (int i = 1; i <= MaxClients; i++)
+	static int health;
+	static int maxHealth;
+	static float edict_distance;
+	static float realdist;
+	static float pri;
+
+	static int i;
+	for (i = 1; i <= MaxClients; i++)
 	{
 		if (!IsValidClient(i))
 			continue;
@@ -35,8 +45,8 @@ public void FindFriendsAndEnemiens(int client)
 		
 		if (m_team[i] == m_team[client])
 		{
-			int health = GetClientHealth(i);
-			int maxHealth = GetMaxHealth(i);
+			health = GetClientHealth(i);
+			maxHealth = GetMaxHealth(i);
 			
 			if (IsMedic(client) || HasCrossbow(client))
 			{
@@ -66,9 +76,10 @@ public void FindFriendsAndEnemiens(int client)
 					continue;
 		
 				m_friendsNearCount[client]++;
+				m_friendsNearPower[client] += (health * 2) + maxHealth;
 				m_friendDistance[client] = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
-				float realdist = m_friendDistance[client];
-				float pri = 1.0; // lowest = highest priority
+				realdist = m_friendDistance[client];
+				pri = 1.0; // lowest = highest priority
 
 				if (m_class[i] == TFClass_Heavy)
 					pri = 0.5;
@@ -83,8 +94,7 @@ public void FindFriendsAndEnemiens(int client)
 				else if (IsMedic(i))
 					pri = 1.1;
 
-				float edict_distance = ((realdist * health) * (TF2_GetNumberOfHealers(i) + 1)) * pri;
-
+				edict_distance = ((realdist * health) * (TF2_GetNumberOfHealers(i) + 1)) * pri;
 				if (edict_distance < medicdist)
 				{
 					medicdist = edict_distance;
@@ -119,10 +129,11 @@ public void FindFriendsAndEnemiens(int client)
 					continue;
 		
 				m_friendsNearCount[client]++;
+				m_friendsNearPower[client] += (health * 2) + maxHealth;
 				m_friendDistance[client] = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
-				float realdist = m_friendDistance[client];
+				edict_distance = m_friendDistance[client];
 
-				if (realdist < 500)
+				if (edict_distance < 500)
 				{
 					MoveTo(client, GetOrigin(m_nearestFriend[client]));
 					EquipWeaponSlot(client, 1);
@@ -137,7 +148,8 @@ public void FindFriendsAndEnemiens(int client)
 			else
 			{
 				m_friendsNearCount[client]++;
-				float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
+				m_friendsNearPower[client] += (health * 2) + maxHealth;
+				edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
 
 				if (edict_distance < m_friendDistance[client])
 				{
@@ -153,6 +165,7 @@ public void FindFriendsAndEnemiens(int client)
 			{
 				m_enemiesNearCount[client] = 0;
 				m_enemyDistance[client] = 0.0;
+				m_enemiesNearPower[client] = 0;
 				m_nearestEnemy[client] = -1;
 				m_hasEnemiesNear[client] = false;
 				return;
@@ -163,16 +176,18 @@ public void FindFriendsAndEnemiens(int client)
 			{
 				m_enemiesNearCount[client] = 0;
 				m_enemyDistance[client] = 0.0;
+				m_enemiesNearPower[client] = 0;
 				m_nearestEnemy[client] = -1;
 				m_hasEnemiesNear[client] = false;
 				return;
 			}
 
-			float edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
+			edict_distance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
 			if (TF2_HasTheFlag(i))
 			{
 				m_enemiesNearCount[client] = 1;
 				m_enemyDistance[client] = edict_distance;
+				m_enemiesNearPower[client] = 0;
 				m_nearestEnemy[client] = i;
 				m_hasEnemiesNear[client] = true;
 				m_lastEnemy[client] = m_nearestEnemy[client];
@@ -187,6 +202,14 @@ public void FindFriendsAndEnemiens(int client)
 					continue;
 
 				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && m_class[i] == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
+					continue;
+			}
+			else if (m_enemiesNearCount[client] > 0)
+			{
+				if (!ClientViews(client, i))
+					continue;
+				
+				if (m_class[i] == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
 					continue;
 			}
 			else if (edict_distance > Squaredf(80.0))
@@ -204,6 +227,7 @@ public void FindFriendsAndEnemiens(int client)
 				{
 					m_enemiesNearCount[client] = 1;
 					m_enemyDistance[client] = edict_distance;
+					m_enemiesNearPower[client] = 0;
 					m_nearestEnemy[client] = i;
 					m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
 					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
@@ -216,6 +240,7 @@ public void FindFriendsAndEnemiens(int client)
 				{
 					m_enemiesNearCount[client] = 1;
 					m_enemyDistance[client] = edict_distance;
+					m_enemiesNearPower[client] = 0;
 					m_nearestEnemy[client] = i;
 					m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
 					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
@@ -228,6 +253,7 @@ public void FindFriendsAndEnemiens(int client)
 				{
 					m_enemiesNearCount[client] = 1;
 					m_enemyDistance[client] = edict_distance;
+					m_enemiesNearPower[client] = 0;
 					m_nearestEnemy[client] = i;
 					m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
 					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
@@ -238,6 +264,7 @@ public void FindFriendsAndEnemiens(int client)
 				}
 			}
 			
+			m_enemiesNearPower[client] += (GetClientHealth(i) * 2) + GetMaxHealth(i);
 			m_enemiesNearCount[client]++;
 			if (edict_distance < m_enemyDistance[client])
 			{
@@ -258,7 +285,7 @@ public void FindFriendsAndEnemiens(int client)
 	}
 }
 
-public void FindEnemyEntities(int client)
+public void FindEnemyEntities(const int client)
 {
 	if (!m_isSlowThink[client])
 		return;
@@ -271,15 +298,23 @@ public void FindEnemyEntities(int client)
 	}
 
 	m_hasEntitiesNear[client] = false;
-	int m_hasEntitiesNearCount = 0;
-	float nearestDistance = 999999999999999999999.0;
-	
-	for (int i = MaxClients + 1; i <= GetMaxEntities(); i++)
+	static int m_hasEntitiesNearCount;
+	m_hasEntitiesNearCount = 0;
+	static float nearestDistance;
+	nearestDistance = 999999999999999999999.0;
+	static float distance;
+
+	static char class[96];
+
+	static float eyeposition[3];
+	static float center[3];
+
+	static int i;
+	for (i = MaxClients + 1; i <= GetMaxEntities(); i++)
 	{
 		if (!IsValidEntity(i))
 			continue;
-
-		char class[64];
+		
 		GetEntityClassname(i, class, sizeof(class));
 		if (!StrEqual(class, "obj_sentrygun", false) && !StrEqual(class, "obj_dispenser", false) && !StrEqual(class, "obj_teleporter", false) && !StrEqual(class, "tf_projectile_pipe_remote", false) && !StrEqual(class, "tf_zombie", false) && !StrEqual(class, "tank_boss", false) && !StrEqual(class, "merasmus", false) && !StrEqual(class, "eyeball_boss", false) && !StrEqual(class, "headless_hatman", false) && !StrEqual(class, "tf_robot_destruction_robot", false))
 			continue;
@@ -288,9 +323,8 @@ public void FindEnemyEntities(int client)
 		{
 			if (m_useTeleporter[client])
 			{
-				char newClass[64];
-				GetEntityClassname(i, newClass, sizeof(newClass));
-				if (!StrEqual(newClass, "obj_teleporter", false))
+				GetEntityClassname(i, class, sizeof(class));
+				if (!StrEqual(class, "obj_teleporter", false))
 					continue;
 				
 				if (TF2_GetObjectMode(i) != TFObjectMode_Entrance)
@@ -312,15 +346,13 @@ public void FindEnemyEntities(int client)
 		if (HasEntProp(i, Prop_Send, "m_bHasSapper") && GetEntProp(i, Prop_Send, "m_bHasSapper") != 0)
 			continue;
 		
-		float eyeposition[3];
-		float center[3];
 		eyeposition = GetEyePosition(client);
 		center = GetCenter(i);
 		if (!IsVisible(eyeposition, center))
 			continue;
 
 		m_hasEntitiesNearCount++;
-		float distance = GetFastDistance(eyeposition, center);
+		distance = GetFastDistance(eyeposition, center);
 		if (distance < nearestDistance)
 		{
 			m_nearestEntity[client] = i;

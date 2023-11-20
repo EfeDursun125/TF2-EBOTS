@@ -194,17 +194,13 @@ public void CheckSlowThink(const int client)
 			char weaponclass[64];
 			GetEntityNetClass(GetPlayerWeaponSlot(client, 1), weaponclass, sizeof(weaponclass));
 			if (TF2_IsPlayerInCondition(client, TFCond_OnFire))
-			{
 				SetEntData(GetPlayerWeaponSlot(client, 1), FindSendPropInfo(weaponclass, "m_nChargeResistType"), 2);
-			}
 			else if ((iProjectile = FindEntityByClassname(iProjectile, "tf_projectile_*")) != INVALID_ENT_REFERENCE)
 			{	
 				if (IsValidEntity(iProjectile) && m_team[client] != GetTeamNumber(iProjectile))
 				{
-					if (GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client), true) <= Squaredf(750.0))
-					{
+					if (GetVectorDistance(GetOrigin(iProjectile), GetOrigin(client), true) < Squaredf(756.0))
 						SetEntData(GetPlayerWeaponSlot(client, 1), FindSendPropInfo(weaponclass, "m_nChargeResistType"), 1);
-					}
 				}
 			}
 			else
@@ -257,6 +253,7 @@ public void CheckSlowThink(const int client)
 				
 				if (m_stickyCount[client] > 0)
 				{
+					int search;
 					int iSticky = -1;
 					while ((iSticky = FindEntityByClassname(iSticky, "tf_projectile_pipe_remote")) != INVALID_ENT_REFERENCE)
 					{
@@ -266,7 +263,7 @@ public void CheckSlowThink(const int client)
 						if (GetEntityThrower(iSticky) != client)
 							continue;
 	
-						for (int search = 1; search <= MaxClients; search++)
+						for (search = 1; search <= MaxClients; search++)
 						{
 							if (!IsValidClient(search))
 								continue;
@@ -297,7 +294,8 @@ public void CheckSlowThink(const int client)
 
 		if (m_ignoreEnemies[client] < GetGameTime() && ChanceOf(m_eBotSenseChance[client])) // any sus?
 		{
-			for (int search = 1; search <= MaxClients; search++)
+			int search;
+			for (search = 1; search <= MaxClients; search++)
 			{
 				if (!IsValidClient(search))
 					continue;
@@ -351,10 +349,7 @@ public void CheckSlowThink(const int client)
 // automaticly triggers the hiding process
 public void CheckHideFromDanger(const int client)
 {
-	if (!m_hasWaypoints)
-		return;
-
-	if (m_hasEntitiesNear[client])
+	if (m_hasEntitiesNear[client] || m_enemiesNearPower[client] > m_friendsNearPower[client])
 	{
 		SetProcess(client, PRO_HIDE, 60.0, "| process started -> hiding from danger", false, false);
 		return;
@@ -367,19 +362,20 @@ public void CheckHideFromDanger(const int client)
 		return;
 	
 	bool musthide = false;
-
 	if (!GameRules_GetProp("m_bPlayingMedieval") && m_enemiesNearCount[client] > m_friendsNearCount[client] + 2)
 		musthide = true;
 	else if (m_class[client] == TFClass_Medic && m_friendsNearCount[client] <= 0)
 		musthide = true;
 	else if (m_class[client] == TFClass_Spy && m_meleeID[client] == 356)
 	{
-		if (GetClientHealth(client) <= 55.0)
+		if (GetClientHealth(client) < 56.0)
 			musthide = true;
 	}
-	else if (GetClientHealth(client) <= (GetMaxHealth(client) / 1.4))
+	else if (GetClientHealth(client) < (GetMaxHealth(client) / 1.4))
 		musthide = true;
-	else if (IsValidClient(m_nearestEnemy[client]) && m_class[m_nearestEnemy[client]] == TFClass_Heavy && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) <= Squaredf(768.0))
+	else if (IsValidClient(m_nearestEnemy[client]) && m_class[m_nearestEnemy[client]] == TFClass_Heavy && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) < Squaredf(768.0))
+		musthide = true;
+	else if (m_class[client] == TFClass_Heavy && IsValidClient(m_nearestEnemy[client]) && m_class[m_nearestEnemy[client]] == TFClass_Sniper && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) > Squaredf(768.0))
 		musthide = true;
 	else if (m_hasEnemiesNear[client] && TryToHide(client))
 		musthide = true;
@@ -392,9 +388,6 @@ public void CheckHideFromDanger(const int client)
 public void CheckHealth(const int client)
 {
 	if (!m_isSlowThink[client])
-		return;
-	
-	if (m_hasWaypoints && m_hasEnemiesNear[client])
 		return;
 	
 	if (m_class[client] == TFClass_Spy && m_meleeID[client] == 356)
@@ -410,7 +403,7 @@ public void CheckHealth(const int client)
 		m_lowHealth[client] = false;
 	
 	if (m_lowHealth[client])
-		SetProcess(client, PRO_GETHEALTH, 90.0, "| process started -> need health pack");
+		SetProcess(client, PRO_GETHEALTH, 90.0, "| process started -> need health pack", true, false);
 }
 
 // automaticly triggers the collect health pack process
@@ -419,13 +412,13 @@ public void CheckAmmo(const int client)
 	if (!m_isSlowThink[client])
 		return;
 		
-	if (GetAmmo(client, 0) <= 3 && m_class[client] != TFClass_Spy && m_class[client] != TFClass_Medic)
+	if (m_class[client] != TFClass_Engineer && m_class[client] != TFClass_Spy && m_class[client] != TFClass_Medic && GetAmmo(client, 0) <= 3)
 		m_lowAmmo[client] = true;
 	else
 		m_lowAmmo[client] = false;
 	
 	if (m_lowAmmo[client])
-		SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack");
+		SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack", true, false);
 }
 
 public void CheckWalls(const int client)
@@ -438,7 +431,7 @@ stock bool TryToHide(const int client)
 {
 	if (m_class[client] == TFClass_Pyro && GetVectorDistance(GetOrigin(client), m_lookAt[client], true) > Squaredf(512.0))
 		return true;
-	else if (m_class[client] == TFClass_Sniper && GetVectorDistance(GetOrigin(client), m_lookAt[client], true) <= Squaredf(512.0))
+	else if (m_class[client] == TFClass_Sniper && GetVectorDistance(GetOrigin(client), m_lookAt[client], true) < Squaredf(512.0))
 		return true;
 
 	return false;

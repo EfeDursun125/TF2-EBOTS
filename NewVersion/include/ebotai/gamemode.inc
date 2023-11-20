@@ -6,6 +6,7 @@ bool isPLR;
 bool isCP;
 bool isAD;
 bool isKOTH;
+bool isArena;
 bool isMVM;
 bool isDM;
 bool isVSH;
@@ -18,11 +19,17 @@ stock void AutoLoadGamemode()
 	isCP = false;
 	isAD = false;
 	isKOTH = false;
+	isArena = false;
 	isMVM = false;
 	isDM = false;
 	isVSH = false;
 
-	if (StrContains(currentMap, "koth_" , false) != -1 || StrContains(currentMap, "arena_" , false) != -1)
+	if (StrContains(currentMap, "arena_" , false) != -1)
+	{
+		isArena = true;
+		isKOTH = true;
+	}
+	else if (StrContains(currentMap, "koth_" , false) != -1)
 		isKOTH = true;
 	else if (StrContains(currentMap, "pl_" , false) != -1)
 		isPL = true;

@@ -1,12 +1,12 @@
-public void ThinkAI(int client)
+public void ThinkAI(const int client)
 {
 	UpdateProcess(client);
 }
 
 // automatic look update
-stock void LookUpdate(int client, bool lookaround = true)
+stock void LookUpdate(const int client, const bool lookaround = true)
 {
-	if (m_class[client] == TFClass_Pyro && m_primaryID[client] != 594 && m_hasFriendsNear[client] && m_friendDistance[client] <= Squaredf(384.0) && TF2_IsPlayerInCondition(m_nearestFriend[client], TFCond_OnFire))
+	if (m_class[client] == TFClass_Pyro && m_primaryID[client] != 594 && m_hasFriendsNear[client] && m_friendDistance[client] < Squaredf(384.0) && TF2_IsPlayerInCondition(m_nearestFriend[client], TFCond_OnFire))
 	{
 		if (IsWeaponSlotActive(client, 0))
 		{
@@ -20,7 +20,7 @@ stock void LookUpdate(int client, bool lookaround = true)
 		else
 			EquipWeaponSlot(client, 0);
 	}
-	else if (m_class[client] == TFClass_Pyro && m_secondaryID[client] == 595 && m_hasFriendsNear[client] && m_friendDistance[client] <= Squaredf(384.0) && TF2_IsPlayerInCondition(m_nearestFriend[client], TFCond_OnFire))
+	else if (m_class[client] == TFClass_Pyro && m_secondaryID[client] == 595 && m_hasFriendsNear[client] && m_friendDistance[client] < Squaredf(384.0) && TF2_IsPlayerInCondition(m_nearestFriend[client], TFCond_OnFire))
 	{
 		if (IsWeaponSlotActive(client, 1))
 		{
@@ -41,7 +41,7 @@ stock void LookUpdate(int client, bool lookaround = true)
 		{
 			if (m_hasEnemiesNear[client] && m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
 			{
-				float center[3];
+				static float center[3];
 				center = GetCenter(m_nearestEntity[client]);
 
 				if (m_enemyDistance[client] < GetVectorDistance(GetOrigin(client), center, true))
@@ -63,7 +63,7 @@ stock void LookUpdate(int client, bool lookaround = true)
 				AutoAttack(client);
 				SelectBestCombatWeapon(client);
 				m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
-				}
+			}
 			else if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
 			{
 				m_lookAt[client] = GetCenter(m_nearestEntity[client]);
@@ -80,7 +80,6 @@ stock void LookUpdate(int client, bool lookaround = true)
 
 		return;
 	}
-		
 
 	if (lookaround)
 		LookAround(client);

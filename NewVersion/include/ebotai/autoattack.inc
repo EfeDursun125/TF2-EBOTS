@@ -1,27 +1,21 @@
-stock void Attack(int client)
+stock void Attack(const int client)
 {
 	if (m_class[client] == TFClass_DemoMan && IsWeaponSlotActive(client, 0) && TF2_GetPlayerWeaponID(client, 0) == 996)
 	{
 		if (!m_isSlowThink[client])
 			AutoAttack(client);
 	}
-	else
+
+	if (m_class[client] == TFClass_Spy)
 	{
-		if (m_hasEnemiesNear[client] && m_class[client] == TFClass_Spy)
-		{
-			SpyAttack(client);
-			return;
-		}
-		
-		if (m_hasEnemiesNear[client] && m_class[client] != TFClass_Spy)
-		{
-			AutoAttack(client);
-			return;
-		}
+		SpyAttack(client);
+		return;
 	}
+
+	AutoAttack(client);
 }
 
-stock void AutoAttack(int client)
+stock void AutoAttack(const int client)
 {
 	if (IsReloading(client))
 		return;
@@ -36,7 +30,7 @@ stock void AutoAttack(int client)
 			if (m_difficulty[client] > 0 && m_lowHealth[client])
 				return;
 
-			if (!TF2_IsPlayerInCondition(client, TFCond_Zoomed))
+			if (CurrentProcess[client] != PRO_HIDE && !TF2_IsPlayerInCondition(client, TFCond_Zoomed))
 				m_buttons[client] |= IN_ATTACK2;
 			
 			return;
@@ -124,16 +118,20 @@ stock void AutoAttack(int client)
 		m_attackTimer[client] = GetGameTime() + 0.45;
 }
 
-stock void SpyAttack(int client)
+stock void SpyAttack(const int client)
 {
+	// don't break your disguise, wait for backstab
+	if (IsWeaponSlotActive(client, 2) && TF2_IsPlayerInCondition(client, TFCond_Disguised))
+		return;
+	
 	if (IsReadyForAttack(client))
 	{
 		if (!IsWeaponSlotActive(client, 0))
 		{
-			float range = Squaredf(128.0);
-			if (IsValidClient(m_nearestEnemy[client]) && GetVectorDistance(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client]), true) > range)
+			
+			if (IsValidClient(m_nearestEnemy[client]) && GetVectorDistance(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client]), true) > Squaredf(128.0))
 				EquipWeaponSlot(client, 0);
-			else if (m_enemyDistance[client] > range)
+			else if (m_enemyDistance[client] > Squaredf(128.0))
 				EquipWeaponSlot(client, 0);
 			else
 				m_attackTimer[client] = GetGameTime() + 0.4;
@@ -148,8 +146,7 @@ stock void SpyAttack(int client)
 	{
 		if (!IsWeaponSlotActive(client, 0))
 		{
-			float range = Squaredf(128.0);
-			if (GetVectorDistance(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client]), true) > range)
+			if (GetVectorDistance(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client]), true) > Squaredf(128.0))
 				EquipWeaponSlot(client, 0);
 			else
 				m_attackTimer[client] = GetGameTime() + 0.4;
@@ -164,8 +161,7 @@ stock void SpyAttack(int client)
 	{
 		if (!IsWeaponSlotActive(client, 0))
 		{
-			float range = Squaredf(128.0);
-			if (GetVectorDistance(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client]), true) > range)
+			if (GetVectorDistance(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client]), true) > Squaredf(128.0))
 				EquipWeaponSlot(client, 0);
 			else
 				m_attackTimer[client] = GetGameTime() + 0.4;
@@ -177,7 +173,7 @@ stock void SpyAttack(int client)
 	}
 }
 
-stock bool IsReadyForAttack(int client) // 1 core cpu killer... 
+stock bool IsReadyForAttack(const int client) // 1 core cpu killer... 
 {
 	if (TF2_IsPlayerInCondition(client, TFCond_Ubercharged) 
 	|| TF2_IsPlayerInCondition(client, TFCond_TmpDamageBonus) 
@@ -206,13 +202,15 @@ stock bool IsReadyForAttack(int client) // 1 core cpu killer...
 	return false;
 }
 
-stock void SelectBestCombatWeapon(int client)
+stock void SelectBestCombatWeapon(const int client)
 {
 	if (!m_isSlowThink[client])
 		return;
 		
-	float distance = GetVectorDistance(GetOrigin(client), m_lookAt[client], true);
-	float meleerange = Squaredf(GetConVarFloat(EBotMelee));
+	static float distance;
+	distance = GetVectorDistance(GetOrigin(client), m_lookAt[client], true);
+	static float meleerange;
+	meleerange = Squaredf(GetConVarFloat(EBotMelee));
 	
 	if (m_class[client] == TFClass_Pyro)
 		meleerange *= 0.75;
@@ -220,7 +218,7 @@ stock void SelectBestCombatWeapon(int client)
 	if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		meleerange = 300.0;
 		
-	if (distance <= meleerange)
+	if (distance < meleerange)
 		EquipWeaponSlot(client, 2);
 	else
 	{
@@ -228,16 +226,16 @@ stock void SelectBestCombatWeapon(int client)
 		{
 			if (m_secondaryID[client] == 57 || m_secondaryID[client] == 231 || m_secondaryID[client] == 642)
 				EquipWeaponSlot(client, 0);
-			else if (((m_secondaryID[client] == 58 || m_secondaryID[client] == 1083 || m_secondaryID[client] == 1105) && distance <= Squaredf(512.0)) && (IsValidEntity(GetPlayerWeaponSlot(client, 1)) && GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") == 1))
+			else if (((m_secondaryID[client] == 58 || m_secondaryID[client] == 1083 || m_secondaryID[client] == 1105) && distance < Squaredf(512.0)) && (IsValidEntity(GetPlayerWeaponSlot(client, 1)) && GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") == 1))
 				EquipWeaponSlot(client, 1);
-			else if (distance <= Squaredf(512.0))
+			else if (distance < Squaredf(512.0))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
 		}
 		else if (m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092 || m_primaryID[client] == 1098)
 		{
-			if (m_attackTimer[client] < GetGameTime() && distance <= Squaredf(512.0))
+			if (m_attackTimer[client] < GetGameTime() && distance < Squaredf(512.0))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
@@ -246,7 +244,7 @@ stock void SelectBestCombatWeapon(int client)
 		{
 			if (m_secondaryID[client] == 311 || m_secondaryID[client] == 42 || m_secondaryID[client] == 863 || m_secondaryID[client] == 1002 || m_secondaryID[client] == 159 || m_secondaryID[client] == 433 || m_secondaryID[client] == 1190)
 				EquipWeaponSlot(client, 0);				   
-			else if (distance <= Squaredf(256.0) || (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags == WAYPOINT_JUMP))
+			else if (distance < Squaredf(256.0) || (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags == WAYPOINT_JUMP))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
@@ -255,7 +253,7 @@ stock void SelectBestCombatWeapon(int client)
 		{
 			if (m_secondaryID[client] == 1180 && IsValidEntity(GetPlayerWeaponSlot(client, 1)) && GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Send, "m_iPrimaryAmmoType") == 1)
 				EquipWeaponSlot(client, 1);
-			else if (!(GetEntityFlags(client) & FL_FLY) && distance <= Squaredf(350.0))
+			else if (!(GetEntityFlags(client) & FL_FLY) && distance < Squaredf(350.0))
 				EquipWeaponSlot(client, 0);
 			else
 				EquipWeaponSlot(client, 1);
@@ -264,9 +262,9 @@ stock void SelectBestCombatWeapon(int client)
 		{
 			if (m_secondaryID[client] == 129 || m_secondaryID[client] == 1001 || m_secondaryID[client] == 226 || m_secondaryID[client] == 354 || m_secondaryID[client] == 444)
 				EquipWeaponSlot(client, 0);				   
-			else if (distance <= Squaredf(256.0))
+			else if (distance < Squaredf(256.0))
 				EquipWeaponSlot(client, 1);
-			else if (IsValidClient(m_nearestEnemy[client]) && m_class[m_nearestEnemy[client]] == TFClass_Pyro && distance <= Squaredf(512.0))
+			else if (IsValidClient(m_nearestEnemy[client]) && m_class[m_nearestEnemy[client]] == TFClass_Pyro && distance < Squaredf(512.0))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
@@ -283,7 +281,7 @@ stock void SelectBestCombatWeapon(int client)
 				EquipWeaponSlot(client, 1);
 			else if (m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
 				EquipWeaponSlot(client, 0);
-			else if (distance >= Squaredf(1024.0))
+			else if (distance > Squaredf(1024.0))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
@@ -292,7 +290,7 @@ stock void SelectBestCombatWeapon(int client)
 		{
 			if (m_secondaryID[client] == 528)
 				EquipWeaponSlot(client, 0);
-			else if (distance >= Squaredf(1024.0))
+			else if (distance > Squaredf(1024.0))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
@@ -302,8 +300,10 @@ stock void SelectBestCombatWeapon(int client)
 
 		if (IsWeaponSlotActive(client, 2) && distance > meleerange)
 		{
-			int clip0 = GetPrimaryClip(client, 0);
-			int clip1 = GetPrimaryClip(client, 1);
+			static int clip0;
+			clip0 = GetPrimaryClip(client, 0);
+			static int clip1;
+			clip1 = GetPrimaryClip(client, 1);
 
 			if (m_class[client] == TFClass_Medic)
 				EquipWeaponSlot(client, 0);

@@ -1,6 +1,6 @@
 enum
 {
-    PRO_DEFAULT = 0,
+	PRO_DEFAULT = 0,
 	PRO_IDLE,
 	PRO_ATTACK,
 	PRO_HUNTENEMY,
@@ -36,6 +36,7 @@ int Dispenser[TFMaxPlayers];
 int CurrentProcess[TFMaxPlayers];
 
 int currentActiveArea;
+int currentActiveAreaInt;
 float BotCheckTimer = 0.0;
 
 int healthpacks = -1;
@@ -92,6 +93,9 @@ bool m_hasEntitiesNear[TFMaxPlayers];
 
 int m_enemiesNearCount[TFMaxPlayers];
 int m_friendsNearCount[TFMaxPlayers];
+
+int m_enemiesNearPower[TFMaxPlayers];
+int m_friendsNearPower[TFMaxPlayers];
 
 int m_nearestEnemy[TFMaxPlayers];
 int m_nearestFriend[TFMaxPlayers];
@@ -168,8 +172,8 @@ int gI_RestartTimerIteration = 0;
 
 stock void GetRandomPoint(CNavArea area, float buffer[3])
 {
-	float extentLow[3];
-	float extentHigh[3];
+	static float extentLow[3];
+	static float extentHigh[3];
 	area.GetExtent(extentLow, extentHigh);
 	
 	buffer[0] = GetRandomFloat(extentLow[0], extentHigh[0]);
@@ -272,12 +276,9 @@ stock bool DeactiveCloak(const int client)
 
 stock void FindPayload()
 {
-	int iPayload = -1;
-	while ((iPayload = FindEntityByClassname(iPayload, "mapobj_cart_dispenser")) != -1)
+	int iPayload;
+	while (IsValidEntity((iPayload = FindEntityByClassname(iPayload, "mapobj_cart_dispenser"))))
 	{
-		if (!IsValidEntity(iPayload))
-			continue;
-		
 		if (GetTeamNumber(iPayload) == 2)
 			m_redPayload = iPayload;
 		else
@@ -287,7 +288,8 @@ stock void FindPayload()
 
 stock void FindHostEntity()
 {
-	for (int i = 1; i < MaxClients; i++)
+	int i;
+	for (i = 1; i < MaxClients; i++)
 	{
 		if (IsValidClient(i) && !IsFakeClient(i))
 		{
@@ -300,7 +302,8 @@ stock void FindHostEntity()
 
 stock int FindBotByName(const char[] name)
 {
-	for (int i = 1; i < MaxClients; i++)
+	int i;
+	for (i = 1; i < MaxClients; i++)
 	{
 		if (IsValidClient(i) && IsFakeClient(i))
 		{
@@ -316,8 +319,9 @@ stock int FindBotByName(const char[] name)
 
 stock int GetTeamsCount(const int team)
 {
+	int i;
 	int count = 0;
-	for (int i = 1; i < MaxClients; i++)
+	for (i = 1; i < MaxClients; i++)
 	{
 		if (IsValidClient(i) && GetClientTeam(i) == team)
 			count++;
@@ -327,8 +331,9 @@ stock int GetTeamsCount(const int team)
 
 stock int GetBotCount()
 {
+	int i;
 	int count = 0;
-	for (int i = 1; i < MaxClients; i++)
+	for (i = 1; i < MaxClients; i++)
 	{
 		if (IsValidClient(i) && IsEBot(i))
 			count++;
@@ -338,8 +343,9 @@ stock int GetBotCount()
 
 stock int GetPlayersCount()
 {
+	int i;
 	int count = 0;
-	for (int i = 1; i < MaxClients; i++)
+	for (i = 1; i < MaxClients; i++)
 	{
 		if (IsValidClient(i) && !IsEBot(i) && GetClientTeam(i) != 1)
 			count++;
@@ -349,8 +355,9 @@ stock int GetPlayersCount()
 
 stock int GetPlayersCountRed()
 {
+	int i;
 	int count = 0;
-	for (int i = 1; i < MaxClients; i++)
+	for (i = 1; i < MaxClients; i++)
 	{
 		if (IsValidClient(i) && GetClientTeam(i) == 2)
 			count++;
@@ -360,8 +367,9 @@ stock int GetPlayersCountRed()
 
 stock int GetPlayersCountBlu()
 {
+	int i;
 	int count = 0;
-	for (int i = 1; i < MaxClients; i++)
+	for (i = 1; i < MaxClients; i++)
 	{
 		if (IsValidClient(i) && GetClientTeam(i) == 3)
 			count++;
@@ -371,8 +379,9 @@ stock int GetPlayersCountBlu()
 
 stock int GetTotalPlayersCount()
 {
+	int i;
 	int count = 0;
-	for (int i = 1; i < MaxClients; i++)
+	for (i = 1; i < MaxClients; i++)
 	{
 		if (IsValidClient(i) && GetClientTeam(i) != 1)
 			count++;
@@ -394,7 +403,7 @@ stock float Squaredf(const float number)
 
 stock float[] GetEyePosition(const int client)
 {
-	float vector[3];
+	static float vector[3];
 	GetClientEyePosition(client, vector);
 	return vector;
 }
@@ -406,7 +415,7 @@ stock bool ChanceOf(const int number)
 
 stock float[] GetOrigin(const int entity)
 {
-	float vector[3];
+	static float vector[3];
 	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vector);
 	return vector;
 }
@@ -428,15 +437,16 @@ stock void MakeVectors(float defaultangle[3] = NULL_VECTOR, float fw[3] = NULL_V
 
 stock float[] GetEyeAngles(const int client)
 {
-	float vector[3];
+	static float vector[3];
 	GetClientEyeAngles(client, vector);
 	return vector;
 }
 
 stock float[] GetCenter(const int entity)
 {
-	float center[3];
-	CBaseEntity cbase = view_as<CBaseEntity>(entity);
+	static float center[3];
+	static CBaseEntity cbase;
+	cbase = view_as<CBaseEntity>(entity);
 	cbase.WorldSpaceCenter(center);
 	return center;
 }
@@ -446,14 +456,15 @@ stock void EquipWeaponSlot(const int client, const int slot)
 	if (IsWeaponSlotActive(client, slot))
 		return;
 
-	int iWeapon = GetPlayerWeaponSlot(client, slot);
+	static int iWeapon;
+	iWeapon = GetPlayerWeaponSlot(client, slot);
 	if (IsValidEntity(iWeapon))
 		EquipWeapon(client, iWeapon);
 }
 
 stock void EquipWeapon(const int client, const int weapon)
 {
-	char class[80];
+	static char class[80];
 	GetEntityClassname(weapon, class, sizeof(class));
 	Format(class, sizeof(class), "use %s", class);
 	FakeClientCommandThrottled(client, class);
@@ -503,9 +514,9 @@ stock void PlayTaunt(const int client, const int tauntid = 463)
 		FakeClientCommandThrottled(client, "taunt");
 }
 
-stock int MakeCEIVEnt(int client, int itemdef)
+stock int MakeCEIVEnt(const int client, const int itemdef)
 {
-	static Handle hItem;
+	Handle hItem;
 	if (hItem == INVALID_HANDLE)
 	{
 		hItem = TF2Items_CreateItem(OVERRIDE_ALL|PRESERVE_ATTRIBUTES|FORCE_GENERATION);
@@ -525,11 +536,13 @@ stock bool IsValidAddress(Address pAddress)
 	return pAddress != Address_Null;
 }
 
-stock int FindNearestEnemy(int client, float flMaxDistance = 9999999999.0)
+stock int FindNearestEnemy(const int client, const float flMaxDistance = 9999999999.0)
 {
+	int i;
 	float flBestDistance = Squaredf(flMaxDistance);
+	float flDistance;
 	int iBestTarget = -1;
-	for (int i = 1; i <= MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
 		if (client == i)
 			continue;
@@ -565,7 +578,7 @@ stock int FindNearestEnemy(int client, float flMaxDistance = 9999999999.0)
 			break;
 		}
 		
-		float flDistance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
+		flDistance = GetVectorDistance(GetOrigin(client), GetOrigin(i), true);
 		if (flDistance < flBestDistance)
 		{
 			flBestDistance = flDistance;
@@ -579,18 +592,20 @@ stock int FindNearestEnemy(int client, float flMaxDistance = 9999999999.0)
 float m_aimInterval[TFMaxPlayers];
 stock void LookAtPosition(const int client, const float flGoal[3], float flAng[3])
 {
-	float delta = GetGameTime() - m_aimInterval[client];
+	static float delta;
+	delta = GetGameTime() - m_aimInterval[client];
 	m_aimInterval[client] = GetGameTime();
 
-	float flPos[3];
+	static float flPos[3];
     GetClientEyePosition(client, flPos);
     
     // get normalised direction from target to client
-    float desired_dir[3];
+    static float desired_dir[3];
     MakeVectorFromPoints(flPos, flGoal, desired_dir);
     GetVectorAngles(desired_dir, desired_dir);
 	
-	float aimSpeed = 16.0 * delta;
+	static float aimSpeed;
+	aimSpeed = 16.0 * delta;
     
     // ease the current direction to the target direction
     flAng[0] += AngleNormalize(desired_dir[0] - flAng[0]) * aimSpeed;
@@ -610,17 +625,17 @@ stock float AngleNormalize(float angle)
 	return angle;
 }
 
-stock float fmodf(float number, float denom)
+stock float fmodf(const float number, const float denom)
 {
 	return number - RoundToFloor(number / denom) * denom;
 }
 
-stock float AngleDiff(float destAngle, float srcAngle)
+stock float AngleDiff(const float destAngle, const float srcAngle)
 {
 	return AngleNormalize(destAngle - srcAngle);
 }
 
-stock float ApproachAngle(float target, float value, float speed)
+stock float ApproachAngle(const float target, float value, float speed)
 {
 	float delta = AngleDiff(target, value);
 	
@@ -637,30 +652,31 @@ stock float ApproachAngle(float target, float value, float speed)
 	return AngleNormalize(value);
 }
 
-stock void MoveTo(int client, float flGoal[3], bool checkStuck = true)
+stock void MoveTo(const int client, const float flGoal[3])
 {
-	float flPos[3];
+	static float flPos[3];
 	GetClientAbsOrigin(client, flPos);
 	
-	float fAng[3];
+	static float fAng[3];
 	GetClientEyeAngles(client, fAng);
 	
-	float newmove[3];
+	static float newmove[3];
 	SubtractVectors(flGoal, flPos, newmove);
 
 	newmove[1] = -newmove[1];
 	
-	float sin = Sine(fAng[1] * FLOAT_PI / 180.0);
-	float cos = Cosine(fAng[1] * FLOAT_PI / 180.0);
+	static float sin;
+	static float cos;
+	sin = Sine(fAng[1] * 0.01745329251);
+	cos = Cosine(fAng[1] * 0.01745329251);
 	
 	m_moveVel[client][0] = cos * newmove[0] - sin * newmove[1];
 	m_moveVel[client][1] = sin * newmove[0] + cos * newmove[1];
 
-	float maxSpeed = GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
-	ScaleVector(m_moveVel[client], maxSpeed);
+	ScaleVector(m_moveVel[client], GetEntPropFloat(client, Prop_Data, "m_flMaxspeed"));
 }
 
-stock void MoveToWaypoint(int client, float flGoal[3])
+stock void MoveToWaypoint(const int client, float flGoal[3])
 {
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);
@@ -682,8 +698,8 @@ stock void MoveToWaypoint(int client, float flGoal[3])
 	
 	newmove[1] = -newmove[1];
 	
-	float sin = Sine(fAng[1] * FLOAT_PI / 180.0);
-	float cos = Cosine(fAng[1] * FLOAT_PI / 180.0);
+	float sin = Sine(fAng[1] * 0.01745329251);
+	float cos = Cosine(fAng[1] * 0.01745329251);
 	
 	m_moveVel[client][0] = cos * newmove[0] - sin * newmove[1];
 	m_moveVel[client][1] = sin * newmove[0] + cos * newmove[1];
@@ -697,7 +713,7 @@ stock void MoveToWaypoint(int client, float flGoal[3])
 	ScaleVector(m_moveVel[client], fixed);
 }
 
-stock void MoveOut(int client, float flGoal[3], bool checkStuck = true)
+stock void MoveOut(const int client, float flGoal[3])
 {
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);
@@ -708,8 +724,8 @@ stock void MoveOut(int client, float flGoal[3], bool checkStuck = true)
 	float newmove[3];
 	SubtractVectors(flGoal, flPos, newmove);
 	
-	float sin = Sine(fAng[1] * FLOAT_PI / 180.0);
-	float cos = Cosine(fAng[1] * FLOAT_PI / 180.0);
+	float sin = Sine(fAng[1] * 0.01745329251);
+	float cos = Cosine(fAng[1] * 0.01745329251);
 	
 	m_moveVel[client][0] = cos * newmove[0] - sin * newmove[1];
 	m_moveVel[client][1] = sin * newmove[0] + cos * newmove[1];
@@ -718,20 +734,17 @@ stock void MoveOut(int client, float flGoal[3], bool checkStuck = true)
 	ScaleVector(m_moveVel[client], 500.0);
 }
 
-stock void BackstabMove(int client, int target, bool moveForward = true)
+stock void BackstabMove(const int client, const int target, const bool moveForward = true)
 {
 	float flBotAng[3], flTargetAng[3];
 	GetClientEyeAngles(client, flBotAng);
 	GetClientEyeAngles(target, flTargetAng);
 	float iAngleDiff = AngleDiff(flBotAng[1], flTargetAng[1]);
 	
-	if (moveForward)
-	{
-		if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) || GetClientAimTarget(target) == client)
-			m_moveVel[client][0] = -500.0;
-		else
-			m_moveVel[client][0] = 500.0;
-	}
+	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) || GetClientAimTarget(target) == client)
+		m_moveVel[client][0] = -500.0;
+	else if (moveForward)
+		m_moveVel[client][0] = 500.0;
 	
 	if (iAngleDiff > 90)
 		m_moveVel[client][1] = -500.0;
@@ -739,9 +752,9 @@ stock void BackstabMove(int client, int target, bool moveForward = true)
 		m_moveVel[client][1] = 500.0;
 }
 
-stock bool IsValidClient(int client)
+stock bool IsValidClient(const int client)
 {
-	if (client <= 0 || client > MaxClients)
+	if (client < 1 || client > MaxClients)
 		return false;
 	
 	if (!IsClientInGame(client))
@@ -753,10 +766,8 @@ stock bool IsValidClient(int client)
 stock bool IsVisible(float start[3], float end[3])
 {
 	TR_TraceRayFilter(start, end, MASK_CUSTOM, RayType_EndPoint, TraceEntityFilterStuff);
-	float flFraction = TR_GetFraction();
-
-	if (flFraction >= 1.0) 
-		return !(flFraction == 0.0);
+	if (TR_GetFraction() == 1.0) 
+		return true;
 	
 	return false;
 }
@@ -766,8 +777,8 @@ float hullx[3] = {18.0, 18.0, 18.0};
 
 stock bool IsVisibleWaypoint(float start[3], float end[3])
 {
-	float fstart[3];
-	float fend[3];
+	static float fstart[3];
+	static float fend[3];
 
 	fstart[0] = start[0];
 	fstart[1] = start[1];
@@ -819,7 +830,7 @@ stock float[] VectorAsFloat(int origin[3])
 
 public bool TraceEntityFilterStuff(int entity, int mask)
 {
-	char class[64];
+	static char class[64];
 	GetEntityClassname(entity, class, sizeof(class));
 	if (StrEqual(class, "entity_medigun_shield"))
 		return false;
@@ -848,22 +859,22 @@ public bool TraceEntityFilterStuff(int entity, int mask)
 	return entity > MaxClients;
 }
 
-stock int TF2_GetNumberOfHealers(client)
+stock int TF2_GetNumberOfHealers(const int client)
 {
     return GetEntProp(client, Prop_Send, "m_nNumHealers");
 }
 
-stock int GetTeamNumber(int entity)
+stock int GetTeamNumber(const int entity)
 {
 	return GetEntProp(entity, Prop_Send, "m_iTeamNum");
 }
 
-stock int GetOwnerEntity(int entity)
+stock int GetOwnerEntity(const int entity)
 {
 	return GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 }
 
-stock int GetEntityThrower(int entity)
+stock int GetEntityThrower(const int entity)
 {
 	return GetEntPropEnt(entity, Prop_Send, "m_hThrower");
 }
@@ -873,13 +884,14 @@ stock bool IsWeaponSlotActive(int client, int slot)
     return GetPlayerWeaponSlot(client, slot) == GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 }
 
-stock int GetActiveWeaponSlot(int client)
+stock int GetActiveWeaponSlot(const int client)
 {
 	int active = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 	if (active == -1)
 		return -1;
-
-	for (int i = 0; i < 5; i++)
+	
+	int i;
+	for (i = 0; i < 5; i++)
 	{
 		if (GetPlayerWeaponSlot(client, i) == active)
 			return i;
@@ -888,17 +900,17 @@ stock int GetActiveWeaponSlot(int client)
 	return -1;
 }
 
-stock int GetActiveWeapon(int client)
+stock int GetActiveWeapon(const int client)
 {
 	return GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 }
 
-stock int GetMetal(int client)
+stock int GetMetal(const int client)
 {
 	return GetEntProp(client, Prop_Data, "m_iAmmo", 4, 3);
 }
 
-stock bool TF2_HasTheFlag(int client)
+stock bool TF2_HasTheFlag(const int client)
 {
 	if (isCTF)
 	{
@@ -910,10 +922,10 @@ stock bool TF2_HasTheFlag(int client)
 	}
 	else if (isMVM)
 	{
-		int ent = -1;
+		int ent;
     	while ((ent = FindEntityByClassname(ent, "item_teamflag")) != -1)
     	{
-        	if (GetEntPropEnt(ent, Prop_Data, "m_hOwnerEntity") == client)
+        	if (IsValidEntity(ent) && GetEntPropEnt(ent, Prop_Data, "m_hOwnerEntity") == client)
             	return true;
     	}
 	}
@@ -923,9 +935,11 @@ stock bool TF2_HasTheFlag(int client)
 
 stock int FindLeader(const int team)
 {
+	int score;
+	int i;
 	int bestScore = 0;
 	int leader = -1;
-	for (int i = 1; i <= MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
 		if (!IsValidClient(i))
 			continue;
@@ -933,7 +947,7 @@ stock int FindLeader(const int team)
 		if (GetClientTeam(i) != team)
 			continue;
 		
-		int score = GetClientScore(i);
+		score = GetClientScore(i);
 		if (score > bestScore)
 		{
 			bestScore = score;
@@ -946,9 +960,11 @@ stock int FindLeader(const int team)
 
 stock int FindBestKD(const int team)
 {
+	int i;
+	float score;
 	float stableKD = 0.0;
 	int leader = -1;
-	for (int i = 1; i <= MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
 		if (!IsValidClient(i))
 			continue;
@@ -956,7 +972,7 @@ stock int FindBestKD(const int team)
 		if (GetClientTeam(i) != team)
 			continue;
 		
-		float score = GetKDR(i);
+		score = GetKDR(i);
 		if (score > stableKD)
 		{
 			stableKD = score;
@@ -992,10 +1008,10 @@ stock int GetClientDeath(const int client)
 
 stock float GetKDR(const int client)
 {
-	return float(GetClientScore(client)) / float(GetClientDeath(client));
+	return float(GetClientScore(client) + 1) / float(GetClientDeath(client) + 1);
 }
 
-stock int TF2_GetPlayerWeaponID(int client, int slot)
+stock int TF2_GetPlayerWeaponID(const int client, const int slot)
 {
 	int validslot = GetPlayerWeaponSlot(client, slot);
 	if (!IsValidEntity(validslot))
@@ -1003,29 +1019,38 @@ stock int TF2_GetPlayerWeaponID(int client, int slot)
 	return GetEntProp(validslot, Prop_Send, "m_iItemDefinitionIndex");
 }
 
-stock int TF2_GetWeaponID(int weapon)
+stock int TF2_GetWeaponID(const int weapon)
 {
 	return GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
 }
 
-stock char[] TF2_GetWeaponClassName(int weapon)
+stock char[] TF2_GetWeaponClassName(const int weapon)
 {
 	char className[64] = "UNKNOWN";
 	GetEntityClassname(weapon, className, sizeof(className));
 	return className;
 }
 
-stock bool hasWrench(int client)
+stock bool hasWrench(const int client)
 {
 	return m_hasWrench[client];
 }
 
-stock int TF2_GetHealingTarget(int client)
+stock int TF2_GetHealingTarget(const int client)
 {
 	int index = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 	if (!HasEntProp(index, Prop_Send, "m_hHealingTarget"))
 		return -1;
 	return GetEntPropEnt(index, Prop_Send, "m_hHealingTarget");
+}
+
+stock float TF2_GetUberchargeLevel(const int client)
+{
+	int index = GetPlayerWeaponSlot(client, 1);
+	if (IsValidEntity(index))
+		return GetEntPropFloat(index, Prop_Send, "m_flChargeLevel") * 100.0;
+	
+	return 0.0;
 }
 
 stock int GetMaxHealth(const int entity)
@@ -1035,12 +1060,12 @@ stock int GetMaxHealth(const int entity)
 
 stock bool IsMoving(const int client)
 {
-	float buffer[3];
+	static float buffer[3];
 	GetEntPropVector(client, Prop_Data, "m_vecAbsVelocity", buffer);
 	return GetVectorLength(buffer, true) > GetEntPropFloat(client, Prop_Send, "m_flMaxspeed");
 }
 
-stock bool IsMetalLow(int client)
+stock bool IsMetalLow(const int client)
 {
 	if (WantsBuildSentryGun[client])
 		return GetMetal(client) <= 130.0;
@@ -1050,10 +1075,11 @@ stock bool IsMetalLow(int client)
 		return GetMetal(client) <= 50.0;
 	else if (GetMetal(client) <= 0.0)
 		return true;
+	
 	return false;
 }
 
-stock bool IsResupply(int entity, int team)
+stock bool IsResupply(const int entity, const int team)
 {
 	char model[PLATFORM_MAX_PATH];
 	if (GetTeamNumber(entity) == team)
@@ -1064,21 +1090,21 @@ stock bool IsResupply(int entity, int team)
 	return false;
 }
 
-stock bool IsAttacking(int client)
+stock bool IsAttacking(const int client)
 {
 	if (GetClientButtons(client) & IN_ATTACK)
 		return true;
 	return false;
 }
 
-stock float GetHeight(int client)
+stock float GetHeight(const int client)
 {
-	float eyepos[3]; eyepos = GetEyePosition(client);
-	float origin[3]; origin = GetOrigin(client);
+	static float eyepos[3]; eyepos = GetEyePosition(client);
+	static float origin[3]; origin = GetOrigin(client);
 	return (eyepos[2] - origin[2]);
 }
 
-stock int GetAmmo(int client, int slot)
+stock int GetAmmo(const int client, const int slot)
 {
     int weapon = GetPlayerWeaponSlot(client, slot);
     if (IsValidEntity(weapon))
@@ -1090,7 +1116,7 @@ stock int GetAmmo(int client, int slot)
     return 9999;
 }
 
-stock int GetPrimaryClip(int client, int slot)
+stock int GetPrimaryClip(const int client, const int slot)
 {
 	int weapon = GetPlayerWeaponSlot(client, slot);
 	if (!IsValidEntity(weapon))
@@ -1098,7 +1124,7 @@ stock int GetPrimaryClip(int client, int slot)
 	return GetEntProp(weapon, Prop_Send, "m_iClip1");
 }
 
-stock int GetPrimaryClipN(int client, int slot)
+stock int GetPrimaryClipN(const int client, const int slot)
 {
 	int weapon = GetPlayerWeaponSlot(client, slot);
 	if (!IsValidEntity(weapon))
@@ -1106,18 +1132,18 @@ stock int GetPrimaryClipN(int client, int slot)
 	return GetEntProp(weapon, Prop_Send, "m_iClip1");
 }
 
-stock float Clamp(float value, float min, float max)
+stock float Clamp(const float value, const float min, const float max)
 {
-    float result = value;
     if (value < min)
-        result = min;
+        return min;
     else if (value > max)
-        result = max;
-    return result;
+        return max;
+	
+    return value;
 }  
 
 // checks wall
-stock bool CheckWall(int client)
+stock bool CheckWall(const int client)
 {
 	float flPos[3];
 	GetClientAbsOrigin(client, flPos);
@@ -1143,7 +1169,7 @@ stock bool CheckWall(int client)
 
 public bool ExcludeFilter(int entity, int contentsMask, any iExclude)
 {
-	char class[64];
+	static char class[64];
 	GetEntityClassname(entity, class, sizeof(class));
 	if (StrEqual(class, "player"))
 	{
@@ -1168,7 +1194,7 @@ public bool ExcludeFilter(int entity, int contentsMask, any iExclude)
 
 public bool StuckFilter(int entity, int contentsMask, any iExclude)
 {
-	char class[64];
+	static char class[64];
 	GetEntityClassname(entity, class, sizeof(class));
 	if (StrEqual(class, "player"))
 	{
@@ -1187,10 +1213,11 @@ public bool StuckFilter(int entity, int contentsMask, any iExclude)
 	return !(entity == iExclude);
 }
 
-stock int GetPlayerStickyCount(int client)
+stock int GetPlayerStickyCount(const int client)
 {
+	int x;
 	int StickyCount = 0;
-	for (int x = 0; x <= GetMaxEntities(); x++)
+	for (x = 0; x <= GetMaxEntities(); x++)
 	{
 		if (!IsValidEntity(x))
 			continue;
@@ -1211,8 +1238,9 @@ stock int GetPlayerStickyCount(int client)
 
 stock int GetBluControlPointCount()
 {
+	int x;
 	int count = 0;
-	for (int x = 0; x <= GetMaxEntities(); x++)
+	for (x = 0; x <= GetMaxEntities(); x++)
 	{
 		if (!IsValidEntity(x))
 			continue;
@@ -1232,14 +1260,14 @@ stock int GetBluControlPointCount()
 	return count;
 }
 
-stock int GetNearestEnemyControlPoint(int client)
+stock int GetNearestEnemyControlPoint(const int client)
 {
 	int NearestControlPoint = -1;
 	
 	float distance = -1.0; 
 	float nearestDistance = 9999999999999999.0;
 	
-	int iControlPoint = -1;
+	int iControlPoint;
 	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
 	{
 		if (!IsValidEntity(iControlPoint))
@@ -1259,12 +1287,12 @@ stock int GetNearestEnemyControlPoint(int client)
 	return NearestControlPoint;
 }
 
-stock int GetNearestPayload(int client, int team)
+stock int GetNearestPayload(const int client, const int team)
 {
 	int NearestPayload = -1;
 	float distance = -1.0; 
 	float nearestDistance = 9999999999999999.0;
-	int iPayload = -1;
+	int iPayload;
 
 	while ((iPayload = FindEntityByClassname(iPayload, "mapobj_cart_dispenser")) != -1)
 	{
@@ -1286,7 +1314,7 @@ stock int GetNearestPayload(int client, int team)
 }
 
 // check wall on right
-stock bool CheckWallRight(int client)
+stock bool CheckWallRight(const int client)
 {
 	float right[3], fw[3];
 	EyeVectors(client, fw, right);
@@ -1315,7 +1343,7 @@ stock bool CheckWallRight(int client)
 }
 
 // check wall on left
-stock bool CheckWallLeft(int client)
+stock bool CheckWallLeft(const int client)
 {
 	float right[3], fw[3];
 	EyeVectors(client, fw, right);
@@ -1344,7 +1372,7 @@ stock bool CheckWallLeft(int client)
 }
 
 // check wall on right
-stock bool CheckWallRight2(int client)
+stock bool CheckWallRight2(const int client)
 {
 	float right[3], fw[3];
 	EyeVectors(client, fw, right);
@@ -1373,7 +1401,7 @@ stock bool CheckWallRight2(int client)
 }
 
 // check wall on left
-stock bool CheckWallLeft2(int client)
+stock bool CheckWallLeft2(const int client)
 {
 	float right[3], fw[3];
 	EyeVectors(client, fw, right);
@@ -1402,7 +1430,7 @@ stock bool CheckWallLeft2(int client)
 }
 
 // check line of sight
-stock bool CheckForward(int client)
+stock bool CheckForward(const int client)
 {
 	float right[3], fw[3];
 	EyeVectors(client, fw, right);
@@ -1518,18 +1546,20 @@ stock float GetVectorDistance2D(float vec1[3], float vec2[3])
 }
 
 // subtracts the given vector from the given vector and return the x + y + z
-stock float GetFastDistance(float vec1[3], float vec[3])
+stock float GetFastDistance(const float vec1[3], const float vec[3])
 {
-	float result = (vec1[0] - vec[0]) + (vec1[1] - vec[1]) + (vec1[2] - vec[2]);
+	static float result;
+	result = (vec1[0] - vec[0]) + (vec1[1] - vec[1]) + (vec1[2] - vec[2]);
 	if (result < 0)
 		return -result;
 
 	return result;
 }
 
-stock float GetFastDistance2D(float vec1[3], float vec[3])
+stock float GetFastDistance2D(const float vec1[3], const float vec[3])
 {
-	float result = (vec1[0] - vec[0]) + (vec1[1] - vec[1]);
+	static float result;
+	result = (vec1[0] - vec[0]) + (vec1[1] - vec[1]);
 	if (result < 0)
 		return -result;
 
@@ -1545,10 +1575,10 @@ stock int GetFastDistanceInt(int vec1[3], int vec[3])
 	return result;
 }
 
-stock int GetUsableSniperHintsCount(int team)
+stock int GetUsableSniperHintsCount(const int team)
 {
 	int SniperHintsCount = 0;
-	int iEntity = -1;
+	int iEntity;
 	while ((iEntity = FindEntityByClassname(iEntity, "func_tfbot_hint")) != -1)
 	{
 		if (!IsValidEntity(iEntity))
@@ -1569,9 +1599,9 @@ stock int GetUsableSniperHintsCount(int team)
 	return SniperHintsCount;
 }
 
-stock int GetRandomSniperSpot(int team)
+stock int GetRandomSniperSpot(const int team)
 {
-	int iEntity = -1;
+	int iEntity;
 	int iSelectedHint = -1;
 	ArrayList SniperHints = new ArrayList();
 
@@ -1599,7 +1629,7 @@ stock int GetRandomSniperSpot(int team)
 	return iSelectedHint;
 }
 
-stock int TF2_GetObject(int client, TFObjectType type, TFObjectMode mode)
+stock int TF2_GetObject(const int client, TFObjectType type, TFObjectMode mode)
 {
 	int iObject = INVALID_ENT_REFERENCE;
 	while ((iObject = FindEntityByClassname(iObject, "obj_*")) != -1)
@@ -1649,7 +1679,7 @@ stock void DisguiseAsEnemy(const int client)
 	delete class;
 }
 
-stock bool IsClientAimingToMe(int client, int target)
+stock bool IsClientAimingToMe(const int client, const int target)
 {
 	if (ClientViews(target, client, 0.9))
 		return true;
@@ -1657,7 +1687,7 @@ stock bool IsClientAimingToMe(int client, int target)
 	return false;
 }
 
-stock bool IsClientVisibleInScreen(int client, int target)
+stock bool IsClientVisibleInScreen(const int client, const int target)
 {
 	if (ClientViews(client, target))
 		return true;
@@ -1665,7 +1695,7 @@ stock bool IsClientVisibleInScreen(int client, int target)
 	return false;
 }
 
-stock bool IsClientAimingToPosition(int client, float targetposition[3])
+stock bool IsClientAimingToPosition(const int client, float targetposition[3])
 {
 	if (ClientViewsOrigin(client, targetposition, 0.9))
 		return true;
@@ -1673,7 +1703,7 @@ stock bool IsClientAimingToPosition(int client, float targetposition[3])
 	return false;
 }
 
-stock void GetAimOrigin(int client, float aimorigin[3]) 
+stock void GetAimOrigin(const int client, float aimorigin[3]) 
 {
 	if (!IsValidClient(client))
 		return;
@@ -1717,19 +1747,19 @@ stock bool HasSapper(const int entity)
 	return GetEntProp(entity, Prop_Send, "m_bHasSapper") != 0;
 }
 
-stock bool IsSappable(int entity)
+stock bool IsSappable(const int entity)
 {
 	return HasEntProp(entity, Prop_Send, "m_bHasSapper");
 }
 
-stock bool ClientViews(int Viewer, int Target, float fThreshold = 0.70)
+stock bool ClientViews(const int Viewer, const int Target, const float fThreshold = 0.70)
 {
-    float fViewPos[3];   GetClientEyePosition(Viewer, fViewPos);
-    float fViewAng[3];   GetClientEyeAngles(Viewer, fViewAng);
-    float fViewDir[3];
-    float fTargetPos[3]; GetClientEyePosition(Target, fTargetPos);
-    float fTargetDir[3];
-    float fDistance[3];
+    static float fViewPos[3];   GetClientEyePosition(Viewer, fViewPos);
+    static float fViewAng[3];   GetClientEyeAngles(Viewer, fViewAng);
+    static float fViewDir[3];
+    static float fTargetPos[3]; GetClientEyePosition(Target, fTargetPos);
+    static float fTargetDir[3];
+    static float fDistance[3];
 
     fViewAng[0] = fViewAng[2] = 0.0;
     GetAngleVectors(fViewAng, fViewDir, NULL_VECTOR, NULL_VECTOR);
@@ -1745,17 +1775,17 @@ stock bool ClientViews(int Viewer, int Target, float fThreshold = 0.70)
     return true;
 }
 
-stock bool ClientViewsOrigin(int Viewer, float fTargetPos[3], float fThreshold = 0.70)
+stock bool ClientViewsOrigin(const int Viewer, float fTargetPos[3], const float fThreshold = 0.70)
 {
-    float fViewPos[3];
+    static float fViewPos[3];
 	GetClientEyePosition(Viewer, fViewPos);
 
-    float fViewAng[3];
+    static float fViewAng[3];
 	GetClientEyeAngles(Viewer, fViewAng);
 
-    float fViewDir[3];
-    float fTargetDir[3];
-    float fDistance[3];
+    static float fViewDir[3];
+    static float fTargetDir[3];
+    static float fDistance[3];
 	
     fViewAng[0] = fViewAng[2] = 0.0;
     GetAngleVectors(fViewAng, fViewDir, NULL_VECTOR, NULL_VECTOR);
@@ -1773,7 +1803,8 @@ stock bool ClientViewsOrigin(int Viewer, float fTargetPos[3], float fThreshold =
 
 stock bool NameAlreadyTakenByPlayer(const char[] name)
 {
-	for (int i = 1; i < MaxClients; i++)
+	int i;
+	for (i = 1; i < MaxClients; i++)
 	{
 		if (!IsValidClient(i))
 			continue;
@@ -1953,11 +1984,10 @@ stock bool IsRevealedSpyByTarget(const int client, const int target)
 	return false;
 }
 
-stock int GetEnemyControlPointCount(int client)
+stock int GetEnemyControlPointCount(const int client)
 {
 	int EnemyControlPointCount = 0;
-	
-	int iControlPoint = -1;
+	int iControlPoint;
 	
 	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
 	{
@@ -1976,14 +2006,12 @@ stock int GetEnemyControlPointCount(int client)
 	return EnemyControlPointCount;
 }
 
-stock int GetNearestMyControlPoint(int client)
+stock int GetNearestMyControlPoint(const int client)
 {
 	int NearestControlPoint = -1;
-	
-	float distance = -1.0; 
-	float nearestDistance = -1.0;
-	
-	int iControlPoint = -1;
+	float distance; 
+	float nearestDistance = 999999999999999.0;
+	int iControlPoint;
 	
 	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
 	{
@@ -1998,7 +2026,7 @@ stock int GetNearestMyControlPoint(int client)
 		
 		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iControlPoint), true);
         
-		if (distance < nearestDistance || nearestDistance == -1.0)
+		if (distance < nearestDistance)
 		{
 			NearestControlPoint = iControlPoint;
 			nearestDistance = distance;
@@ -2008,11 +2036,10 @@ stock int GetNearestMyControlPoint(int client)
 	return NearestControlPoint;
 }
 
-stock int GetMyControlPointCount(int client)
+stock int GetMyControlPointCount(const int client)
 {
 	int MyControlPointCount = 0;
-	
-	int iControlPoint = -1;
+	int iControlPoint;
 	
 	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
 	{
@@ -2033,8 +2060,7 @@ stock int GetMyControlPointCount(int client)
 
 stock int GetNearestBluControlPoint()
 {
-	int iControlPoint = -1;
-	
+	int iControlPoint;
 	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
 	{
 		if (!IsValidEntity(iControlPoint))
@@ -2047,14 +2073,12 @@ stock int GetNearestBluControlPoint()
 	return iControlPoint;
 }
 
-stock int GetNearestDefendableControlPoint(int client)
+stock int GetNearestDefendableControlPoint(const int client)
 {
 	int NearestControlPoint = -1;
-	
-	float distance = -1.0; 
-	float nearestDistance = -1.0;
-	
-	int iControlPoint = -1;
+	float distance; 
+	float nearestDistance = 99999999999999.0;
+	int iControlPoint;
 	
 	if (GetNearestBluControlPoint() != -1)
 	{
@@ -2070,8 +2094,7 @@ stock int GetNearestDefendableControlPoint(int client)
 				continue;
 			
 			distance = GetVectorDistance(GetOrigin(GetNearestBluControlPoint()), GetOrigin(iControlPoint), true);
-			
-			if (distance < nearestDistance || nearestDistance == -1.0)
+			if (distance < nearestDistance)
 			{
 				NearestControlPoint = iControlPoint;
 				nearestDistance = distance;
@@ -2104,10 +2127,98 @@ stock FindEntityByTargetname(const String:targetname[], const String:classname[]
 	int index = -1;
 	namebuf[0] = '\0';
 	
-	while(strcmp(namebuf, targetname) != 0 && (index = FindEntityByClassname(index, classname)) != -1)
-	{
+	while (strcmp(namebuf, targetname) != 0 && (index = FindEntityByClassname(index, classname)) != -1)
 		GetEntPropString(index, Prop_Data, "m_iName", namebuf, sizeof(namebuf));
-	}
 	
 	return index;
+}
+
+stock bool IsVisibleToEnemy(const int client, float origin[3], const float height)
+{
+    origin[2] += height;
+
+    static int i;
+    for (i = 1; i <= MaxClients; i++)
+    {
+        if (!IsValidClient(i))
+			continue;
+        
+        // count deads too, because (almost) every teammate knows where is his friend is died, or died teammate can say where is enemy, etc. so basically even if he's dead this area is not safe
+		//if (!m_isAlive[i])
+		//	continue;
+		
+		if (m_team[i] == m_team[client])
+			continue;
+        
+        if (IsVisible(origin, GetEyePosition(i)))
+		{
+			origin[2] -= height;
+			return true;
+		}
+    }
+
+	origin[2] -= height;
+    return false;
+}
+
+stock bool IsCloserToEnemy(const int client, const float origin[3])
+{
+	static float distance;
+	distance = GetVectorDistance(GetOrigin(client), origin, true);
+
+    static int i;
+    for (i = 1; i <= MaxClients; i++)
+    {
+        if (!IsValidClient(i))
+			continue;
+        
+        // count deads too, because (almost) every teammate knows where is his friend is died, or died teammate can say where is enemy, etc. so basically even if he's dead this area is not safe
+		//if (!m_isAlive[i])
+		//	continue;
+		
+		if (m_team[i] == m_team[client])
+			continue;
+        
+        if (distance > GetVectorDistance(GetOrigin(i), origin, true))
+            return true;
+    }
+
+    return false;
+}
+
+stock bool IsDangerous(const int client, float origin[3], const float height)
+{
+    origin[2] += height;
+
+	static float distance;
+	distance = GetVectorDistance(GetOrigin(client), origin, true);
+
+    static int i;
+    for (i = 1; i <= MaxClients; i++)
+    {
+        if (!IsValidClient(i))
+			continue;
+        
+        // count deads too, because (almost) every teammate knows where is his friend is died, or died teammate can say where is enemy, etc. so basically even if he's dead this area is not safe
+		//if (!m_isAlive[i])
+		//	continue;
+		
+		if (m_team[i] > 1 && m_team[i] == m_team[client])
+			continue;
+        
+        if (distance > GetVectorDistance(GetOrigin(i), origin, true))
+		{
+			origin[2] -= height;
+			return true;
+		}
+
+		if (IsVisible(origin, GetEyePosition(i)))
+		{
+			origin[2] -= height;
+			return true;
+		}
+    }
+
+	origin[2] -= height;
+    return false;
 }
