@@ -303,12 +303,16 @@ stock void FindHostEntity()
 stock int FindBotByName(const char[] name)
 {
 	int i;
+	char buffer[MAX_NAME_LENGTH];
 	for (i = 1; i < MaxClients; i++)
 	{
 		if (IsValidClient(i) && IsFakeClient(i))
 		{
-			char buffer[MAX_NAME_LENGTH];
 			GetClientName(i, buffer, sizeof(buffer));
+
+			if (!buffer)
+				continue;
+
 			if (StrEqual(name, buffer))
 				return i;
 		}
@@ -1217,6 +1221,7 @@ stock int GetPlayerStickyCount(const int client)
 {
 	int x;
 	int StickyCount = 0;
+	char ClassName[32];
 	for (x = 0; x <= GetMaxEntities(); x++)
 	{
 		if (!IsValidEntity(x))
@@ -1227,9 +1232,11 @@ stock int GetPlayerStickyCount(const int client)
 		
 		if (GetEntityThrower(x) != client)
 			continue;
-		
-		char ClassName[32];
+
 		GetEdictClassname(x, ClassName, 32);
+		if (!ClassName)
+			continue;
+
 		if (StrContains(ClassName, "tf_projectile_pipe_remote", false) != -1)
 			StickyCount++;
 	}
@@ -1240,6 +1247,7 @@ stock int GetBluControlPointCount()
 {
 	int x;
 	int count = 0;
+	char ClassName[32];
 	for (x = 0; x <= GetMaxEntities(); x++)
 	{
 		if (!IsValidEntity(x))
@@ -1250,9 +1258,11 @@ stock int GetBluControlPointCount()
 		
 		if (GetTeamNumber(x) != 3)
 			continue
-		
-		char ClassName[32];
+
 		GetEdictClassname(x, ClassName, 32);
+		if (!ClassName)
+			continue;
+
 		if (StrEqual(ClassName, "team_control_point", false))
 			count++;
 	}
@@ -1634,9 +1644,7 @@ stock int TF2_GetObject(const int client, TFObjectType type, TFObjectMode mode)
 	int iObject = INVALID_ENT_REFERENCE;
 	while ((iObject = FindEntityByClassname(iObject, "obj_*")) != -1)
 	{
-		TFObjectType iObjType = TF2_GetObjectType(iObject);
-		TFObjectMode iObjMode = TF2_GetObjectMode(iObject);
-		if (GetEntPropEnt(iObject, Prop_Send, "m_hBuilder") == client && iObjType == type && iObjMode == mode && !GetEntProp(iObject, Prop_Send, "m_bPlacing") && !GetEntProp(iObject, Prop_Send, "m_bDisposableBuilding"))		
+		if (GetEntPropEnt(iObject, Prop_Send, "m_hBuilder") == client && TF2_GetObjectType(iObject) == type && TF2_GetObjectMode(iObject) == mode && !GetEntProp(iObject, Prop_Send, "m_bPlacing") && !GetEntProp(iObject, Prop_Send, "m_bDisposableBuilding"))		
 			return iObject;
 	}
 	
@@ -1804,13 +1812,16 @@ stock bool ClientViewsOrigin(const int Viewer, float fTargetPos[3], const float 
 stock bool NameAlreadyTakenByPlayer(const char[] name)
 {
 	int i;
+	char buffer[MAX_NAME_LENGTH];
 	for (i = 1; i < MaxClients; i++)
 	{
 		if (!IsValidClient(i))
 			continue;
-		
-		char buffer[MAX_NAME_LENGTH];
+
 		GetClientName(i, buffer, sizeof(buffer));
+		if (!buffer)
+			continue;
+
 		if (StrEqual(name, buffer))
 			return true;
 	}
@@ -2025,7 +2036,6 @@ stock int GetNearestMyControlPoint(const int client)
 			continue;
 		
 		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iControlPoint), true);
-        
 		if (distance < nearestDistance)
 		{
 			NearestControlPoint = iControlPoint;
@@ -2121,9 +2131,9 @@ stock int GetNearestDefendableControlPoint(const int client)
 	return NearestControlPoint;
 }
 
-stock FindEntityByTargetname(const String:targetname[], const String:classname[])
+stock FindEntityByTargetname(const char[] targetname, const char[] classname)
 {
-	decl String:namebuf[32];
+	char namebuf[32];
 	int index = -1;
 	namebuf[0] = '\0';
 	
