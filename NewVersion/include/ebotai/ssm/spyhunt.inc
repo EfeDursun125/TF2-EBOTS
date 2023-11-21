@@ -1,4 +1,7 @@
-// spy ai from tf2 source code
+// spy ai from leaked tf2 source code
+ConVar spyTarget;
+ConVar spyKnife;
+
 bool m_isCoverBlown[TFMaxPlayers];
 
 public bool SpyHuntRequirements(const int client)
@@ -65,12 +68,12 @@ public void SpyHuntUpdate(const int client)
 		if (IsValidClient(closestThreat) && IsPlayerAlive(closestThreat))
 			m_goalEntity[client] = closestThreat;
 	}
-	else if (IsValidClient(closestThreat) && IsPlayerAlive(closestThreat) && closestThreat != threat)
+	else if (closestThreat != threat && IsValidClient(closestThreat) && IsPlayerAlive(closestThreat))
 	{
 		float rangeToCurrentThreat = GetVectorDistance(GetOrigin(client), GetOrigin(threat), true);
 		float rangeToNewThreat = GetVectorDistance(GetOrigin(client), GetOrigin(closestThreat), true);
 
-		if (rangeToCurrentThreat - rangeToNewThreat > Squaredf(FindConVar("tf_bot_spy_change_target_range_threshold").FloatValue))
+		if (rangeToCurrentThreat - rangeToNewThreat > Squaredf(spyTarget.FloatValue))
 		{
 			threat = closestThreat;
 			m_goalEntity[client] = closestThreat;
@@ -101,6 +104,14 @@ public void SpyHuntUpdate(const int client)
 			ActiveCloak(client);
 			return;
 		}
+	}
+
+	if (m_team[client] == threat)
+	{
+		m_goalEntity[client] = -1;
+		m_nearestEnemy[client] = -1;
+		m_isCoverBlown[client] = false;
+		return;
 	}
 
 	// remember who we are attacking (in case we changed our minds)
@@ -147,7 +158,7 @@ public void SpyHuntUpdate(const int client)
 	if (m_difficulty[client] == 0)
 		isBehindVictim = true;
 
-	if (threatRange < Squaredf(FindConVar("tf_bot_spy_knife_range").FloatValue))
+	if (threatRange < Squaredf(spyKnife.FloatValue))
 		isKnifeFight = true;
 	else if (IsClientVisibleInScreen(client, playerThreat) && isBehindVictim) // they are facing away from us - go for the backstab
 		isKnifeFight = true;
@@ -234,12 +245,12 @@ public void SpyHuntUpdate(const int client)
 	if (isMovingTowardVictim)
 	{
 		// pursue the threat. if not visible, go to the last known position
-		if (!m_hasEnemiesNear[client] && threatRange > FindConVar("tf_bot_spy_knife_range").FloatValue)
+		if (!m_hasEnemiesNear[client] && threatRange > Squaredf(spyKnife.FloatValue))
 		{
 			// if we're at the threat's last known position and he's still not visible, we lost him
 			if (!IsVisible(GetEyePosition(client), GetEyePosition(playerThreat)))
 			{
-				if (GetVectorDistance(GetOrigin(client), m_lastEnemyOrigin[client], true) <= Squaredf(100.0))
+				if (GetVectorDistance(GetOrigin(client), m_lastEnemyOrigin[client], true) < Squaredf(100.0))
 				{
 					if (m_goalEntity[client] == threat)
 						m_goalEntity[client] = -1;
