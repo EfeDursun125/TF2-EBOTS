@@ -111,6 +111,7 @@ public void OnPluginStart()
 	EBotChangeClassRandom = CreateConVar("ebot_change_class_random", "0", "", FCVAR_NONE);
 	EBotChangeClassChance = CreateConVar("ebot_change_class_chance", "35", "", FCVAR_NONE);
 	EBotDeadChat = CreateConVar("ebot_dead_chat_chance", "30", "", FCVAR_NONE);
+	EBotReplyToChat = CreateConVar("ebot_reply_to_chat_chance", "60", "", FCVAR_NONE);
 	m_eBotDodgeRangeMin = CreateConVar("ebot_minimum_dodge_range", "512", "the range when enemy closer than a value, bot will start dodging enemies", FCVAR_NONE);
 	m_eBotDodgeRangeMax = CreateConVar("ebot_maximum_dodge_range", "2048", "the range when enemy closer than a value, bot will start dodging enemies", FCVAR_NONE);
 	m_eBotDodgeRangeChance = CreateConVar("ebot_dodge_change_range_chance", "10", "the chance for change dodge range when attack process ends (1-100)", FCVAR_NONE);
@@ -329,7 +330,7 @@ public void OnMapEnd()
 
 public void EBotDeathChat(const int client)
 {
-	if (GetRandomInt(1, 100) > GetConVarInt(EBotDeadChat))
+	if (!ChanceOf(GetConVarInt(EBotDeadChat)))
 		return;
 
 	char filepath[PLATFORM_MAX_PATH];
@@ -357,7 +358,10 @@ public void EBotDeathChat(const int client)
 		{
 			char ChosenOne[MAX_NAME_LENGTH];
 			RandomChat.GetString(GetRandomInt(0, RandomChat.Length - 1), ChosenOne, sizeof(ChosenOne));
-			FakeClientCommand(client, "say %s", ChosenOne);
+			DataPack pack;
+			CreateDataTimer(GetRandomFloat(2.0, 7.0), ReplyToChat, pack);
+			pack.WriteCell(client);
+			pack.WriteString(ChosenOne);
 		}
 
 		fp.Close();
@@ -1964,4 +1968,145 @@ public Action SetCheats(Handle timer)
 		cheats.Flags = flags;
 	}
 	return Plugin_Handled;
+}
+
+void StringToLower(char[] string, const int length)
+{
+	int i;
+	for (i = 0; i < length; i++)
+		string[i] = CharToLower(string[i]);
+}
+
+void StringToUpper(char[] string, const int length)
+{
+	int i;
+	for (i = 0; i < length; i++)
+		string[i] = CharToUpper(string[i]);
+}
+
+int lastChat;
+int repliedBy;
+bool copyString;
+public void OnClientSayCommand_Post(int client, const char[] command, const char[] args)
+{
+	copyString = false;
+	for (repliedBy = 1; repliedBy <= MaxClients; repliedBy++)
+	{
+		if (repliedBy == lastChat)
+			continue;
+
+		if (repliedBy == client)
+			continue;
+
+		if (!IsValidClient(repliedBy))
+			continue;
+
+		if (!IsEBot(repliedBy) && !m_isAFK[repliedBy])
+			continue;
+		
+		if (m_isAlive[repliedBy])
+			continue;
+
+		if (!ChanceOf(GetConVarInt(EBotReplyToChat)))
+			continue;
+		
+		copyString = true;
+		break;
+	}
+
+	if (copyString)
+	{
+		bool defaultReply = true;
+		char message[256];
+		strcopy(message, sizeof(message), args);
+		TrimString(message);
+		StringToLower(message, sizeof(message));
+
+		char filepath[PLATFORM_MAX_PATH];
+		while (!IsNullString(message) && SplitString(message, " ", message, sizeof(message)) != -1)
+		{
+			TrimString(message);
+			BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/chat/replies/%s.txt", message);
+			File fp = OpenFile(filepath, "r");
+			if (fp != null)
+			{
+				ArrayList RandomReply = new ArrayList(ByteCountToCells(65));
+				char line[256];
+				while (!fp.EndOfFile())
+				{
+					fp.ReadLine(line, sizeof(line));
+					if (!line)
+						continue;
+
+					TrimString(line);
+					RandomReply.PushString(line);
+				}
+
+				if (RandomReply.Length > 0)
+				{
+					char ChosenOne[MAX_NAME_LENGTH];
+					RandomReply.GetString(GetRandomInt(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
+					DataPack pack;
+					CreateDataTimer(GetRandomFloat(2.0, 7.0), ReplyToChat, pack);
+					pack.WriteCell(client);
+					pack.WriteString(ChosenOne);
+					fp.Close();
+					defaultReply = false
+					break;
+				}
+
+				fp.Close();
+			}
+		}
+
+		if (defaultReply && GetRandomInt(1, 3) == 1)
+		{
+			BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/chat/replies/ebot_default.txt");
+			File fp = OpenFile(filepath, "r");
+			if (fp != null)
+			{
+				ArrayList RandomReply = new ArrayList(ByteCountToCells(65));
+				char line[256];
+				while (!fp.EndOfFile())
+				{
+					fp.ReadLine(line, sizeof(line));
+					if (!line)
+						continue;
+
+					TrimString(line);
+					RandomReply.PushString(line);
+				}
+
+				if (RandomReply.Length > 0)
+				{
+					char ChosenOne[MAX_NAME_LENGTH];
+					RandomReply.GetString(GetRandomInt(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
+					DataPack pack;
+					CreateDataTimer(GetRandomFloat(2.0, 7.0), ReplyToChat, pack);
+					pack.WriteCell(client);
+					pack.WriteString(ChosenOne);
+				}
+
+				fp.Close();
+			}
+		}
+	}
+}
+
+public Action ReplyToChat(Handle timer, DataPack pack)
+{
+	pack.Reset();
+	int client = pack.ReadCell();
+	if (IsValidClient(client))
+	{
+		char str[256];
+		pack.ReadString(str, sizeof(str));
+		if (ChanceOf(50))
+			StringToLower(str, sizeof(str));
+		else if (ChanceOf(15))
+			StringToUpper(str, sizeof(str));
+		FakeClientCommand(client, "say %s", str);
+		lastChat = client;
+	}
+	return Plugin_Continue;
 }
