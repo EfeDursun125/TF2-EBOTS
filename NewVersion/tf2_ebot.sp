@@ -315,6 +315,7 @@ public Action Command_Afk(int client, int args)
 public void OnMapEnd()
 {
 	DangerMapSave();
+	BotCheckTimer = 0.0;
 }
 
 public void EBotDeathChat(const int client)
@@ -329,11 +330,11 @@ public void EBotDeathChat(const int client)
     {
 		ArrayList RandomChat = new ArrayList(ByteCountToCells(65));
 
+		char line[MAX_NAME_LENGTH];
         while (!fp.EndOfFile())
 		{
-			char line[MAX_NAME_LENGTH];
 			fp.ReadLine(line, sizeof(line));
-			if (strlen(line) <= 2)
+			if (!line)
 				continue;
 			
 			if (StrContains(line, "//") != -1)
@@ -343,9 +344,9 @@ public void EBotDeathChat(const int client)
 			RandomChat.PushString(line);
 		}
 
-		char ChosenOne[MAX_NAME_LENGTH] = "";
 		if (RandomChat.Length > 0)
 		{
+			char ChosenOne[MAX_NAME_LENGTH];
 			RandomChat.GetString(GetRandomInt(0, RandomChat.Length - 1), ChosenOne, sizeof(ChosenOne));
 			FakeClientCommand(client, "say %s", ChosenOne);
 		}
@@ -789,11 +790,11 @@ public void AddEBotConsole()
 	ArrayList BotNames = new ArrayList(ByteCountToCells(65));
     if (fp != null)
     {
+		char line[MAX_NAME_LENGTH];
         while (!fp.EndOfFile())
 		{
-			char line[MAX_NAME_LENGTH];
 			fp.ReadLine(line, sizeof(line));
-			if (strlen(line) <= 2)
+			if (!line)
 				continue;
 			
 			if (StrContains(line, "//") != -1)
@@ -819,8 +820,20 @@ public void AddEBotConsole()
 	else if (GetRandomInt(1, 10) == 1 && !NameAlreadyTakenByPlayer("Engineer Gaming"))
 		FormatEx(ChosenName, sizeof(ChosenName), "Engineer Gaming");
 	
-	SetConVarInt(FindConVar("sv_cheats"), 1, false, false);
-	ServerCommand("bot -name \"%s\"", ChosenName);
+	Handle cheats = FindConVar("sv_cheats");
+	if (cheats != null)
+	{
+		if (GetConVarInt(cheats) == 1)
+			ServerCommand("bot -name \"%s\"", ChosenName);
+		else
+		{
+			SetConVarInt(cheats, 1, false, false);
+			ServerCommand("bot -name \"%s\"", ChosenName);
+			SetConVarInt(cheats, 0, false, false);
+		}
+	}
+	else
+		ServerCommand("bot -name \"%s\"", ChosenName);
 }
 
 public Action KickEBot(int client, int args)
@@ -867,17 +880,20 @@ public void OnGameFrame()
 		if (BotCheckTimer < GetGameTime())
 		{
 			int total = GetTotalPlayersCount();
-			int red = GetPlayersCountRed();
-			int blu = GetPlayersCountBlu();
-
 			if (total < wanted)
 				AddEBotConsole();
 			else if (total > wanted)
 				KickEBotConsole();
-			else if ((red + 1) < blu)
-				KickEBotConsole();
-			else if ((blu + 1) < red)
-				KickEBotConsole();
+			else
+			{
+				int red = GetPlayersCountRed();
+				int blu = GetPlayersCountBlu();
+
+				if ((red + 1) < blu)
+					KickEBotConsole();
+				else if ((blu + 1) < red)
+					KickEBotConsole();
+			}
 			
 			BotCheckTimer = GetGameTime() + 1.0;
 		}
