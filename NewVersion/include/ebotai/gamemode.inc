@@ -24,30 +24,36 @@ stock void AutoLoadGamemode()
 	isDM = false;
 	isVSH = false;
 
-	if (StrContains(currentMap, "arena_" , false) != -1)
-	{
-		isArena = true;
-		isKOTH = true;
-	}
-	else if (StrContains(currentMap, "koth_" , false) != -1)
-		isKOTH = true;
-	else if (StrContains(currentMap, "pl_" , false) != -1)
-		isPL = true;
-	else if (StrContains(currentMap, "plr_" , false) != -1)
-		isPLR = true;
-	else if (StrContains(currentMap, "ctf_" , false) != -1)
-		isCTF = true;
-	else if (StrContains(currentMap, "mvm_" , false) != -1)
+	if (GetConVarInt(FindConVar("tf_gamemode_mvm")) == 1)
 		isMVM = true;
-	else if (StrContains(currentMap, "cp_" , false) != -1 || StrContains(currentMap, "tc_" , false) != -1)
+	else if (GetConVarInt(FindConVar("tf_gamemode_arena")) == 1)
 	{
-		if (GetBluControlPointCount() > 0)
+		if (StrContains(currentMap, "vsh_" , false) != -1)
+			isVSH = true;
+		else
+		{
+			isArena = true;
+			isKOTH = true;
+		}
+	}
+	else if (GetConVarInt(FindConVar("tf_gamemode_ctf")) == 1)
+		isCTF = true;
+	else if (GetConVarInt(FindConVar("tf_gamemode_payload")) == 1)
+	{
+		if (StrContains(currentMap, "plr_" , false) != -1)
+			isPLR = true;
+		else
+			isPL = true;
+	}
+	else if (GetConVarInt(FindConVar("tf_gamemode_cp")) == 1 || GetConVarInt(FindConVar("tf_gamemode_tc")) == 1)
+	{
+		if (StrContains(currentMap, "koth_" , false) != -1)
+			isKOTH = true;
+		else if (GetBluControlPointCount() > 0)
 			isCP = true;
 		else
 			isAD = true;
 	}
-	else if (StrContains(currentMap, "vsh_" , false) != -1)
-		isVSH = true;
 	else
 		isDM = true;
 }

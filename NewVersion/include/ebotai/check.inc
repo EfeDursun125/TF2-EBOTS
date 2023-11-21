@@ -355,12 +355,18 @@ public void CheckHideFromDanger(const int client)
 		return;
 	}
 
-	if (!m_isSlowThink[client])
-		return;
-	
 	if (!m_hasEnemiesNear[client])
 		return;
 	
+	if (!m_isSlowThink[client])
+		return;
+	
+	if (IsOnOffanse(client) && m_friendsNearCount[client] <= m_enemiesNearCount[client])
+	{
+		SetProcess(client, PRO_HIDE, 60.0, "| process started -> hiding from danger", false, false);
+		return;
+	}
+
 	bool musthide = false;
 	if (!GameRules_GetProp("m_bPlayingMedieval") && m_enemiesNearCount[client] > m_friendsNearCount[client] + 2)
 		musthide = true;

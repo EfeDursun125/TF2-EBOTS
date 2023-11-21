@@ -162,6 +162,7 @@ Handle EBotForceHuntEnemy;
 Handle EBotAFKPlayers;
 Handle EBotAFKCommand;
 Handle EBotAFKTime;
+Handle EBotReplyToChat;
 
 Handle g_hCustomTaunt;
 
