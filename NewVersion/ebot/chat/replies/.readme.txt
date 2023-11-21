@@ -1,0 +1,1 @@
+if chat message contains any of these words dead bots will reply to it
