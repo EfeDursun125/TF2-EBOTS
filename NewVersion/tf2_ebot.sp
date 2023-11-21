@@ -155,6 +155,15 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
+	spyTarget = FindConVar("tf_bot_spy_change_target_range_threshold");
+	spyKnife = FindConVar("tf_bot_spy_knife_range");
+
+	if (spyTarget == null)
+		spyTarget = CreateConVar("tf_bot_spy_change_target_range_threshold", "300", "", FCVAR_CHEAT);
+
+	if (spyKnife == null)
+		spyKnife = CreateConVar("tf_bot_spy_knife_range", "300", "If threat is closer than this, prefer our knife", FCVAR_CHEAT);
+	
 	m_isAlive[0] = false;
 	m_team[0] = -3;
 
@@ -820,16 +829,19 @@ public void AddEBotConsole()
 	else if (GetRandomInt(1, 10) == 1 && !NameAlreadyTakenByPlayer("Engineer Gaming"))
 		FormatEx(ChosenName, sizeof(ChosenName), "Engineer Gaming");
 	
-	Handle cheats = FindConVar("sv_cheats");
+	ConVar cheats = FindConVar("sv_cheats");
 	if (cheats != null)
 	{
-		if (GetConVarInt(cheats) == 1)
+		if (cheats.BoolValue)
 			ServerCommand("bot -name \"%s\"", ChosenName);
 		else
 		{
-			SetConVarInt(cheats, 1, false, false);
+			int flags = cheats.Flags;
+			flags &= ~FCVAR_NOTIFY;
+			cheats.Flags = flags;
+			cheats.SetBool(true, false, false);
 			ServerCommand("bot -name \"%s\"", ChosenName);
-			SetConVarInt(cheats, 0, false, false);
+			CreateTimer(GetGameFrameTime() * 2.0, SetCheats);
 		}
 	}
 	else
@@ -1939,4 +1951,17 @@ void Frame_RestartTime()
 	gI_RestartTimerIteration = 10;
 	delete gH_RestartTimer;
 	Timer_RestartTime(null);
+}
+
+public Action SetCheats(Handle timer)
+{
+	ConVar cheats = FindConVar("sv_cheats");
+	if (cheats != null)
+	{
+		cheats.SetBool(false, false, false);
+		int flags = cheats.Flags;
+		flags |= FCVAR_NOTIFY;
+		cheats.Flags = flags;
+	}
+	return Plugin_Handled;
 }
