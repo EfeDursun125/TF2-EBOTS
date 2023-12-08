@@ -134,7 +134,7 @@ public void DefaultUpdate(const int client)
 
 		if (m_pauseTime[client] < GetGameTime())
 		{
-			if (GetRandomInt(1, 2) == 1 && (!IsSniper(client) || IsVisible(GetEyePosition(client), m_paths[m_goalIndex[client]].campStart)))
+			if (crandomint(1, 2) == 1 && (!IsSniper(client) || IsVisible(GetEyePosition(client), m_paths[m_goalIndex[client]].campStart)))
 				m_lookAt[client] = m_paths[m_goalIndex[client]].campStart;
 			else if (!IsSniper(client) || IsVisible(GetEyePosition(client), m_paths[m_goalIndex[client]].campStart))
 				m_lookAt[client] = m_paths[m_goalIndex[client]].campEnd;
@@ -203,11 +203,11 @@ public void SelectObjective(const int client)
 		}
 
 		if (BestSniperPoints.Length > 0)
-			index = BestSniperPoints.Get(GetRandomInt(0, BestSniperPoints.Length - 1));
+			index = BestSniperPoints.Get(crandomint(0, BestSniperPoints.Length - 1));
 		else if (GoodSniperPoints.Length > 0)
-			index = GoodSniperPoints.Get(GetRandomInt(0, GoodSniperPoints.Length - 1));
+			index = GoodSniperPoints.Get(crandomint(0, GoodSniperPoints.Length - 1));
 		else if (AllSniperPoints.Length > 0)
-			index = AllSniperPoints.Get(GetRandomInt(0, AllSniperPoints.Length - 1));
+			index = AllSniperPoints.Get(crandomint(0, AllSniperPoints.Length - 1));
 		
 		delete BestSniperPoints;
 		delete GoodSniperPoints;
@@ -265,11 +265,11 @@ public void SelectObjective(const int client)
 		}
 
 		if (BestDemoSpots.Length > 0)
-			index = BestDemoSpots.Get(GetRandomInt(0, BestDemoSpots.Length - 1));
+			index = BestDemoSpots.Get(crandomint(0, BestDemoSpots.Length - 1));
 		else if (GoodDemoSpots.Length > 0)
-			index = GoodDemoSpots.Get(GetRandomInt(0, GoodDemoSpots.Length - 1));
+			index = GoodDemoSpots.Get(crandomint(0, GoodDemoSpots.Length - 1));
 		else if (AllDemoSpots.Length > 0)
-			index = AllDemoSpots.Get(GetRandomInt(0, AllDemoSpots.Length - 1));
+			index = AllDemoSpots.Get(crandomint(0, AllDemoSpots.Length - 1));
 
 		delete BestDemoSpots;
 		delete GoodDemoSpots;
@@ -301,7 +301,7 @@ public void SelectObjective(const int client)
 		}
 		else if (m_hasWaypoints || m_hasNavpoints)
 		{
-			m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
+			m_goalIndex[client] = crandomint(1, m_waypointNumber - 1);
 			if (m_paths[m_goalIndex[client]].radius > 0.0)
 			{
 				m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
@@ -367,11 +367,11 @@ public void SelectObjective(const int client)
 			}
 
 			if (BestDefendPoints.Length > 0)
-				index = BestDefendPoints.Get(GetRandomInt(0, BestDefendPoints.Length - 1));
+				index = BestDefendPoints.Get(crandomint(0, BestDefendPoints.Length - 1));
 			else if (GoodDefendPoints.Length > 0)
-				index = GoodDefendPoints.Get(GetRandomInt(0, GoodDefendPoints.Length - 1));
+				index = GoodDefendPoints.Get(crandomint(0, GoodDefendPoints.Length - 1));
 			else if (AllDefendPoints.Length > 0)
-				index = AllDefendPoints.Get(GetRandomInt(0, AllDefendPoints.Length - 1));
+				index = AllDefendPoints.Get(crandomint(0, AllDefendPoints.Length - 1));
 			
 			delete BestDefendPoints;
 			delete GoodDefendPoints;
@@ -399,7 +399,7 @@ public void SelectObjective(const int client)
 					SetGoalIndex(client, FindNearestWaypoint(m_goalPosition[client], 999999.0, client));
 				}
 				else
-					SetGoalIndex(client, GetRandomInt(1, m_waypointNumber - 1));
+					SetGoalIndex(client, crandomint(1, m_waypointNumber - 1));
 			}
 		}
 		else if (IsValidEntity(m_capturePoint))
@@ -457,11 +457,11 @@ public void SelectObjective(const int client)
 				}
 
 				if (BestDefendPoints.Length > 0)
-					index = BestDefendPoints.Get(GetRandomInt(0, BestDefendPoints.Length - 1));
+					index = BestDefendPoints.Get(crandomint(0, BestDefendPoints.Length - 1));
 				else if (GoodDefendPoints.Length > 0)
-					index = GoodDefendPoints.Get(GetRandomInt(0, GoodDefendPoints.Length - 1));
+					index = GoodDefendPoints.Get(crandomint(0, GoodDefendPoints.Length - 1));
 				else if (AllDefendPoints.Length > 0)
-					index = AllDefendPoints.Get(GetRandomInt(0, AllDefendPoints.Length - 1));
+					index = AllDefendPoints.Get(crandomint(0, AllDefendPoints.Length - 1));
 				
 				delete BestDefendPoints;
 				delete GoodDefendPoints;
@@ -554,7 +554,7 @@ public void SelectObjective(const int client)
 				m_goalEntity[client] = index;
 		}
 
-		m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
+		m_goalIndex[client] = crandomint(1, m_waypointNumber - 1);
 	}
 	else if (isMVM || isAD)
 	{
@@ -604,15 +604,15 @@ public void SelectObjective(const int client)
 			}
 
 			if (BestControlPoints.Length > 0)
-				index = BestControlPoints.Get(GetRandomInt(0, BestControlPoints.Length - 1));
+				index = BestControlPoints.Get(crandomint(0, BestControlPoints.Length - 1));
 			else if (ControlPoints.Length > 0)
-				index = ControlPoints.Get(GetRandomInt(0, ControlPoints.Length - 1));
+				index = ControlPoints.Get(crandomint(0, ControlPoints.Length - 1));
 			else if (BestDefendPoints.Length > 0)
-				index = BestDefendPoints.Get(GetRandomInt(0, BestDefendPoints.Length - 1));
+				index = BestDefendPoints.Get(crandomint(0, BestDefendPoints.Length - 1));
 			else if (GoodDefendPoints.Length > 0)
-				index = GoodDefendPoints.Get(GetRandomInt(0, GoodDefendPoints.Length - 1));
+				index = GoodDefendPoints.Get(crandomint(0, GoodDefendPoints.Length - 1));
 			else if (AllDefendPoints.Length > 0)
-				index = AllDefendPoints.Get(GetRandomInt(0, AllDefendPoints.Length - 1));
+				index = AllDefendPoints.Get(crandomint(0, AllDefendPoints.Length - 1));
 			
 			delete BestControlPoints;
 			delete ControlPoints;
@@ -634,7 +634,7 @@ public void SelectObjective(const int client)
 			}
 			else
 			{
-				m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
+				m_goalIndex[client] = crandomint(1, m_waypointNumber - 1);
 				if (m_paths[m_goalIndex[client]].radius > 0.0)
 				{
 					m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
@@ -676,7 +676,7 @@ public void SelectObjective(const int client)
 	}
 	else if (m_hasWaypoints || m_hasNavpoints)
 	{
-		m_goalIndex[client] = GetRandomInt(1, m_waypointNumber - 1);
+		m_goalIndex[client] = crandomint(1, m_waypointNumber - 1);
 		if (m_paths[m_goalIndex[client]].radius > 0.0)
 		{
 			m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);

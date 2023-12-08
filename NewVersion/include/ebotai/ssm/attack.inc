@@ -102,7 +102,7 @@ stock void AttackUpdate(const int client)
 		{
 			RandomMovement(client);
 
-			if (m_class[client] == TFClass_Scout && m_primaryID[client] != 772 && GetRandomInt(1, 2) == 1)
+			if (m_class[client] == TFClass_Scout && m_primaryID[client] != 772 && crandomint(1, 2) == 1)
 			{
 				m_buttons[client] |= IN_DUCK;
 				m_buttons[client] |= IN_JUMP;
@@ -156,8 +156,8 @@ stock void RandomMovement(const int client)
 		}
 
 		val = GetMaxSpeed(client);
-		m_moveVel[client][0] = GetRandomInt(1, 2) == 1 ? -val : val;
-		m_moveVel[client][1] = GetRandomInt(1, 2) == 1 ? -val : val;
+		m_moveVel[client][0] = crandomint(1, 2) == 1 ? -val : val;
+		m_moveVel[client][1] = crandomint(1, 2) == 1 ? -val : val;
 		m_wasdTimer[client] = GetGameTime() + GetRandomFloat(0.128, 0.512);
 	}
 }
@@ -165,7 +165,7 @@ stock void RandomMovement(const int client)
 stock void AttackEnd(const int client)
 {
 	if (ChanceOf(GetConVarInt(m_eBotDodgeRangeChance)))
-		m_eBotDodgeRange[client] = GetRandomInt(GetConVarInt(m_eBotDodgeRangeMin), GetConVarInt(m_eBotDodgeRangeMax));
+		m_eBotDodgeRange[client] = crandomint(GetConVarInt(m_eBotDodgeRangeMin), GetConVarInt(m_eBotDodgeRangeMax));
 	
 	DeletePathNodes(client);
 }

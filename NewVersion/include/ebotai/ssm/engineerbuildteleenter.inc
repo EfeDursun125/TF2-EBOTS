@@ -48,7 +48,7 @@ public void BuildTeleEnterUpdate(const int client)
 		{
 			if (m_goalIndex[client] != -1)
 			{
-				if (GetRandomInt(1, 2) == 1)
+				if (crandomint(1, 2) == 1)
 					m_lookAt[client] = m_paths[m_goalIndex[client]].campStart;
 				else
 					m_lookAt[client] = m_paths[m_goalIndex[client]].campEnd;
@@ -65,7 +65,7 @@ public void BuildTeleEnterUpdate(const int client)
 			if (!IsValidEntity(GetEntPropEnt(GetActiveWeapon(client), Prop_Send, "m_hObjectBeingBuilt")))
 				return;
 			
-			if (m_isSlowThink[client] && GetRandomInt(1, 10) == 1)
+			if (m_isSlowThink[client] && crandomint(1, 10) == 1)
 				PickTeleEnterSpot(client, teleenterbuildarea[client]);
 			
 			return;
@@ -130,11 +130,11 @@ stock void PickTeleEnterSpot(const int client, float area[3] = NULL_VECTOR)
 		}
 
 		if (BestTeleEnterSpots.Length > 0)
-			i = BestTeleEnterSpots.Get(GetRandomInt(0, BestTeleEnterSpots.Length - 1));
+			i = BestTeleEnterSpots.Get(crandomint(0, BestTeleEnterSpots.Length - 1));
 		else if (GoodTeleEnterSpots.Length > 0)
-			i = GoodTeleEnterSpots.Get(GetRandomInt(0, GoodTeleEnterSpots.Length - 1));
+			i = GoodTeleEnterSpots.Get(crandomint(0, GoodTeleEnterSpots.Length - 1));
 		else if (AllTeleEnterSpots.Length > 0)
-			i = AllTeleEnterSpots.Get(GetRandomInt(0, AllTeleEnterSpots.Length - 1));
+			i = AllTeleEnterSpots.Get(crandomint(0, AllTeleEnterSpots.Length - 1));
 		else
 			i = -1;
 

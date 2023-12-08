@@ -97,14 +97,14 @@ public void SpySapUpdate(const int client)
 			{
 				m_lookAt[client] = GetCenter(m_goalEntity[client]);
 
-				if (GetRandomInt(1, 2) == 1)
+				if (crandomint(1, 2) == 1)
 					FakeClientCommandThrottled(client, "build 3 0");
 				else
 					m_buttons[client] |= IN_ATTACK;
 			}
 			else
 			{
-				if (GetRandomInt(1, 2) == 1)
+				if (crandomint(1, 2) == 1)
 					FakeClientCommandThrottled(client, "build 3 0");
 				else
 					EquipWeaponSlot(client, 1);
@@ -125,7 +125,7 @@ public void SpySapEnd(const int client)
 {
 	if (IsWeaponSlotActive(client, 1))
 	{
-		int weapon = GetRandomInt(0, 1);
+		int weapon = crandomint(0, 1);
 		if (weapon == 1)
 			EquipWeaponSlot(client, 0);
 		else

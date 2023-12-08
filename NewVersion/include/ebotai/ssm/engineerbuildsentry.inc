@@ -55,7 +55,7 @@ public void BuildSentryUpdate(const int client)
 				return;
 		
 			bool placementOK = !!GetEntData(objBeingBuilt, FindSendPropInfo("CObjectSentrygun", "m_iKills") - 4);
-			if (!placementOK && m_isSlowThink[client] && GetRandomInt(1, 5) == 1)
+			if (!placementOK && m_isSlowThink[client] && crandomint(1, 5) == 1)
 			{
 				PickSentrySpot(client, sentrybuildarea[client]);
 				EquipWeaponSlot(client, 0);
@@ -126,11 +126,11 @@ public void PickSentrySpot(const int client, float area[3])
 		}
 
 		if (BestSentrySpots.Length > 0)
-			i = BestSentrySpots.Get(GetRandomInt(0, BestSentrySpots.Length - 1));
+			i = BestSentrySpots.Get(crandomint(0, BestSentrySpots.Length - 1));
 		else if (GoodSentrySpots.Length > 0)
-			i = GoodSentrySpots.Get(GetRandomInt(0, GoodSentrySpots.Length - 1));
+			i = GoodSentrySpots.Get(crandomint(0, GoodSentrySpots.Length - 1));
 		else if (AllSentrySpots.Length > 0)
-			i = AllSentrySpots.Get(GetRandomInt(0, AllSentrySpots.Length - 1));
+			i = AllSentrySpots.Get(crandomint(0, AllSentrySpots.Length - 1));
 		else
 			i = -1;
 		
@@ -200,7 +200,7 @@ public void PickSentrySpot(const int client, float area[3])
 		}
 	}
 
-	i = GetRandomInt(1, MaxClients + 1);
+	i = crandomint(1, MaxClients + 1);
 	if (IsValidClient(i) && GetClientTeam(i) != GetClientTeam(i))
 		area = GetOrigin(i);
 }

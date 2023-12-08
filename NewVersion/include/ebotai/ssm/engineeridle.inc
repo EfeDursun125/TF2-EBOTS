@@ -87,7 +87,7 @@ public void EngineerIdleUpdate(const int client)
 	
 	if (!IsValidEntity(SentryGun[client]))
 	{
-		if (WantsBuildTeleporterEnter[client] && GetRandomInt(1, 3) == 1)
+		if (WantsBuildTeleporterEnter[client] && crandomint(1, 3) == 1)
 			SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter", false, false);
 
 		if (WantsBuildTeleporterExit[client] && IsValidEntity(TeleporterEnter[client]))
