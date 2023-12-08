@@ -1440,7 +1440,7 @@ stock bool AStarFindPath(int srcIndex, int destIndex, const int client, float ta
     // just roam around :(
     if (PossiblePath.Length > 0)
     {
-        i = PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1));
+        i = PossiblePath.Get(crandomint(0, PossiblePath.Length - 1));
         delete PossiblePath;
         return AStarFindShortestPath(srcIndex, i, client, NULL_VECTOR);
     }
@@ -1584,7 +1584,7 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, const int client, 
     // just roam around :(
     if (PossiblePath.Length > 0)
     {
-        i = PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1));
+        i = PossiblePath.Get(crandomint(0, PossiblePath.Length - 1));
         delete PossiblePath;
         return AStarFindShortestPath(srcIndex, i, client, NULL_VECTOR);
     }
@@ -1754,7 +1754,7 @@ stock bool AStarFindHidingSpot(int srcIndex, const int client, float dangerOrigi
     // just roam around :(
     if (PossiblePath.Length > 0)
     {
-        i = PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1));
+        i = PossiblePath.Get(crandomint(0, PossiblePath.Length - 1));
         delete PossiblePath;
         return AStarFindShortestPath(srcIndex, i, client, NULL_VECTOR);
     }
@@ -1870,7 +1870,7 @@ stock bool AStarVSH(int srcIndex, const int client)
     // just roam around :(
     if (PossiblePath.Length > 0)
     {
-        int i = PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1));
+        int i = PossiblePath.Get(crandomint(0, PossiblePath.Length - 1));
         delete PossiblePath;
         return AStarFindShortestPath(srcIndex, i, client, NULL_VECTOR);
     }
@@ -1988,7 +1988,7 @@ stock bool AStarFindHealthPack(int srcIndex, const int client)
     // just roam around :(
     if (PossiblePath.Length > 0)
     {
-        i = PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1));
+        i = PossiblePath.Get(crandomint(0, PossiblePath.Length - 1));
         delete PossiblePath;
         return AStarFindShortestPath(srcIndex, i, client, NULL_VECTOR);
     }
@@ -2154,7 +2154,7 @@ stock bool AStarFindAmmoPack(int srcIndex, const int client)
     // just roam around :(
     if (PossiblePath.Length > 0)
     {
-        i = PossiblePath.Get(GetRandomInt(0, PossiblePath.Length - 1));
+        i = PossiblePath.Get(crandomint(0, PossiblePath.Length - 1));
         delete PossiblePath;
         return AStarFindShortestPath(srcIndex, i, client, NULL_VECTOR);
     }

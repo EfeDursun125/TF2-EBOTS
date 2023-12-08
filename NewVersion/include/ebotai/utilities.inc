@@ -171,6 +171,18 @@ bool m_isAFK[TFMaxPlayers];
 Handle gH_RestartTimer = null;
 int gI_RestartTimerIteration = 0;
 
+int g_seed;
+stock int frand()
+{
+	g_seed = (214013 * g_seed + 2531011);
+	return (g_seed >> 16) & 32767;
+}
+
+stock int crandomint(const int min, const int max)
+{
+	return frand() % (max - min + 1) + min;
+}
+
 stock void GetRandomPoint(CNavArea area, float buffer[3])
 {
 	static float extentLow[3];
@@ -415,7 +427,7 @@ stock float[] GetEyePosition(const int client)
 
 stock bool ChanceOf(const int number)
 {
-	return GetRandomInt(1, 100) <= number;
+	return crandomint(1, 100) <= number;
 }
 
 stock float[] GetOrigin(const int entity)
@@ -1634,7 +1646,7 @@ stock int GetRandomSniperSpot(const int team)
 	}
 
 	if (SniperHints.Length > 0)
-		iSelectedHint = SniperHints.Get(GetRandomInt(0, SniperHints.Length - 1));
+		iSelectedHint = SniperHints.Get(crandomint(0, SniperHints.Length - 1));
 
 	delete SniperHints;
 	return iSelectedHint;
@@ -1684,7 +1696,7 @@ stock void DisguiseAsEnemy(const int client)
 		class.Push(9);
 	}
 	
-	TF2_DisguisePlayer(client, (m_team[client] == 2 ? TFTeam_Blue : TFTeam_Red), view_as<TFClassType>(class.Get(GetRandomInt(0, class.Length - 1))));
+	TF2_DisguisePlayer(client, (m_team[client] == 2 ? TFTeam_Blue : TFTeam_Red), view_as<TFClassType>(class.Get(crandomint(0, class.Length - 1))));
 	delete class;
 }
 

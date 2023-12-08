@@ -95,13 +95,13 @@ public void CheckSlowThink(const int client)
 			if (GetConVarInt(EBotSenseMin) > GetConVarInt(EBotSenseMax))
 				SetConVarInt(EBotSenseMin, GetConVarInt(EBotSenseMax));
 
-			m_eBotSenseChance[client] = GetRandomInt(GetConVarInt(EBotSenseMin), GetConVarInt(EBotSenseMax));
+			m_eBotSenseChance[client] = crandomint(GetConVarInt(EBotSenseMin), GetConVarInt(EBotSenseMax));
 		}
 
 		if (m_difficulty[client] < 0 || m_difficulty[client] > 4)
 		{
 			if (GetConVarInt(EBotDifficulty) < 0 || GetConVarInt(EBotDifficulty) > 4)
-				m_difficulty[client] = GetRandomInt(0, 4);
+				m_difficulty[client] = crandomint(0, 4);
 			else
 				m_difficulty[client] = GetConVarInt(EBotDifficulty);
 		}
@@ -110,7 +110,7 @@ public void CheckSlowThink(const int client)
 		{
 			if (GetConVarInt(m_eBotDodgeRangeMin) > GetConVarInt(m_eBotDodgeRangeMax))
 				SetConVarInt(m_eBotDodgeRangeMin, GetConVarInt(m_eBotDodgeRangeMax));
-			m_eBotDodgeRange[client] = GetRandomInt(GetConVarInt(m_eBotDodgeRangeMin), GetConVarInt(m_eBotDodgeRangeMax));
+			m_eBotDodgeRange[client] = crandomint(GetConVarInt(m_eBotDodgeRangeMin), GetConVarInt(m_eBotDodgeRangeMax));
 		}
 
 		if (IsSniper(client) && !m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])

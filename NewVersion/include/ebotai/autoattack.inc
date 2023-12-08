@@ -24,7 +24,7 @@ stock void AutoAttack(const int client)
 	{
 		if (IsWeaponSlotActive(client, 0))
 		{
-			if (m_isSlowThink[client] && TF2_IsPlayerInCondition(client, TFCond_Zoomed) && GetRandomInt(-1, m_difficulty[client]) >= 0)
+			if (m_isSlowThink[client] && TF2_IsPlayerInCondition(client, TFCond_Zoomed) && crandomint(-1, m_difficulty[client]) >= 0)
 				m_buttons[client] |= IN_ATTACK;
 
 			if (m_difficulty[client] > 0 && m_lowHealth[client])
@@ -99,7 +99,7 @@ stock void AutoAttack(const int client)
 		}
 		else if (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 441)
 		{
-			if (GetEntProp(GetPlayerWeaponSlot(client, 0), Prop_Send, "m_iClip1") > 3 && GetRandomInt(1, 2) == 1)
+			if (GetEntProp(GetPlayerWeaponSlot(client, 0), Prop_Send, "m_iClip1") > 3 && crandomint(1, 2) == 1)
 				m_buttons[client] |= IN_ATTACK2;
 			else
 				m_attackTimer[client] = GetGameTime() + 0.4;

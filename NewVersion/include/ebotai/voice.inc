@@ -1,7 +1,7 @@
 float m_voiceTimer[TFMaxPlayers];
 char m_lastVoice[TFMaxPlayers][32];
 
-stock void CallVoiceCommand(int client, const char[] voicecommand)
+stock void CallVoiceCommand(const int client, const char[] voicecommand)
 {
 	if (StrEqual(m_lastVoice[client], voicecommand))
 		return;
@@ -10,7 +10,7 @@ stock void CallVoiceCommand(int client, const char[] voicecommand)
 	FormatEx(m_lastVoice[client], 32, voicecommand);
 }
 
-stock void UseVoiceCommand(int client)
+stock void UseVoiceCommand(const int client)
 {
 	if (m_voiceTimer[client] < GetGameTime())
 	{
