@@ -6,6 +6,7 @@ const int TFMaxPlayers = 101;
 #include <tf2>
 #include <tf2_stocks>
 #include <tf2items>
+#include <profiler>
 
 #include <cbasenpc>
 CNavMesh NavMesh;
@@ -90,6 +91,8 @@ public void OnPluginStart()
 	RegConsoleCmd("ebot_waypoint_set_aim_end", SetAim2);
 	RegConsoleCmd("ebot_addbot", AddEBot);
 	RegConsoleCmd("ebot_kickbot", KickEBot);
+	RegConsoleCmd("ebot_bench_randgen", BenchRGI);
+	RegConsoleCmd("ebot_test_randgen", TestRGI);
 	RegConsoleCmd("sm_afk", Command_Afk);
 	CreateDirectory("addons/sourcemod/ebot", 3);
 	HookEvent("player_sapped_object", BotSap, EventHookMode_Post);
@@ -156,6 +159,7 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
+	g_seed += GetURandomInt();
 	spyTarget = FindConVar("tf_bot_spy_change_target_range_threshold");
 	spyKnife = FindConVar("tf_bot_spy_knife_range");
 
@@ -232,7 +236,7 @@ public void OnMapStart()
 	InitializeWaypoints();
 }
 
-public Action Command_Afk(int client, int args)
+public Action Command_Afk(const int client, int args)
 {
 	if (args != 0 && args != 2)
 	{
@@ -357,7 +361,7 @@ public void EBotDeathChat(const int client)
 		if (RandomChat.Length > 0)
 		{
 			char ChosenOne[MAX_NAME_LENGTH];
-			RandomChat.GetString(GetRandomInt(0, RandomChat.Length - 1), ChosenOne, sizeof(ChosenOne));
+			RandomChat.GetString(crandomint(0, RandomChat.Length - 1), ChosenOne, sizeof(ChosenOne));
 			DataPack pack;
 			CreateDataTimer(GetRandomFloat(2.0, 7.0), ReplyToChat, pack);
 			pack.WriteCell(client);
@@ -442,7 +446,7 @@ public void OnClientPutInServer(int client)
 	m_ignoreEnemies[client] = 0.0;
 	
 	if (GetConVarInt(EBotDifficulty) < 0 || GetConVarInt(EBotDifficulty) > 4)
-		m_difficulty[client] = GetRandomInt(0, 4);
+		m_difficulty[client] = crandomint(0, 4);
 	else
 		m_difficulty[client] = GetConVarInt(EBotDifficulty);
 	
@@ -451,21 +455,21 @@ public void OnClientPutInServer(int client)
 		FindHostEntity();
 }
 
-public Action WaypointOn(int client, int args)
+public Action WaypointOn(const int client, int args)
 {
 	showWaypoints = true;
 	PrintHintTextToAll("Waypoints are now enabled");
 	return Plugin_Handled;
 }
 
-public Action WaypointOff(int client, int args)
+public Action WaypointOff(const int client, int args)
 {
 	showWaypoints = false;
 	PrintHintTextToAll("Waypoints are now disabled");
 	return Plugin_Handled;
 }
 
-public Action WaypointCreate(int client, int args)
+public Action WaypointCreate(const int client, int args)
 {
 	if (showWaypoints)
 		WaypointAdd(GetOrigin(m_hostEntity));
@@ -478,11 +482,11 @@ public Action WaypointCreate(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action WaypointDelete(int client, int args)
+public Action WaypointDelete(const int client, int args)
 {
 	if (showWaypoints)
 	{
-		if (nearestIndex != -1 && GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squared(64))
+		if (nearestIndex != -1 && GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squared(64))
 			DeleteWaypointIndex(nearestIndex);
 		else
 			PrintHintTextToAll("Move closer to waypoint");
@@ -496,24 +500,24 @@ public Action WaypointDelete(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action SaveWaypoint(int client, int args)
+public Action SaveWaypoint(const int client, int args)
 {
 	WaypointSave();
 	return Plugin_Handled;
 }
 
-public Action SaveWaypointNAV(int client, int args)
+public Action SaveWaypointNAV(const int client, int args)
 {
 	WaypointSave(true);
 	return Plugin_Handled;
 }
 
-public Action SetRadius(int client, int args)
+public Action SetRadius(const int client, int args)
 {
-	char radius[32];
-    GetCmdArgString(radius, sizeof(radius));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
+		char radius[32];
+		GetCmdArgString(radius, sizeof(radius));
 		m_paths[nearestIndex].radius = float(StringToInt(radius));
 		if (m_paths[nearestIndex].radius < 0.0)
 			m_paths[nearestIndex].radius = 0.0;
@@ -525,9 +529,9 @@ public Action SetRadius(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action AddRadius(int client, int args)
+public Action AddRadius(const int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
 		m_paths[nearestIndex].radius += 16.0;
 		if (m_paths[nearestIndex].radius > 128.0)
@@ -541,12 +545,14 @@ public Action AddRadius(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action SetFlag(int client, int args)
+public Action SetFlag(const int client, int args)
 {
-	char flag[32];
-    GetCmdArgString(flag, sizeof(flag));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
+		char flag[32];
+		GetCmdArgString(flag, sizeof(flag));
+
 		int flagone = StringToInt(flag);
 		if (flagone <= 0)
 		{
@@ -573,12 +579,13 @@ public Action SetFlag(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action AddFlag(int client, int args)
+public Action AddFlag(const int client, int args)
 {
-	char flag[32];
-    GetCmdArgString(flag, sizeof(flag));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
+		char flag[32];
+		GetCmdArgString(flag, sizeof(flag));
+
 		int value = StringToInt(flag);
 		if (value <= 0)
 		{
@@ -608,18 +615,20 @@ public Action AddFlag(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action RemoveFlag(int client, int args)
+public Action RemoveFlag(const int client, int args)
 {
-	char flag[32];
-    GetCmdArgString(flag, sizeof(flag));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
+		char flag[32];
+		GetCmdArgString(flag, sizeof(flag));
+
 		int value = StringToInt(flag);
 		if (value <= 0)
 		{
 			PrintHintTextToAll("You cannot remove this number");
 			return Plugin_Handled;
 		}
+
 		int intflag = (1 << value);
 		m_paths[nearestIndex].flags &= ~intflag;
 		PrintHintTextToAll("Waypoint Flag Removed: %s", GetWaypointName(intflag));
@@ -630,12 +639,12 @@ public Action RemoveFlag(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action SetTeam(int client, int args)
+public Action SetTeam(const int client, int args)
 {
-	char team[32];
-    GetCmdArgString(team, sizeof(team));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
+		char team[32];
+		GetCmdArgString(team, sizeof(team));
 		m_paths[nearestIndex].team = StringToInt(team);
 		PrintHintTextToAll("Waypoint Team Changed: %d", view_as<TFTeam>(StringToInt(team)));
 	}
@@ -645,9 +654,9 @@ public Action SetTeam(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action Select(int client, int args)
+public Action Select(const int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
 		savedIndex = nearestIndex;
 		PrintHintTextToAll("Waypoint selected %d", savedIndex);
@@ -658,11 +667,11 @@ public Action Select(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action PathAdd(int client, int args)
+public Action PathAdd(const int client, int args)
 {
 	if (savedIndex == -1)
 		PrintHintTextToAll("Select a waypoint first");
-	else if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	else if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
 		AddPath(savedIndex, nearestIndex, GetVectorDistance(m_paths[savedIndex].origin, m_paths[nearestIndex].origin));
 		savedIndex = -1;
@@ -673,7 +682,7 @@ public Action PathAdd(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action PathDelete(int client, int args)
+public Action PathDelete(const int client, int args)
 {
 	if (savedIndex == -1)
 		PrintHintTextToAll("Select a waypoint first");
@@ -688,12 +697,13 @@ public Action PathDelete(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action SetArea(int client, int args)
+public Action SetArea(const int client, int args)
 {
-	char area[32];
-    GetCmdArgString(area, sizeof(area));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
+		char area[32];
+		GetCmdArgString(area, sizeof(area));
+
 		int value = StringToInt(area);
 		if (value <= 0)
 		{
@@ -712,12 +722,13 @@ public Action SetArea(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action AddArea(int client, int args)
+public Action AddArea(const int client, int args)
 {
-	char area[32];
-    GetCmdArgString(area, sizeof(area));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
+		char area[32];
+		GetCmdArgString(area, sizeof(area));
+
 		int value = StringToInt(area);
 		if (value <= 0)
 		{
@@ -735,12 +746,13 @@ public Action AddArea(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action RemoveArea(int client, int args)
+public Action RemoveArea(const int client, int args)
 {
-	char area[32];
-    GetCmdArgString(area, sizeof(area));
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
+		char area[32];
+		GetCmdArgString(area, sizeof(area));
+
 		int value = StringToInt(area);
 		if (value <= 0)
 		{
@@ -758,9 +770,9 @@ public Action RemoveArea(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action SetAim1(int client, int args)
+public Action SetAim1(const int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
 		float origin[3];
 		GetAimOrigin(m_hostEntity, origin);
@@ -773,9 +785,9 @@ public Action SetAim1(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action SetAim2(int client, int args)
+public Action SetAim2(const int client, int args)
 {
-	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) <= Squaredf(64.0))
+	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
 		float origin[3];
 		GetAimOrigin(m_hostEntity, origin);
@@ -788,7 +800,7 @@ public Action SetAim2(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action AddEBot(int client, int args)
+public Action AddEBot(const int client, int args)
 {
 	AddEBotConsole();
 	return Plugin_Handled;
@@ -824,13 +836,13 @@ public void AddEBotConsole()
     }
 
 	if (BotNames.Length > 0)
-		BotNames.GetString(GetRandomInt(0, BotNames.Length - 1), ChosenName, sizeof(ChosenName));
+		BotNames.GetString(crandomint(0, BotNames.Length - 1), ChosenName, sizeof(ChosenName));
 	else
-		FormatEx(ChosenName, sizeof(ChosenName), "ebot %d", GetRandomInt(0, 9999));
+		FormatEx(ChosenName, sizeof(ChosenName), "ebot %d", crandomint(0, 9999));
 	
-	if (GetRandomInt(1, 10) == 1 && !NameAlreadyTakenByPlayer("Rick May"))
+	if (crandomint(1, 10) == 1 && !NameAlreadyTakenByPlayer("Rick May"))
 		FormatEx(ChosenName, sizeof(ChosenName), "Rick May");
-	else if (GetRandomInt(1, 10) == 1 && !NameAlreadyTakenByPlayer("Engineer Gaming"))
+	else if (crandomint(1, 10) == 1 && !NameAlreadyTakenByPlayer("Engineer Gaming"))
 		FormatEx(ChosenName, sizeof(ChosenName), "Engineer Gaming");
 	
 	ConVar cheats = FindConVar("sv_cheats");
@@ -852,9 +864,60 @@ public void AddEBotConsole()
 		ServerCommand("bot -name \"%s\"", ChosenName);
 }
 
-public Action KickEBot(int client, int args)
+public Action KickEBot(const int client, int args)
 {
 	KickEBotConsole();
+	return Plugin_Handled;
+}
+
+public Action BenchRGI(const int client, int args)
+{
+	int i;
+	float my;
+	float their;
+	Handle prof;
+
+	prof = CreateProfiler();
+	StartProfiling(prof);
+	for (i = 0; i < 100000000; i++)
+		GetRandomInt(-1000, 1000);
+	StopProfiling(prof);
+	their = GetProfilerTime(prof);
+
+	StartProfiling(prof);
+	for (i = 0; i < 100000000; i++)
+		crandomint(-1000, 1000);
+	StopProfiling(prof);
+	my = GetProfilerTime(prof);
+
+	PrintToServer(" ");
+	PrintToServer(" ");
+	PrintToServer(" ");
+	PrintToServer("Benchmarks:");
+	PrintToServer(" ");
+	PrintToServer(" -> Random Int:");
+	PrintToServer("     E-Bot: %f seconds", my);
+	PrintToServer("     Engine: %f seconds", their);
+	PrintToServer("     Result: E-Bot's is %f times faster!", their / my);
+	PrintToServer(" ");
+	PrintToServer(" ");
+	PrintToServer(" ");
+
+	CloseHandle(prof);
+	return Plugin_Handled;
+}
+
+public Action TestRGI(const int client, int args)
+{
+	int i;
+	Handle prof;
+	prof = CreateProfiler();
+	StartProfiling(prof);
+	for (i = 0; i < 100; i++)
+		PrintToServer("%i", crandomint(-100, 100));
+	StopProfiling(prof);
+	PrintToServer("Range is between -100 to 100, time taken %f seconds.", GetProfilerTime(prof));
+	CloseHandle(prof);
 	return Plugin_Handled;
 }
 
@@ -866,7 +929,7 @@ public void KickEBotConsole()
 	else if (GetTeamClientCount(2) < GetTeamClientCount(3))
 		EBotTeam = 3;
 	else
-		EBotTeam = GetRandomInt(2, 3);
+		EBotTeam = crandomint(2, 3);
 	
 	int i;
 	for (i = 1; i <= MaxClients; i++)
@@ -1157,11 +1220,11 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 					SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
 			}
 			
-			if (CurrentProcess[client] == PRO_BUILDDISPENSER && m_isSlowThink[client] && GetRandomInt(1, 3) == 1)
+			if (CurrentProcess[client] == PRO_BUILDDISPENSER && m_isSlowThink[client] && crandomint(1, 3) == 1)
 			{
 				if (m_hasWaypoints)
 				{
-					m_lookAt[client] = m_paths[GetRandomInt(1, m_waypointNumber)].origin;
+					m_lookAt[client] = m_paths[crandomint(1, m_waypointNumber)].origin;
 					m_lookAt[client][2] = GetHeight(client);
 				}
 				else
@@ -1253,7 +1316,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		if (GetConVarBool(EBotChangeClass))
 		{
 			static int rand;
-			rand = GetRandomInt(1, 100);
+			rand = crandomint(1, 100);
 			if (rand <= GetConVarInt(EBotChangeClassChance) && client != FindLeader(team) && client != FindBestKD(team) && (TF2_GetPlayerClass(client) != TFClass_Engineer || (!IsValidEntity(SentryGun[client]) && !IsValidEntity(TeleporterExit[client]))))
 			{
 				static char nickname[32];
@@ -1262,7 +1325,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 				{
 					if (GameRules_GetProp("m_bPlayingMedieval"))
 					{
-						rand = GetRandomInt(1, 5);
+						rand = crandomint(1, 5);
 						if (rand == 1)
 							TF2_SetPlayerClass(client, TFClass_DemoMan);
 						else if (rand == 2)
@@ -1280,7 +1343,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 							}
 							else
 							{
-								rand = GetRandomInt(1, 2);
+								rand = crandomint(1, 2);
 								if (rand == 1)
 									TF2_SetPlayerClass(client, TFClass_Sniper);
 								else
@@ -1289,19 +1352,19 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 						}
 						else
 						{
-							rand = GetRandomInt(1, 2);
+							rand = crandomint(1, 2);
 							if (rand == 1)
 								TF2_SetPlayerClass(client, TFClass_Medic);
 							else
 							{
-								rand = GetRandomInt(1, 3);
+								rand = crandomint(1, 3);
 								if (rand == 1)
 									TF2_SetPlayerClass(client, TFClass_Heavy);
 								else if (rand == 2)
 									TF2_SetPlayerClass(client, TFClass_Pyro);
 								else
 								{
-									rand = GetRandomInt(1, 2);
+									rand = crandomint(1, 2);
 									if (rand == 1)
 										TF2_SetPlayerClass(client, TFClass_Scout);
 									else
@@ -1312,11 +1375,11 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 					}
 					else
 					{
-						if (!GetConVarBool(EBotChangeClassRandom) && GetRandomInt(1, 2) == 1 && IsValidClient(m_lastKiller[client]))
+						if (!GetConVarBool(EBotChangeClassRandom) && crandomint(1, 2) == 1 && IsValidClient(m_lastKiller[client]))
 						{
 							if (m_class[m_lastKiller[client]] == TFClass_Scout)
 							{
-								rand = GetRandomInt(1, 3);
+								rand = crandomint(1, 3);
 								if (rand == 1)
 									TF2_SetPlayerClass(client, TFClass_Pyro);
 								else if (rand == 2)
@@ -1325,7 +1388,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 										TF2_SetPlayerClass(client, TFClass_Engineer);
 									else
 									{
-										rand = GetRandomInt(1, 3);
+										rand = crandomint(1, 3);
 										if (rand == 1)
 											TF2_SetPlayerClass(client, TFClass_Engineer);
 										else if (rand == 2)
@@ -1339,7 +1402,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 							}
 							else if (m_class[m_lastKiller[client]] == TFClass_Soldier)
 							{
-								rand = GetRandomInt(1, 3);
+								rand = crandomint(1, 3);
 								if (rand == 1)
 									TF2_SetPlayerClass(client, TFClass_Pyro);
 								else if (rand == 2)
@@ -1349,7 +1412,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 							}
 							else if (m_class[m_lastKiller[client]] == TFClass_Pyro)
 							{
-								rand = GetRandomInt(1, 3);
+								rand = crandomint(1, 3);
 								if (rand == 1)
 									TF2_SetPlayerClass(client, TFClass_Sniper);
 								else if (rand == 2)
@@ -1358,7 +1421,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 										TF2_SetPlayerClass(client, TFClass_Engineer);
 									else
 									{
-										rand = GetRandomInt(1, 3);
+										rand = crandomint(1, 3);
 										if (rand == 1)
 											TF2_SetPlayerClass(client, TFClass_Engineer);
 										else if (rand == 2)
@@ -1372,7 +1435,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 							}
 							else if (m_class[m_lastKiller[client]] == TFClass_DemoMan)
 							{
-								rand = GetRandomInt(1, 3);
+								rand = crandomint(1, 3);
 								if (rand == 1)
 									TF2_SetPlayerClass(client, TFClass_Soldier);
 								else if (rand == 2)
@@ -1382,7 +1445,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 							}
 							else if (m_class[m_lastKiller[client]] == TFClass_Heavy)
 							{
-								rand = GetRandomInt(1, 3);
+								rand = crandomint(1, 3);
 								if (rand == 1)
 									TF2_SetPlayerClass(client, TFClass_Spy);
 								else if (rand == 2)
@@ -1392,7 +1455,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 							}
 							else if (m_class[m_lastKiller[client]] == TFClass_Engineer)
 							{
-								rand = GetRandomInt(1, 5);
+								rand = crandomint(1, 5);
 								if (rand == 1)
 									TF2_SetPlayerClass(client, TFClass_Spy);
 								else if (rand == 2)
@@ -1406,7 +1469,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 							}
 							else if (m_class[m_lastKiller[client]] == TFClass_Sniper)
 							{
-								rand = GetRandomInt(1, 3);
+								rand = crandomint(1, 3);
 								if (rand == 1)
 									TF2_SetPlayerClass(client, TFClass_Scout);
 								else if (rand == 2)
@@ -1416,7 +1479,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 							}
 							else if (m_class[m_lastKiller[client]] == TFClass_Medic)
 							{
-								rand = GetRandomInt(1, 3);
+								rand = crandomint(1, 3);
 								if (rand == 1)
 									TF2_SetPlayerClass(client, TFClass_Pyro);
 								else if (rand == 2)
@@ -1426,7 +1489,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 							}
 							else if (m_class[m_lastKiller[client]] == TFClass_Spy)
 							{
-								rand = GetRandomInt(1, 3);
+								rand = crandomint(1, 3);
 								if (rand == 1)
 									TF2_SetPlayerClass(client, TFClass_Pyro);
 								else if (rand == 2)
@@ -1514,7 +1577,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 			}
 
 			if (RouteWaypoints.Length > 0)
-				i = RouteWaypoints.Get(GetRandomInt(0, RouteWaypoints.Length - 1));
+				i = RouteWaypoints.Get(crandomint(0, RouteWaypoints.Length - 1));
 			else
 				i = -1;
 			
@@ -1564,7 +1627,7 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 			if (m_class[client] == TFClass_Spy)
 				TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), m_class[victim], victim);
 		
-			if (GetRandomInt(1, 3) == 1 && !m_lowHealth[client] && !m_hasEntitiesNear[client])
+			if (crandomint(1, 3) == 1 && !m_lowHealth[client] && !m_hasEntitiesNear[client])
 			{
 				FindFriendsAndEnemiens(client);
 				if (!m_hasEnemiesNear[client] && (!m_hasFriendsNear[client] || m_class[client] == TFClass_Sniper))
@@ -1656,7 +1719,7 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 			}
 			else if (m_class[victim] == TFClass_Spy)
 			{
-				if (GetRandomInt(1, GetMaxHealth(victim)) > GetClientHealth(victim))
+				if (crandomint(1, GetMaxHealth(victim)) > GetClientHealth(victim))
 					ActiveCloak(victim);
 			
 				if (ChanceOf(m_eBotSenseChance[attacker]) && IsEBot(attacker))
@@ -1757,7 +1820,7 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 			}
 
 			if (RouteWaypoints.Length > 0)
-				index = RouteWaypoints.Get(GetRandomInt(0, RouteWaypoints.Length - 1));
+				index = RouteWaypoints.Get(crandomint(0, RouteWaypoints.Length - 1));
 			
 			delete RouteWaypoints;
 			if (index != -1)
@@ -2045,7 +2108,7 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 				if (RandomReply.Length > 0)
 				{
 					char ChosenOne[MAX_NAME_LENGTH];
-					RandomReply.GetString(GetRandomInt(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
+					RandomReply.GetString(crandomint(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
 					DataPack pack;
 					CreateDataTimer(GetRandomFloat(2.0, 7.0), ReplyToChat, pack);
 					pack.WriteCell(client);
@@ -2059,7 +2122,7 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 			}
 		}
 
-		if (defaultReply && GetRandomInt(1, 3) == 1)
+		if (defaultReply && crandomint(1, 3) == 1)
 		{
 			BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/chat/replies/ebot_default.txt");
 			File fp = OpenFile(filepath, "r");
@@ -2080,7 +2143,7 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 				if (RandomReply.Length > 0)
 				{
 					char ChosenOne[MAX_NAME_LENGTH];
-					RandomReply.GetString(GetRandomInt(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
+					RandomReply.GetString(crandomint(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
 					DataPack pack;
 					CreateDataTimer(GetRandomFloat(2.0, 7.0), ReplyToChat, pack);
 					pack.WriteCell(client);
