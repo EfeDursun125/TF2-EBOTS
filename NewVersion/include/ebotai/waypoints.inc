@@ -365,8 +365,8 @@ stock float GetDamageTotalBLU(const int waypoint)
 
 stock void IncreaseDamage(const int client, const int waypoint, const float newDamage)
 {
-    static int i;
-    static float half;
+    int i;
+    float half;
     if (m_team[client] == 2)
     {
         damageWPTred[currentActiveAreaInt][client][waypoint] += newDamage;
@@ -1275,7 +1275,7 @@ stock bool AStarFindPath(int srcIndex, int destIndex, const int client, float ta
     if (srcIndex == destIndex)
 		return false;
     
-    static int i;
+    int i;
     for (i = 0; i < m_waypointNumber; i++)
     {
         astar[i].f = 0.0;
@@ -1296,17 +1296,16 @@ stock bool AStarFindPath(int srcIndex, int destIndex, const int client, float ta
     if (m_hidingSpots[client] != null)
         m_hidingSpots[client].Clear();
     
-    static int currentIndex;
-    static int self;
-    static int wearable;
-    static int limit;
-    limit = (m_waypointNumber / 2) + 2;
+    int currentIndex;
+    int self;
+    int wearable;
+    int limit = (m_waypointNumber / 2) + 2;
 
-    static float g;
-    static float f;
-    static float vector[3];
+    float g;
+    float f;
+    float vector[3];
 
-    static PriorityQueue openList;
+    PriorityQueue openList;
     openList.NewQueue();
     openList.InsertLowest(srcIndex, astar[srcIndex].f);
     while (!openList.IsEmpty())
@@ -1470,7 +1469,7 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, const int client, 
     if (srcIndex == destIndex)
 		return false;
     
-    static int i;
+    int i;
     for (i = 0; i < m_waypointNumber; i++)
     {
         astar[i].f = 0.0;
@@ -1482,16 +1481,15 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, const int client, 
     astar[srcIndex].g = CostDistance(srcIndex, destIndex);
     astar[srcIndex].f = astar[srcIndex].g + CostDistance(srcIndex, destIndex);
 
-    static int currentIndex;
-    static int self;
-    static int wearable;
-    static int limit;
-    limit = (m_waypointNumber / 2) + 2;
+    int currentIndex;
+    int self;
+    int wearable;
+    int limit = (m_waypointNumber / 2) + 2;
 
-    static float g;
-    static float f;
-
-    static PriorityQueue openList;
+    float g;
+    float f;
+    
+    PriorityQueue openList;
     openList.NewQueue();
     openList.InsertLowest(srcIndex, astar[srcIndex].f);
     while (!openList.IsEmpty())
@@ -1598,7 +1596,7 @@ stock bool AStarFindHidingSpot(int srcIndex, const int client, float dangerOrigi
 	if (srcIndex < 1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
 		srcIndex = FindWaypoint(GetOrigin(client), client);
     
-    static int i;
+    int i;
     for (i = 0; i < m_waypointNumber; i++)
     {
         astar[i].f = 0.0;
@@ -1607,14 +1605,14 @@ stock bool AStarFindHidingSpot(int srcIndex, const int client, float dangerOrigi
     }
 
     astar[srcIndex].f = GetVectorDistance(m_paths[srcIndex].origin, dangerOrigin, true);
-    static int currentIndex;
-    static int self;
-    static int wearable;
-    static float f;
-    static float height;
+    int currentIndex;
+    int self;
+    int wearable;
+    float f;
+    float height;
     height = GetHeight(client);
 
-    static PriorityQueue openList;
+    PriorityQueue openList;
     openList.NewQueue();
     openList.InsertHighest(srcIndex, astar[srcIndex].f);
     while (!openList.IsEmpty())
@@ -1622,7 +1620,7 @@ stock bool AStarFindHidingSpot(int srcIndex, const int client, float dangerOrigi
         currentIndex = openList.RemoveHighest();
 
         // is the current waypoint the goal waypoint?
-        if (!(m_paths[currentIndex].flags & WAYPOINT_DONTHIDE) && GetDamage(client, currentIndex) < GetMaxDamage(client) && !IsVisibleToWaypoint(dangerOrigin, currentIndex, height) && !IsDangerous(client, m_paths[currentIndex].origin, height))
+        if (!(m_paths[currentIndex].flags & WAYPOINT_DONTHIDE) && !IsVisibleToWaypoint(dangerOrigin, currentIndex, height) && !IsDangerous(client, m_paths[currentIndex].origin, height))
         {
             DeletePathNodes(client);
 
@@ -1671,7 +1669,7 @@ stock bool AStarFindHidingSpot(int srcIndex, const int client, float dangerOrigi
                     // blocked waypoint
                     if (m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
                         continue;
-            
+
                     if (m_paths[self].team == 2 && m_team[client] == 3)
                         continue;
                     else if (m_paths[self].team == 3 && m_team[client] == 2)
@@ -1684,6 +1682,41 @@ stock bool AStarFindHidingSpot(int srcIndex, const int client, float dangerOrigi
                         ReversePath(client);
                         return true;
                     }
+                }
+
+                // AT LEAST TAKE THE MINIMUM DAMAGE
+                int val = -1;
+                float dmg = 0.0;
+                float maxDmg = GetDamage(client, currentIndex);
+                for (i = 0; i < MaxPathIndex; i++)
+                {
+                    self = m_paths[wearable].pathIndex[i];
+                    if (self == -1)
+                        continue;
+                
+                    // blocked waypoint
+                    if (m_paths[self].activeArea != 0 && !(m_paths[self].activeArea & currentActiveArea))
+                        continue;
+                    
+                    if (m_paths[self].team == 2 && m_team[client] == 3)
+                        continue;
+                    else if (m_paths[self].team == 3 && m_team[client] == 2)
+                        continue;
+                    
+                    dmg = GetDamage(client, self);
+                    if (dmg < maxDmg && !IsVisibleToWaypoint(dangerOrigin, wearable, height) && !IsDangerous(client, m_paths[wearable].origin, height))
+                    {
+                        val = self;
+                        maxDmg = dmg;
+                    }
+                }
+
+                if (val > -1)
+                {
+                    AddToPath(val, client);
+                    AddToPath(val, client);
+                    ReversePath(client);
+                    return true;
                 }
             }
 
@@ -1778,12 +1811,11 @@ stock bool AStarVSH(int srcIndex, const int client)
     float dangerOrigin[3];
     dangerOrigin = GetOrigin(client);
 
-    static int limit;
-    limit = (m_waypointNumber / 2) + 2;
+    int limit = (m_waypointNumber / 2) + 2;
 
     astar[srcIndex].f = GetVectorDistance(m_paths[srcIndex].origin, dangerOrigin, true);
 
-    static PriorityQueue openList;
+    PriorityQueue openList;
     openList.NewQueue();
     openList.InsertHighest(srcIndex, astar[srcIndex].f);
     while (!openList.IsEmpty())
@@ -1884,7 +1916,7 @@ stock bool AStarFindHealthPack(int srcIndex, const int client)
 	if (srcIndex < 1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
 		srcIndex = FindWaypoint(GetOrigin(client), client);
     
-    static int i;
+    int i;
     for (i = 0; i < m_waypointNumber; i++)
     {
         astar[i].f = 0.0;
@@ -1892,17 +1924,16 @@ stock bool AStarFindHealthPack(int srcIndex, const int client)
         astar[i].is_closed = false;
     }
 
-    static float dangerOrigin[3];
+    float dangerOrigin[3];
     dangerOrigin = GetOrigin(client);
-
     astar[srcIndex].f = GetVectorDistance(m_paths[srcIndex].origin, dangerOrigin, true);
 
-    static int currentIndex;
-    static int self;
-    static int wearable;
-    static float f;
+    int currentIndex;
+    int self;
+    int wearable;
+    float f;
 
-    static PriorityQueue openList;
+    PriorityQueue openList;
     openList.NewQueue();
     openList.InsertLowest(srcIndex, astar[srcIndex].f);
     while (!openList.IsEmpty())
@@ -1999,13 +2030,10 @@ stock bool AStarFindHealthPack(int srcIndex, const int client)
 
 stock int FindNearestHealthPack(const float origin[3], const float maxRange)
 {
-	static float distance;
-    distance = 999999999999.0;
-    static float edict_distance;
-	static int entity;
-    entity = -1;
-
-    static int x;
+	float distance = 999999999999.0;
+    float edict_distance;
+	int entity = -1;
+    int x;
 	for (x = 0; x < GetMaxEntities(); x++)
 	{
 		if (!IsValidHealthPack(x))
@@ -2036,7 +2064,7 @@ stock bool IsValidHealthPack(const int entity)
 	if (GetEntProp(entity, Prop_Send, "m_fEffects") != 0)
 		return false;
 
-	static char class[64]; 
+	char class[64];
 	GetEntityClassname(entity, class, sizeof(class));
 	
 	if (StrContains(class, "item_health", false) == -1 && StrContains(class, "obj_dispenser", false) == -1)
@@ -2050,7 +2078,7 @@ stock bool AStarFindAmmoPack(int srcIndex, const int client)
 	if (srcIndex < 1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
 		srcIndex = FindWaypoint(GetOrigin(client), client);
     
-    static int i;
+    int i;
     for (i = 0; i < m_waypointNumber; i++)
     {
         astar[i].f = 0.0;
@@ -2058,17 +2086,17 @@ stock bool AStarFindAmmoPack(int srcIndex, const int client)
         astar[i].is_closed = false;
     }
 
-    static float dangerOrigin[3];
+    float dangerOrigin[3];
     dangerOrigin = GetOrigin(client);
 
     astar[srcIndex].f = GetVectorDistance(m_paths[srcIndex].origin, dangerOrigin, true);
 
-    static int currentIndex;
-    static int self;
-    static int wearable;
-    static float f;
+    int currentIndex;
+    int self;
+    int wearable;
+    float f;
 
-    static PriorityQueue openList;
+    PriorityQueue openList;
     openList.NewQueue();
     openList.InsertLowest(srcIndex, astar[srcIndex].f);
     while (!openList.IsEmpty())
@@ -2165,13 +2193,10 @@ stock bool AStarFindAmmoPack(int srcIndex, const int client)
 
 stock int FindNearestAmmoPack(const float origin[3], const float maxRange)
 {
-	static float distance;
-    distance = 999999999999.0;
-    static float edict_distance;
-	static int entity;
-    entity = -1;
-
-    static int x;
+	float distance = 999999999999.0;
+    float edict_distance;
+	int entity = -1;
+    int x;
 	for (x = 0; x < GetMaxEntities(); x++)
 	{
 		if (!IsValidAmmoPack(x))
@@ -2202,7 +2227,7 @@ stock bool IsValidAmmoPack(const int entity)
 	if (GetEntProp(entity, Prop_Send, "m_fEffects") != 0)
 		return false;
 
-	static char class[64]; 
+	char class[64]; 
 	GetEntityClassname(entity, class, sizeof(class));
 	
 	if (StrContains(class, "tf_ammo_pack", false) == -1 && StrContains(class, "item_ammo", false) == -1 && StrContains(class, "tf_ammo_pack", false) == -1)
@@ -2274,11 +2299,11 @@ stock bool IsPathPossibleWaypoint(int srcIndex, int destIndex)
 
 stock bool IsVisibleByEnemy(const int client, const int waypointIndex, const float height)
 {
-    static float origin[3];
+    float origin[3];
     origin = m_paths[waypointIndex].origin;
     origin[2] += height;
 
-    static int i;
+    int i;
     for (i = 1; i <= MaxClients; i++)
     {
         if (!IsValidClient(i))
@@ -2300,11 +2325,11 @@ stock bool IsVisibleByEnemy(const int client, const int waypointIndex, const flo
 
 stock bool IsEnemyInDistance(const int client, const int waypointIndex, const float height, const float distance)
 {
-    static float origin[3];
+    float origin[3];
     origin = m_paths[waypointIndex].origin;
     origin[2] += height;
 
-    static int i;
+    int i;
     for (i = 1; i <= MaxClients; i++)
     {
         if (!IsValidClient(i))
@@ -2327,12 +2352,12 @@ stock bool IsEnemyInDistance(const int client, const int waypointIndex, const fl
 stock void AddToPath(const int currentIndex, const int client)
 {
     m_pathIndex[client].Push(currentIndex);
-    static float radius;
+    float radius;
     radius = m_paths[currentIndex].radius;
 
     if (radius > 0.0)
     {
-        static float origin[3];
+        float origin[3];
         origin[0] = m_paths[currentIndex].origin[0] + GetRandomFloat(-radius, radius);
         origin[1] = m_paths[currentIndex].origin[1] + GetRandomFloat(-radius, radius);
         origin[2] = m_paths[currentIndex].origin[2];
@@ -2344,10 +2369,10 @@ stock void AddToPath(const int currentIndex, const int client)
 
 stock void ReversePath(const int client)
 {
-    static float flFromPos[3];
-    static float flToPos[3];
+    float flFromPos[3];
+    float flToPos[3];
 
-    static int i;
+    int i;
 	for (i = m_positions[client].Length - 1; i > 0; i--)
 	{
 		m_positions[client].GetArray(i, flFromPos, 3);
@@ -2367,19 +2392,17 @@ stock void ReversePath(const int client)
 // find the nearest waypoint to that origin, and return the index to this waypoint
 stock int FindNearestWaypoint(const float origin[3], const float maxDistance = 9999999.0, const int client = -1)
 {
-    static int index;
-    index = -1;
-    static float distance;
-    static float normalDist;
-    normalDist = maxDistance * maxDistance;
-    static bool isValid;
+    int index = -1;
+    float distance;
+    float normalDist = maxDistance * maxDistance;
+    bool isValid;
     
     if (IsValidClient(client))
         isValid = true;
     else
         isValid = false;
     
-    static int i;
+    int i;
     for (i = 0; i < m_waypointNumber; i++)
     {
         // blocked waypoint
@@ -2407,17 +2430,13 @@ stock int FindNearestWaypoint(const float origin[3], const float maxDistance = 9
 
 stock int FindWaypoint(const float origin[3], const int client = -1)
 {
-    static int index;
-    index = -1;
-    static float normalDist;
-    normalDist = 999999999999999.0;
-    static float eyePosition[3];
+    int index = -1;
+    float normalDist = 999999999999999.0;
+    float eyePosition[3];
     eyePosition = GetEyePosition(client);
-    static float height;
-    height = GetHeight(client);
-    static float distance;
-
-    static int i;
+    float height = GetHeight(client);
+    float distance;
+    int i;
     for (i = 0; i < m_waypointNumber; i++)
     {
         // blocked waypoint
@@ -2443,19 +2462,17 @@ stock int FindWaypoint(const float origin[3], const int client = -1)
 
 stock int FindWaypointFast(const float origin[3], const int client = -1)
 {
-    static int index;
-    index = -1;
-    static float normalDist;
-    normalDist = 999999999999999.0;
-    static bool isValid;
-    static float distance;
+    int index = -1;
+    float normalDist = 999999999999999.0;
+    bool isValid;
+    float distance;
     
     if (IsValidClient(client))
         isValid = true;
     else
         isValid = false;
     
-    static int i;
+    int i;
     for (i = 0; i < m_waypointNumber; i++)
     {
         // blocked waypoint
@@ -2483,13 +2500,10 @@ stock int FindWaypointFast(const float origin[3], const int client = -1)
 
 stock int FindWaypointFastest(float origin[3])
 {
-    static int index;
-    index = -1;
-    static float normalDist;
-    normalDist = 999999999999999.0;
-    static float distance;
-
-    static int i;
+    int index = -1;
+    float normalDist = 999999999999999.0;
+    float distance;
+    int i;
     for (i = 0; i < m_waypointNumber; i++)
     {
         // blocked waypoint

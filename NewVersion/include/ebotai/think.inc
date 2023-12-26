@@ -41,7 +41,7 @@ stock void LookUpdate(const int client, const bool lookaround = true)
 		{
 			if (m_hasEnemiesNear[client] && m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
 			{
-				static float center[3];
+				float center[3];
 				center = GetCenter(m_nearestEntity[client]);
 
 				if (m_enemyDistance[client] < GetVectorDistance(GetOrigin(client), center, true))

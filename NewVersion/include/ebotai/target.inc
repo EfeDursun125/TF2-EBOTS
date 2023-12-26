@@ -305,12 +305,11 @@ public void FindEnemyEntities(const int client)
 	static float distance;
 
 	static char class[96];
-
 	static float eyeposition[3];
 	static float center[3];
 
 	static int i;
-	for (i = MaxClients + 1; i <= GetMaxEntities(); i++)
+	for (i = 0; i <= GetMaxEntities(); i++)
 	{
 		if (!IsValidEntity(i))
 			continue;

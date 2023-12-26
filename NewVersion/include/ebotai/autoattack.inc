@@ -207,10 +207,8 @@ stock void SelectBestCombatWeapon(const int client)
 	if (!m_isSlowThink[client])
 		return;
 		
-	static float distance;
-	distance = GetVectorDistance(GetOrigin(client), m_lookAt[client], true);
-	static float meleerange;
-	meleerange = Squaredf(GetConVarFloat(EBotMelee));
+	float distance = GetVectorDistance(GetOrigin(client), m_lookAt[client], true);
+	float meleerange = Squaredf(GetConVarFloat(EBotMelee));
 	
 	if (m_class[client] == TFClass_Pyro)
 		meleerange *= 0.75;
@@ -300,10 +298,8 @@ stock void SelectBestCombatWeapon(const int client)
 
 		if (IsWeaponSlotActive(client, 2) && distance > meleerange)
 		{
-			static int clip0;
-			clip0 = GetPrimaryClip(client, 0);
-			static int clip1;
-			clip1 = GetPrimaryClip(client, 1);
+			int clip0 = GetPrimaryClip(client, 0);
+			int clip1 = GetPrimaryClip(client, 1);
 
 			if (m_class[client] == TFClass_Medic)
 				EquipWeaponSlot(client, 0);

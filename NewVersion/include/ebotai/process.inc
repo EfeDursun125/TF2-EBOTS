@@ -10,7 +10,7 @@ stock void SetProcess(const int client, const int process, const float time = 99
 	
 	if (CurrentProcess[client] != process && IsReadyForTheProcess(client, process))
 	{
-		if (!ignoredebug)
+		if (!ignoredebug && GetConVarInt(EBotDebug))
 			PrintToServer("%N has got a new process from %s to %s %s", client, GetProcessName(CurrentProcess[client]), GetProcessName(process), debugnote);
 
 		if (remember && CurrentProcess[client] != PRO_HIDE && CurrentProcess[client] != PRO_ENGINEERIDLE && CurrentProcess[client] != PRO_SPYLURK)
@@ -114,13 +114,15 @@ public void UpdateProcess(const int client)
 {
 	if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcessTime[client] < GetGameTime() && CurrentProcess[client] != PRO_SPYLURK && CurrentProcess[client] != PRO_SPYHUNT)
 	{
-		PrintToServer("%N is cancelled %s process -> timed out.", client, GetProcessName(CurrentProcess[client]));
+		if (GetConVarInt(EBotDebug))
+			PrintToServer("%N is cancelled %s process -> timed out.", client, GetProcessName(CurrentProcess[client]));
 		EndProcess(client, CurrentProcess[client]);
 
 		if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcess[client] != PRO_ENGINEERIDLE && RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime())
 		{
 			StartProcess(client, RememberedProcess[client]);
-			PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client]), GetProcessName(CurrentProcess[client]));
+			if (GetConVarInt(EBotDebug))
+				PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client]), GetProcessName(CurrentProcess[client]));
 			CurrentProcess[client] = RememberedProcess[client];
 			CurrentProcessTime[client] = RememberedProcessTime[client];
 			RememberedProcess[client] = PRO_DEFAULT;
@@ -178,7 +180,7 @@ stock void FinishCurrentProcess(const int client, const bool nodbg = false, cons
 {
 	if (CurrentProcess[client] != PRO_DEFAULT)
 	{
-		if (nodbg && CurrentProcess[client] != PRO_ATTACK)
+		if (nodbg && CurrentProcess[client] != PRO_ATTACK && GetConVarInt(EBotDebug))
 			PrintToServer("%N is cancelled %s process -> %s", client, GetProcessName(CurrentProcess[client]), debugnote);
 
 		EndProcess(client, CurrentProcess[client]);
@@ -186,7 +188,8 @@ stock void FinishCurrentProcess(const int client, const bool nodbg = false, cons
 		if (RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime())
 		{
 			StartProcess(client, RememberedProcess[client]);
-			PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client]), GetProcessName(CurrentProcess[client]));
+			if (GetConVarInt(EBotDebug))
+				PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client]), GetProcessName(CurrentProcess[client]));
 			CurrentProcess[client] = RememberedProcess[client];
 			CurrentProcessTime[client] = RememberedProcessTime[client];
 			RememberedProcess[client] = PRO_DEFAULT;

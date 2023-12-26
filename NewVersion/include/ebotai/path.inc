@@ -1,9 +1,7 @@
 stock bool IsPathPossible(const int client, const float startOrigin[3], const float endOrigin[3], const float flMaxPathLength = 0.0)
 {
-	static CNavArea startArea;
-	static CNavArea goalArea;
-	startArea = NavMesh.GetNavArea(startOrigin, 256.0);
-	goalArea = NavMesh.GetNavArea(endOrigin, 256.0);
+	CNavArea startArea = NavMesh.GetNavArea(startOrigin, 256.0);
+	CNavArea goalArea = NavMesh.GetNavArea(endOrigin, 256.0);
 	
 	if (!startArea || !goalArea)
 		return false;
@@ -11,8 +9,7 @@ stock bool IsPathPossible(const int client, const float startOrigin[3], const fl
 	if (startArea == goalArea)
 		return true;
 	
-	static CNavArea closestArea;
-	closestArea = NULL_AREA;
+	CNavArea closestArea = NULL_AREA;
 	return NavMesh.BuildPath(startArea, goalArea, endOrigin, PathCostFastest, closestArea, flMaxPathLength, m_team[client], false);
 }
 

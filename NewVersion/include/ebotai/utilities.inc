@@ -481,7 +481,7 @@ stock void EquipWeaponSlot(const int client, const int slot)
 
 stock void EquipWeapon(const int client, const int weapon)
 {
-	static char class[80];
+	static char class[128];
 	GetEntityClassname(weapon, class, sizeof(class));
 	Format(class, sizeof(class), "use %s", class);
 	FakeClientCommandThrottled(client, class);
@@ -523,7 +523,6 @@ stock void PlayTaunt(const int client, const int tauntid = 463)
 		}
 
 		pEconItemView += view_as<Address>(iCEIVOffset);
-
 		SDKCall(g_hCustomTaunt, client, pEconItemView);
 		AcceptEntityInput(ent, "Kill");
 	}
@@ -533,7 +532,7 @@ stock void PlayTaunt(const int client, const int tauntid = 463)
 
 stock int MakeCEIVEnt(const int client, const int itemdef)
 {
-	Handle hItem;
+	static Handle hItem;
 	if (hItem == INVALID_HANDLE)
 	{
 		hItem = TF2Items_CreateItem(OVERRIDE_ALL|PRESERVE_ATTRIBUTES|FORCE_GENERATION);
@@ -544,11 +543,10 @@ stock int MakeCEIVEnt(const int client, const int itemdef)
 
 	TF2Items_SetItemIndex(hItem, itemdef);
 	TF2Items_SetNumAttributes(hItem, 0);
-
 	return TF2Items_GiveNamedItem(client, hItem);
 }
 
-stock bool IsValidAddress(Address pAddress)
+stock bool IsValidAddress(const Address pAddress)
 {
 	return pAddress != Address_Null;
 }
@@ -2159,8 +2157,7 @@ stock FindEntityByTargetname(const char[] targetname, const char[] classname)
 stock bool IsVisibleToEnemy(const int client, float origin[3], const float height)
 {
     origin[2] += height;
-
-    static int i;
+    int i;
     for (i = 1; i <= MaxClients; i++)
     {
         if (!IsValidClient(i))
@@ -2186,10 +2183,8 @@ stock bool IsVisibleToEnemy(const int client, float origin[3], const float heigh
 
 stock bool IsCloserToEnemy(const int client, const float origin[3])
 {
-	static float distance;
-	distance = GetVectorDistance(GetOrigin(client), origin, true);
-
-    static int i;
+	float distance = GetVectorDistance(GetOrigin(client), origin, true);
+    int i;
     for (i = 1; i <= MaxClients; i++)
     {
         if (!IsValidClient(i))
@@ -2212,11 +2207,8 @@ stock bool IsCloserToEnemy(const int client, const float origin[3])
 stock bool IsDangerous(const int client, float origin[3], const float height)
 {
     origin[2] += height;
-
-	static float distance;
-	distance = GetVectorDistance(GetOrigin(client), origin, true);
-
-    static int i;
+	float distance = GetVectorDistance(GetOrigin(client), origin, true);
+    int i;
     for (i = 1; i <= MaxClients; i++)
     {
         if (!IsValidClient(i))
