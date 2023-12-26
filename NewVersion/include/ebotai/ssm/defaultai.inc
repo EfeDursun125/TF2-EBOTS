@@ -165,8 +165,8 @@ public void DefaultEnd(const int client)
 
 public void SelectObjective(const int client)
 {
-	static int i;
-	static int index;
+	int i;
+	int index;
 	if ((m_hasWaypoints || m_hasNavpoints) && m_hasSniperWaypoints && IsSniper(client) && !TF2_HasTheFlag(client))
 	{
 		if (m_goalIndex[client] != -1 && m_paths[m_goalIndex[client]].flags & WAYPOINT_SNIPER && (m_paths[m_goalIndex[client]].activeArea == 0 || m_paths[m_goalIndex[client]].activeArea & currentActiveArea))
@@ -749,7 +749,7 @@ stock void ObjectiveMovement(const int client)
 			FollowPath(client, m_goalPosition[client]);
 		else if (IsValidEntity(m_capturePoint) && HasEntProp(m_capturePoint, Prop_Send, "m_iTeamNum"))
 		{
-			static float cappointpos[3];
+			float cappointpos[3];
 			cappointpos = GetOrigin(m_capturePoint);
 			if (GetTeamNumber(m_capturePoint) == m_team[client])
 			{

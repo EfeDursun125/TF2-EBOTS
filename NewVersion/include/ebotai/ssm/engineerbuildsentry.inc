@@ -170,6 +170,49 @@ public void PickSentrySpot(const int client, float area[3])
 			}
 		}
 	}
+	else if (isPLR)
+	{
+		if (m_team[client] == 2)
+		{
+			if (IsValidEntity(m_bluPayload))
+			{
+				if (PickSentrySpotNAV(client, GetOrigin(m_bluPayload), area))
+					return;
+			}
+			else
+			{
+				i = -1;
+				while (IsValidEntity((i = FindEntityByClassname(i, "mapobj_cart_dispenser"))))
+				{
+					if (GetTeamNumber(i) != 3)
+						continue;
+
+					if (PickSentrySpotNAV(client, GetOrigin(i), area))
+						return;
+				}
+			}
+		}
+		else
+		{
+			if (IsValidEntity(m_redPayload))
+			{
+				if (PickSentrySpotNAV(client, GetOrigin(m_redPayload), area))
+					return;
+			}
+			else
+			{
+				i = -1;
+				while (IsValidEntity((i = FindEntityByClassname(i, "mapobj_cart_dispenser"))))
+				{
+					if (GetTeamNumber(i) != 2)
+						continue;
+
+					if (PickSentrySpotNAV(client, GetOrigin(i), area))
+						return;
+				}
+			}
+		}
+	}
 	else if (isCTF)
 	{
 		i = -1;
@@ -207,21 +250,18 @@ public void PickSentrySpot(const int client, float area[3])
 
 stock bool PickSentrySpotNAV(const int client, const float goal[3], float position[3], const float maxRange = 1300.0)
 {
-	static CNavArea area;
-	area = NavMesh.GetNearestNavArea(goal, false, 768.0, false, false, m_team[client]);
-
+	CNavArea area = NavMesh.GetNearestNavArea(goal, false, 768.0, false, false, m_team[client]);
 	if (area == NULL_AREA)
 		return false;
 	
 	static AreasCollector areas;
 	areas = NavMesh.CollectSurroundingAreas(area, maxRange);
 	
-	static int i;
-	static int count;
-	static float height;
-	static float point[3];
+	int i;
+	float height;
+	float point[3];
 	height = GetHeight(client);
-	count = areas.Count();
+	int count = areas.Count();
 	for (i = 0; i < count; i++)
 	{
 		area = areas.Get(i);

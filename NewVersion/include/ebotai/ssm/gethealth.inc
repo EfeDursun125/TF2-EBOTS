@@ -83,7 +83,7 @@ stock int FindNearestHealth(const int client)
 	origin = GetOrigin(client);
 
 	int x;
-	for (x = TFMaxPlayers; x <= GetMaxEntities(); x++)
+	for (x = 0; x <= GetMaxEntities(); x++)
 	{
 		if (!IsValidHealthPack(x))
 			continue;

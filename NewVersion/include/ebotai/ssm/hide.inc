@@ -61,21 +61,18 @@ stock void HideEnd(const int client)
 
 stock float[] FindBestHidingSpot(const int client)
 {
-	static CNavArea area;
-	area = NavMesh.GetNearestNavArea(GetOrigin(client), true, 9999999999.0, true, false, m_team[client]);
-
+	CNavArea area = NavMesh.GetNearestNavArea(GetOrigin(client), true, 9999999999.0, true, false, m_team[client]);
 	if (area == NULL_AREA)
 		return NULL_VECTOR;
 	
 	static AreasCollector areas;
 	areas = NavMesh.CollectSurroundingAreas(area, 2048.0);
 	
-	static int i;
-	static int count;
-	static float height;
-	static float point[3];
+	int i;
+	float height;
+	float point[3];
 	height = GetHeight(client);
-	count = areas.Count();
+	int count = areas.Count();
 	for (i = 0; i < count; i++)
 	{
 		area = areas.Get(i);

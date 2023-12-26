@@ -63,8 +63,8 @@ public void EngineerIdleUpdate(const int client)
 	CheckEngineerBuildings(client);
 	LookUpdate(client);
 
-	static float eyePosition[3];
-	static float targetOrigin[3];
+	float eyePosition[3];
+	float targetOrigin[3];
 	eyePosition = GetEyePosition(client);
 
 	if (m_useTeleporter[client] && IsValidEntity(m_teleporterEntity[client]))
@@ -287,6 +287,10 @@ public void CheckEngineerBuildings(const int client)
     if (!m_isSlowThink[client])
         return;
 
+	// pause the checks for now
+	if (GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
+		return;
+
     WantsBuildSentryGun[client] = true;
     WantsBuildDispenser[client] = true;
     WantsBuildTeleporterEnter[client] = true;
@@ -320,6 +324,20 @@ public void CheckEngineerBuildings(const int client)
             WantsMoveSentryGun[client] = true;
 		else if ((EngineerMoveSentryTimer[client] + 90.0) < GetGameTime()) // unable to reach
 			FakeClientCommandThrottled(client, "destroy 2 0");
+		else if (!WantsMoveSentryGun[client])
+		{
+			// now we can care about friendly sentries
+			if (SentryHealthIsFull[client])
+			{
+				int sentry = FindFriendlySentryGun(client, SentryIsMaxLevel[client]);
+				if (IsValidEntity(sentry))
+				{
+					SentryGun[client] = sentry;
+					SentryIsMaxLevel[client] = (GetEntProp(SentryGun[client], Prop_Send, "m_iUpgradeLevel") >= 3);
+					SentryHealthIsFull[client] = (GetEntProp(SentryGun[client], Prop_Send, "m_iHealth") >= GetEntProp(SentryGun[client], Prop_Send, "m_iMaxHealth") && !GetEntProp(SentryGun[client], Prop_Send, "m_bHasSapper"));
+				}
+			}
+		}
     }
     else
     {
@@ -336,8 +354,25 @@ public void CheckEngineerBuildings(const int client)
         WantsBuildDispenser[client] = false;
         DispenserIsMaxLevel[client] = (GetEntProp(Dispenser[client], Prop_Send, "m_iUpgradeLevel") >= 3);
         DispenserHealthIsFull[client] = (GetEntProp(Dispenser[client], Prop_Send, "m_iHealth") >= GetEntProp(Dispenser[client], Prop_Send, "m_iMaxHealth") && !GetEntProp(Dispenser[client], Prop_Send, "m_bHasSapper"));
-		if ((EngineerMoveDispenserTimer[client] + 60.0) < GetGameTime()) // unable to reach
+
+		if (EngineerMoveDispenserTimer[client] < GetGameTime())
+            WantsMoveDispenser[client] = true;
+		else if ((EngineerMoveDispenserTimer[client] + 60.0) < GetGameTime()) // unable to reach
 			FakeClientCommandThrottled(client, "destroy 0 0");
+		else if (!WantsMoveDispenser[client])
+		{
+			// now we can care about friendly dispensers
+			if (DispenserHealthIsFull[client])
+			{
+				int dispenser = FindFriendlyDispenser(client, DispenserIsMaxLevel[client]);
+				if (IsValidEntity(dispenser))
+				{
+					Dispenser[client] = dispenser;
+					DispenserIsMaxLevel[client] = (GetEntProp(Dispenser[client], Prop_Send, "m_iUpgradeLevel") >= 3);
+					DispenserHealthIsFull[client] = (GetEntProp(Dispenser[client], Prop_Send, "m_iHealth") >= GetEntProp(Dispenser[client], Prop_Send, "m_iMaxHealth") && !GetEntProp(Dispenser[client], Prop_Send, "m_bHasSapper"));
+				}
+			}
+		}
     }
     else
     {
@@ -375,4 +410,70 @@ public void CheckEngineerBuildings(const int client)
         WantsBuildTeleporterExit[client] = true;
     else
         WantsBuildTeleporterExit[client] = false;
+}
+
+stock int FindFriendlySentryGun(const int client, const bool upgrade = false)
+{
+	char class[96];
+	float eyeposition[3];
+	float center[3];
+
+	int i;
+	for (i = 0; i <= GetMaxEntities(); i++)
+	{
+		if (!IsValidEntity(i))
+			continue;
+
+		GetEntityClassname(i, class, sizeof(class));
+		if (!StrEqual(class, "obj_sentrygun", false))
+			continue;
+
+		if (m_team[client] != GetTeamNumber(i))
+			continue;
+
+		if ((upgrade && GetEntProp(i, Prop_Send, "m_iUpgradeLevel") >= 3) || GetEntProp(i, Prop_Send, "m_iHealth") >= GetEntProp(i, Prop_Send, "m_iMaxHealth"))
+			continue;
+
+		eyeposition = GetEyePosition(client);
+		center = GetCenter(i);
+		if (!IsVisible(eyeposition, center))
+			continue;
+
+		return i;
+	}
+
+	return -1;
+}
+
+stock int FindFriendlyDispenser(const int client, const bool upgrade = false)
+{
+	char class[96];
+	float eyeposition[3];
+	float center[3];
+
+	int i;
+	for (i = 0; i <= GetMaxEntities(); i++)
+	{
+		if (!IsValidEntity(i))
+			continue;
+
+		GetEntityClassname(i, class, sizeof(class));
+		if (!StrEqual(class, "obj_dispenser", false))
+			continue;
+
+		if (m_team[client] != GetTeamNumber(i))
+			continue;
+
+		if ((upgrade && GetEntProp(i, Prop_Send, "m_iUpgradeLevel") >= 3) || GetEntProp(i, Prop_Send, "m_iHealth") >= GetEntProp(i, Prop_Send, "m_iMaxHealth"))
+			continue;
+
+		eyeposition = GetEyePosition(client);
+		center = GetCenter(i);
+		if (!IsVisible(eyeposition, center))
+			continue;
+
+		return i;
+	}
+
+	return -1;
 }

@@ -125,8 +125,7 @@ stock void RandomMovement(const int client)
 {
 	if (m_wasdTimer[client] < GetGameTime())
 	{
-		static float val;
-
+		float val;
 		if (m_difficulty[client] >= 2)
 		{
 			if (m_nearestEnemy[client] > 0)
