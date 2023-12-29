@@ -98,8 +98,9 @@ public void OnPluginStart()
 	RegConsoleCmd("ebot_waypoint_set_aim_end", SetAim2);
 	RegConsoleCmd("ebot_addbot", AddEBot);
 	RegConsoleCmd("ebot_kickbot", KickEBot);
-	RegConsoleCmd("ebot_bench_randgen", BenchRGI);
-	RegConsoleCmd("ebot_test_randgen", TestRGI);
+	RegConsoleCmd("ebot_bench_custom", Bench);
+	RegConsoleCmd("ebot_test_randgen_int", TestRGI);
+	RegConsoleCmd("ebot_test_randgen_float", TestRGF);
 	RegConsoleCmd("sm_afk", Command_Afk);
 	HookEvent("player_sapped_object", BotSap, EventHookMode_Post);
 	HookEvent("player_spawn", BotSpawn, EventHookMode_Post);
@@ -371,7 +372,7 @@ public void EBotDeathChat(const int client)
 			char ChosenOne[MAX_NAME_LENGTH];
 			RandomChat.GetString(crandomint(0, RandomChat.Length - 1), ChosenOne, sizeof(ChosenOne));
 			DataPack pack;
-			CreateDataTimer(GetRandomFloat(2.0, 7.0), ReplyToChat, pack);
+			CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
 			pack.WriteCell(client);
 			pack.WriteString(ChosenOne);
 		}
@@ -878,22 +879,21 @@ public Action KickEBot(const int client, int args)
 	return Plugin_Handled;
 }
 
-public Action BenchRGI(const int client, int args)
+public Action Bench(const int client, int args)
 {
 	int i;
 	float my;
 	float their;
-	Handle prof;
 
-	prof = CreateProfiler();
+	Handle prof = CreateProfiler();
 	StartProfiling(prof);
-	for (i = 0; i < 100000000; i++)
+	for (i = 0; i < 10000000; i++)
 		GetRandomInt(-1000, 1000);
 	StopProfiling(prof);
 	their = GetProfilerTime(prof);
 
 	StartProfiling(prof);
-	for (i = 0; i < 100000000; i++)
+	for (i = 0; i < 10000000; i++)
 		crandomint(-1000, 1000);
 	StopProfiling(prof);
 	my = GetProfilerTime(prof);
@@ -904,6 +904,24 @@ public Action BenchRGI(const int client, int args)
 	PrintToServer("Benchmarks:");
 	PrintToServer(" ");
 	PrintToServer(" -> Random Int:");
+	PrintToServer("     E-Bot: %f seconds", my);
+	PrintToServer("     Engine: %f seconds", their);
+	PrintToServer("     Result: E-Bot's is %f times faster!", their / my);
+
+	StartProfiling(prof);
+	for (i = 0; i < 10000000; i++)
+		GetRandomFloat(-1000.0, 1000.0);
+	StopProfiling(prof);
+	their = GetProfilerTime(prof);
+
+	StartProfiling(prof);
+	for (i = 0; i < 10000000; i++)
+		crandomfloat(-1000.0, 1000.0);
+	StopProfiling(prof);
+	my = GetProfilerTime(prof);
+
+	PrintToServer(" ");
+	PrintToServer(" -> Random Float:");
 	PrintToServer("     E-Bot: %f seconds", my);
 	PrintToServer("     Engine: %f seconds", their);
 	PrintToServer("     Result: E-Bot's is %f times faster!", their / my);
@@ -922,9 +940,23 @@ public Action TestRGI(const int client, int args)
 	prof = CreateProfiler();
 	StartProfiling(prof);
 	for (i = 0; i < 100; i++)
-		PrintToServer("%i", crandomint(-100, 100));
+		PrintToServer("%i", crandomint(-1000, 1000));
 	StopProfiling(prof);
-	PrintToServer("Range is between -100 to 100, time taken %f seconds.", GetProfilerTime(prof));
+	PrintToServer("Range is between -1000 to 1000, time taken %f seconds.", GetProfilerTime(prof));
+	CloseHandle(prof);
+	return Plugin_Handled;
+}
+
+public Action TestRGF(const int client, int args)
+{
+	int i;
+	Handle prof;
+	prof = CreateProfiler();
+	StartProfiling(prof);
+	for (i = 0; i < 100; i++)
+		PrintToServer("%f", crandomfloat(-1000.0, 1000.0));
+	StopProfiling(prof);
+	PrintToServer("Range is between -1000.0 to 1000.0, time taken %f seconds.", GetProfilerTime(prof));
 	CloseHandle(prof);
 	return Plugin_Handled;
 }
@@ -1013,7 +1045,7 @@ public void OnGameFrame()
 			}
 		}
 
-		autoupdate = GetGameTime() + GetRandomFloat(3.0, 9.0);
+		autoupdate = GetGameTime() + crandomfloat(3.0, 9.0);
 	}
 
 	DrawWaypoints();
@@ -1194,14 +1226,14 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 						SelectBestCombatWeapon(client);
 					}
 
-					m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+					m_pauseTime[client] = GetGameTime() + crandomfloat(1.5, 2.5);
 				}
 				else if (m_hasEnemiesNear[client])
 				{
 					LookAtEnemiens(client);
 					AutoAttack(client);
 					SelectBestCombatWeapon(client);
-					m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+					m_pauseTime[client] = GetGameTime() + crandomfloat(1.5, 2.5);
 				}
 				else if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
 				{
@@ -1213,7 +1245,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 						SelectBestCombatWeapon(client);
 					}
 
-					m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+					m_pauseTime[client] = GetGameTime() + crandomfloat(1.5, 2.5);
 				}
 			}
 
@@ -1228,17 +1260,9 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			
 			if (CurrentProcess[client] == PRO_BUILDDISPENSER && m_isSlowThink[client] && crandomint(1, 3) == 1)
 			{
-				if (m_hasWaypoints)
-				{
-					m_lookAt[client] = m_paths[crandomint(1, m_waypointNumber)].origin;
-					m_lookAt[client][2] = GetHeight(client);
-				}
-				else
-				{
-					m_lookAt[client][0] = GetRandomFloat(1.0, 359.0);
-					m_lookAt[client][1] = GetRandomFloat(1.0, 359.0);
-					m_lookAt[client][2] = GetRandomFloat(1.0, 359.0);
-				}
+				m_lookAt[client][0] = m_eyeOrigin[client][0] + crandomfloat(-128.0, 128.0);
+				m_lookAt[client][1] = m_eyeOrigin[client][1] + crandomfloat(-128.0, 128.0);
+				m_lookAt[client][2] = m_eyeOrigin[client][2] + crandomfloat(-128.0, 128.0);
 				
 				// force deploy
 				buttons |= IN_ATTACK;
@@ -1695,7 +1719,7 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 			if ((!m_hasEnemiesNear[victim] || !m_isAlive[m_nearestEnemy[victim]]) && !TF2_IsPlayerInCondition(victim, TFCond_OnFire))
 			{
 				m_lookAt[victim] = GetEyePosition(attacker);
-				m_pauseTime[victim] = GetGameTime() + GetRandomFloat(2.5, 5.0);
+				m_pauseTime[victim] = GetGameTime() + crandomfloat(2.5, 5.0);
 				m_nearestEnemy[victim] = attacker;
 				m_hasEnemiesNear[victim] = true;
 			}
@@ -1745,7 +1769,7 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 		else if (!m_hasEntitiesNear[victim] && attacker > TFMaxPlayers && IsValidEntity(attacker))
 		{
 			m_damageTime[victim] = GetGameTime();
-			m_pauseTime[victim] = GetGameTime() + GetRandomFloat(2.5, 5.0);
+			m_pauseTime[victim] = GetGameTime() + crandomfloat(2.5, 5.0);
 			m_lookAt[victim] = GetCenter(attacker);
 			m_nearestEntity[victim] = attacker;
 			m_hasEntitiesNear[victim] = true;
@@ -2108,7 +2132,7 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 					char ChosenOne[MAX_NAME_LENGTH];
 					RandomReply.GetString(crandomint(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
 					DataPack pack;
-					CreateDataTimer(GetRandomFloat(2.0, 7.0), ReplyToChat, pack);
+					CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
 					pack.WriteCell(client);
 					pack.WriteString(ChosenOne);
 					fp.Close();
@@ -2143,7 +2167,7 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 					char ChosenOne[MAX_NAME_LENGTH];
 					RandomReply.GetString(crandomint(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
 					DataPack pack;
-					CreateDataTimer(GetRandomFloat(2.0, 7.0), ReplyToChat, pack);
+					CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
 					pack.WriteCell(client);
 					pack.WriteString(ChosenOne);
 				}
