@@ -141,7 +141,7 @@ public void DefaultUpdate(const int client)
 			else
 				m_goalIndex[client] = -1;
 			
-			m_pauseTime[client] = GetGameTime() + GetRandomFloat(2.0, 7.0);
+			m_pauseTime[client] = GetGameTime() + crandomfloat(2.0, 7.0);
 		}
 
 		return;
@@ -218,8 +218,8 @@ public void SelectObjective(const int client)
 			m_goalIndex[client] = index;
 			if (m_paths[index].radius > 0.0)
 			{
-				m_goalPosition[client][0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
-				m_goalPosition[client][1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				m_goalPosition[client][0] = m_paths[index].origin[0] + crandomfloat(-m_paths[index].radius, m_paths[index].radius);
+				m_goalPosition[client][1] = m_paths[index].origin[1] + crandomfloat(-m_paths[index].radius, m_paths[index].radius);
 				m_goalPosition[client][2] = m_paths[index].origin[2];
 			}
 			else
@@ -280,8 +280,8 @@ public void SelectObjective(const int client)
 			m_goalIndex[client] = index;
 			if (m_paths[index].radius > 0.0)
 			{
-				m_goalPosition[client][0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
-				m_goalPosition[client][1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+				m_goalPosition[client][0] = m_paths[index].origin[0] + crandomfloat(-m_paths[index].radius, m_paths[index].radius);
+				m_goalPosition[client][1] = m_paths[index].origin[1] + crandomfloat(-m_paths[index].radius, m_paths[index].radius);
 				m_goalPosition[client][2] = m_paths[index].origin[2];
 			}
 			else
@@ -304,8 +304,8 @@ public void SelectObjective(const int client)
 			m_goalIndex[client] = crandomint(1, m_waypointNumber - 1);
 			if (m_paths[m_goalIndex[client]].radius > 0.0)
 			{
-				m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
-				m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+				m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + crandomfloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+				m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + crandomfloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
 				m_goalPosition[client][2] = m_paths[m_goalIndex[client]].origin[2];
 			}
 			else
@@ -382,8 +382,8 @@ public void SelectObjective(const int client)
 				m_goalIndex[client] = index;
 				if (m_paths[index].radius > 0.0)
 				{
-					m_goalPosition[client][0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
-					m_goalPosition[client][1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+					m_goalPosition[client][0] = m_paths[index].origin[0] + crandomfloat(-m_paths[index].radius, m_paths[index].radius);
+					m_goalPosition[client][1] = m_paths[index].origin[1] + crandomfloat(-m_paths[index].radius, m_paths[index].radius);
 					m_goalPosition[client][2] = m_paths[index].origin[2];
 				}
 				else
@@ -472,8 +472,8 @@ public void SelectObjective(const int client)
 					m_goalIndex[client] = index;
 					if (m_paths[index].radius > 0.0)
 					{
-						m_goalPosition[client][0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
-						m_goalPosition[client][1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+						m_goalPosition[client][0] = m_paths[index].origin[0] + crandomfloat(-m_paths[index].radius, m_paths[index].radius);
+						m_goalPosition[client][1] = m_paths[index].origin[1] + crandomfloat(-m_paths[index].radius, m_paths[index].radius);
 						m_goalPosition[client][2] = m_paths[index].origin[2];
 					}
 					else
@@ -486,9 +486,9 @@ public void SelectObjective(const int client)
 				{
 					m_goalEntity[client] = m_bluPayload;
 					m_goalPosition[client] = GetOrigin(m_bluPayload);
-					m_goalPosition[client][0] += GetRandomFloat(-768.0, 768.0);
-					m_goalPosition[client][1] += GetRandomFloat(-768.0, 768.0);
-					m_goalPosition[client][2] += GetRandomFloat(0.0, 512.0);
+					m_goalPosition[client][0] += crandomfloat(-768.0, 768.0);
+					m_goalPosition[client][1] += crandomfloat(-768.0, 768.0);
+					m_goalPosition[client][2] += crandomfloat(0.0, 512.0);
 					SetGoalIndex(client, FindNearestWaypoint(m_goalPosition[client], 999999.0, client));
 				}
 			}
@@ -496,9 +496,9 @@ public void SelectObjective(const int client)
 			{
 				m_goalEntity[client] = m_bluPayload;
 				m_goalPosition[client] = GetOrigin(m_bluPayload);
-				m_goalPosition[client][0] += GetRandomFloat(-64.0, 64.0);
-				m_goalPosition[client][1] += GetRandomFloat(-64.0, 64.0);
-				m_goalPosition[client][2] += GetRandomFloat(-64.0, 64.0);
+				m_goalPosition[client][0] += crandomfloat(-64.0, 64.0);
+				m_goalPosition[client][1] += crandomfloat(-64.0, 64.0);
+				m_goalPosition[client][2] += crandomfloat(-64.0, 64.0);
 				SetGoalIndex(client, FindNearestWaypoint(m_goalPosition[client], 999999.0, client));
 			}
 		}
@@ -508,16 +508,16 @@ public void SelectObjective(const int client)
 			if (m_team[client] == 2)
 			{
 				m_goalPosition[client] = GetOrigin(m_bluPayload);
-				m_goalPosition[client][0] += GetRandomFloat(-768.0, 768.0);
-				m_goalPosition[client][1] += GetRandomFloat(-768.0, 768.0);
-				m_goalPosition[client][2] += GetRandomFloat(0.0, 512.0);
+				m_goalPosition[client][0] += crandomfloat(-768.0, 768.0);
+				m_goalPosition[client][1] += crandomfloat(-768.0, 768.0);
+				m_goalPosition[client][2] += crandomfloat(0.0, 512.0);
 			}
 			else
 			{
 				m_goalPosition[client] = GetOrigin(m_bluPayload);
-				m_goalPosition[client][0] += GetRandomFloat(-64.0, 64.0);
-				m_goalPosition[client][1] += GetRandomFloat(-64.0, 64.0);
-				m_goalPosition[client][2] += GetRandomFloat(-64.0, 64.0);
+				m_goalPosition[client][0] += crandomfloat(-64.0, 64.0);
+				m_goalPosition[client][1] += crandomfloat(-64.0, 64.0);
+				m_goalPosition[client][2] += crandomfloat(-64.0, 64.0);
 			}
 		}
 	}
@@ -529,18 +529,18 @@ public void SelectObjective(const int client)
 		if (m_team[client] == 2 && IsValidEntity(m_redPayload))
 		{
 			m_goalPosition[client] = GetOrigin(m_redPayload);
-			m_goalPosition[client][0] += GetRandomFloat(-64.0, 64.0);
-			m_goalPosition[client][1] += GetRandomFloat(-64.0, 64.0);
-			m_goalPosition[client][2] += GetRandomFloat(-64.0, 64.0);
+			m_goalPosition[client][0] += crandomfloat(-64.0, 64.0);
+			m_goalPosition[client][1] += crandomfloat(-64.0, 64.0);
+			m_goalPosition[client][2] += crandomfloat(-64.0, 64.0);
 			SetGoalIndex(client, FindNearestWaypoint(m_goalPosition[client], 999999.0, client));
 			m_goalEntity[client] = m_redPayload;
 		}
 		else if (IsValidEntity(m_bluPayload))
 		{
 			m_goalPosition[client] = GetOrigin(m_bluPayload);
-			m_goalPosition[client][0] += GetRandomFloat(-64.0, 64.0);
-			m_goalPosition[client][1] += GetRandomFloat(-64.0, 64.0);
-			m_goalPosition[client][2] += GetRandomFloat(-64.0, 64.0);
+			m_goalPosition[client][0] += crandomfloat(-64.0, 64.0);
+			m_goalPosition[client][1] += crandomfloat(-64.0, 64.0);
+			m_goalPosition[client][2] += crandomfloat(-64.0, 64.0);
 			SetGoalIndex(client, FindNearestWaypoint(m_goalPosition[client], 999999.0, client));
 			m_goalEntity[client] = m_bluPayload;
 		}
@@ -625,8 +625,8 @@ public void SelectObjective(const int client)
 				m_goalIndex[client] = index;
 				if (m_paths[index].radius > 0.0)
 				{
-					m_goalPosition[client][0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
-					m_goalPosition[client][1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+					m_goalPosition[client][0] = m_paths[index].origin[0] + crandomfloat(-m_paths[index].radius, m_paths[index].radius);
+					m_goalPosition[client][1] = m_paths[index].origin[1] + crandomfloat(-m_paths[index].radius, m_paths[index].radius);
 					m_goalPosition[client][2] = m_paths[index].origin[2];
 				}
 				else
@@ -637,8 +637,8 @@ public void SelectObjective(const int client)
 				m_goalIndex[client] = crandomint(1, m_waypointNumber - 1);
 				if (m_paths[m_goalIndex[client]].radius > 0.0)
 				{
-					m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
-					m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+					m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + crandomfloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+					m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + crandomfloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
 					m_goalPosition[client][2] = m_paths[m_goalIndex[client]].origin[2];
 				}
 				else
@@ -663,8 +663,8 @@ public void SelectObjective(const int client)
 			m_goalIndex[client] = FindNearestWaypoint(GetOrigin(m_goalEntity[client]));
 			if (m_paths[m_goalIndex[client]].radius > 0.0)
 			{
-				m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
-				m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+				m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + crandomfloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+				m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + crandomfloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
 				m_goalPosition[client][2] = m_paths[m_goalIndex[client]].origin[2];
 			}
 			else
@@ -679,8 +679,8 @@ public void SelectObjective(const int client)
 		m_goalIndex[client] = crandomint(1, m_waypointNumber - 1);
 		if (m_paths[m_goalIndex[client]].radius > 0.0)
 		{
-			m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
-			m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + GetRandomFloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+			m_goalPosition[client][0] = m_paths[m_goalIndex[client]].origin[0] + crandomfloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
+			m_goalPosition[client][1] = m_paths[m_goalIndex[client]].origin[1] + crandomfloat(-m_paths[m_goalIndex[client]].radius, m_paths[m_goalIndex[client]].radius);
 			m_goalPosition[client][2] = m_paths[m_goalIndex[client]].origin[2];
 		}
 		else
@@ -753,14 +753,14 @@ stock void ObjectiveMovement(const int client)
 			cappointpos = GetOrigin(m_capturePoint);
 			if (GetTeamNumber(m_capturePoint) == m_team[client])
 			{
-				m_goalPosition[client][0] = cappointpos[0] + GetRandomFloat(-768.0, 768.0);
-				m_goalPosition[client][1] = cappointpos[1] + GetRandomFloat(-768.0, 768.0);
-				m_goalPosition[client][2] = cappointpos[2] + GetRandomFloat(-128.0, 128.0);
+				m_goalPosition[client][0] = cappointpos[0] + crandomfloat(-768.0, 768.0);
+				m_goalPosition[client][1] = cappointpos[1] + crandomfloat(-768.0, 768.0);
+				m_goalPosition[client][2] = cappointpos[2] + crandomfloat(-128.0, 128.0);
 			}
 			else
 			{
-				m_goalPosition[client][0] = cappointpos[0] + GetRandomFloat(-192.0, 192.0);
-				m_goalPosition[client][1] = cappointpos[1] + GetRandomFloat(-192.0, 192.0);
+				m_goalPosition[client][0] = cappointpos[0] + crandomfloat(-192.0, 192.0);
+				m_goalPosition[client][1] = cappointpos[1] + crandomfloat(-192.0, 192.0);
 				m_goalPosition[client][2] = cappointpos[2] + 18.0;
 			}
 			

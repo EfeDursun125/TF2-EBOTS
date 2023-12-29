@@ -1,4 +1,4 @@
-stock bool HuntRequirements(int client)
+stock bool HuntRequirements(const int client)
 {
 	if (!m_hasEnemiesNear[client])
 		return false;
@@ -15,23 +15,21 @@ stock bool HuntRequirements(int client)
 	return true;
 }
 
-stock void HuntStart(int client)
+stock void HuntStart(const int client)
 {
 	m_goalEntity[client] = m_nearestEnemy[client];
 	DeletePathNodes(client);
 }
 
-stock void HuntUpdate(int client)
+stock void HuntUpdate(const int client)
 {
-	int x = m_goalEntity[client];
-
-	if (!IsValidClient(x) || !IsPlayerAlive(x))
+	if (!IsValidClient(m_goalEntity[client]) || !IsPlayerAlive(m_goalEntity[client]))
 	{
 		FinishCurrentProcess(client, false, "victim is not valid or already dead");
 		return;
 	}
 
-	if (m_hasEnemiesNear[client] && m_nearestEnemy[client] == x)
+	if (m_hasEnemiesNear[client] && m_nearestEnemy[client] == m_goalEntity[client])
 		SetProcess(client, PRO_ATTACK, 180.0, "", true);
 
 	FindFriendsAndEnemiens(client);
@@ -41,10 +39,10 @@ stock void HuntUpdate(int client)
 	CheckHealth(client);
 	CheckAmmo(client);
 
-	FollowPath(client, GetOrigin(x));
+	FollowPath(client, GetOrigin(m_goalEntity[client]));
 }
 
-stock void HuntEnd(int client)
+stock void HuntEnd(const int client)
 {
 	m_goalEntity[client] = -1;
 	RememberedProcess[client] = PRO_DEFAULT;

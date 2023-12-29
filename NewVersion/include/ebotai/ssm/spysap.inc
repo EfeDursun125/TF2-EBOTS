@@ -41,7 +41,7 @@ public void SpySapUpdate(const int client)
 	{
 		DeletePathNodes(client);
 		m_nextStuckCheck[client] = GetGameTime() + 5.0;
-		if (GetVectorDistance(GetOrigin(client), GetOrigin(m_teleporterEntity[client]), true) <= Squaredf(24.0))
+		if (GetVectorDistance(GetOrigin(client), GetOrigin(m_teleporterEntity[client]), true) < Squaredf(24.0))
 		{
 			m_moveVel[client][0] = 0.0;
 			m_moveVel[client][1] = 0.0;

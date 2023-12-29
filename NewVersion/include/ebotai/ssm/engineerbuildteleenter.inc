@@ -147,8 +147,8 @@ stock void PickTeleEnterSpot(const int client, float area[3] = NULL_VECTOR)
 			m_goalIndex[client] = i;
 			if (m_paths[i].radius > 0.0)
 			{
-				area[0] = m_paths[i].origin[0] + GetRandomFloat(-m_paths[i].radius, m_paths[i].radius);
-				area[1] = m_paths[i].origin[1] + GetRandomFloat(-m_paths[i].radius, m_paths[i].radius);
+				area[0] = m_paths[i].origin[0] + crandomfloat(-m_paths[i].radius, m_paths[i].radius);
+				area[1] = m_paths[i].origin[1] + crandomfloat(-m_paths[i].radius, m_paths[i].radius);
 				area[2] = m_paths[i].origin[2];
 			}
 			else

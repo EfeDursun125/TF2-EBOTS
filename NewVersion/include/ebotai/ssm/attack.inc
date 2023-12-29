@@ -63,7 +63,7 @@ stock void AttackUpdate(const int client)
 	{
 		FinishCurrentProcess(client, true);
 		if (m_lowHealth[client])
-			SetProcess(client, PRO_IDLE, GetRandomFloat(2.0, 4.0), "", true);
+			SetProcess(client, PRO_IDLE, crandomfloat(2.0, 4.0), "", true);
 	}
 
 	if (m_class[client] == TFClass_Spy && (TF2_IsPlayerInCondition(client, TFCond_Disguised) || IsStealthed(client)))
@@ -142,13 +142,13 @@ stock void RandomMovement(const int client)
 					else
 						BackstabMove(client, m_nearestEnemy[client], true);
 
-					m_wasdTimer[client] = GetGameTime() + GetRandomFloat(0.128, 0.384);
+					m_wasdTimer[client] = GetGameTime() + crandomfloat(0.128, 0.384);
 					return;
 				}
 				else if ((m_class[m_nearestEnemy[client]] == TFClass_Pyro || IsWeaponSlotActive(m_nearestEnemy[client], 2)) && val < Squaredf(512.0))
 				{
 					MoveOut(client, GetOrigin(m_nearestEnemy[client]));
-					m_wasdTimer[client] = GetGameTime() + GetRandomFloat(0.128, 0.384);
+					m_wasdTimer[client] = GetGameTime() + crandomfloat(0.128, 0.384);
 					return;
 				}
 			}
@@ -157,7 +157,7 @@ stock void RandomMovement(const int client)
 		val = GetMaxSpeed(client);
 		m_moveVel[client][0] = crandomint(1, 2) == 1 ? -val : val;
 		m_moveVel[client][1] = crandomint(1, 2) == 1 ? -val : val;
-		m_wasdTimer[client] = GetGameTime() + GetRandomFloat(0.128, 0.512);
+		m_wasdTimer[client] = GetGameTime() + crandomfloat(0.128, 0.512);
 	}
 }
 

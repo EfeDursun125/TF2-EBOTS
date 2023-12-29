@@ -345,7 +345,7 @@ public void CheckEngineerBuildings(const int client)
         if (IsOnDefanse(client))
             EngineerMoveSentryTimer[client] = GetGameTime() + 99999999.0;
         else
-            EngineerMoveSentryTimer[client] = GetGameTime() + GetRandomFloat(90.0, 160.0);
+            EngineerMoveSentryTimer[client] = GetGameTime() + crandomfloat(90.0, 160.0);
         WantsMoveSentryGun[client] = false;
     }
     
@@ -384,7 +384,7 @@ public void CheckEngineerBuildings(const int client)
             if (IsOnDefanse(client))
                 EngineerMoveDispenserTimer[client] = GetGameTime() + 99999999.0;
             else
-                EngineerMoveDispenserTimer[client] = GetGameTime() + GetRandomFloat(120.0, 180.0);
+                EngineerMoveDispenserTimer[client] = GetGameTime() + crandomfloat(120.0, 180.0);
             WantsMoveDispenser[client] = false;
         }
     }

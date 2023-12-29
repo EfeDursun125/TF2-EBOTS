@@ -35,8 +35,8 @@ public void BuildDispenserUpdate(const int client)
 		{
 			float randomArea[3];
 			randomArea = GetCenter(SentryGun[client]);
-			randomArea[0] += GetRandomFloat(-600.0, 600.0);
-			randomArea[1] += GetRandomFloat(-600.0, 600.0);
+			randomArea[0] += crandomfloat(-600.0, 600.0);
+			randomArea[1] += crandomfloat(-600.0, 600.0);
 			FollowPath(client, randomArea);
 
 			if (IsVisible(GetEyePosition(client), randomArea) || IsVisible(GetEyePosition(client), GetCenter(SentryGun[client])))
@@ -55,7 +55,7 @@ public void BuildDispenserUpdate(const int client)
 	if (IsValidEntity(TF2_GetObject(client, TFObject_Dispenser, TFObjectMode_None)))
 	{
 		FinishCurrentProcess(client);
-		EngineerMoveDispenserTimer[client] = GetGameTime() + GetRandomFloat(120.0, 180.0);
+		EngineerMoveDispenserTimer[client] = GetGameTime() + crandomfloat(120.0, 180.0);
 		WantsBuildDispenser[client] = false;
 		WantsMoveDispenser[client] = false;
 	}

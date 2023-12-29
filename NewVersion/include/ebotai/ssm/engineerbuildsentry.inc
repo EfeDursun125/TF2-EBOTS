@@ -74,7 +74,7 @@ public void BuildSentryUpdate(const int client)
 	
 	if (IsValidEntity(TF2_GetObject(client, TFObject_Sentry, TFObjectMode_None)))
 	{
-		EngineerMoveSentryTimer[client] = GetGameTime() + GetRandomFloat(90.0, 160.0);
+		EngineerMoveSentryTimer[client] = GetGameTime() + crandomfloat(90.0, 160.0);
 		WantsBuildSentryGun[client] = false;
 		WantsMoveSentryGun[client] = false;
 		FinishCurrentProcess(client);
@@ -143,8 +143,8 @@ public void PickSentrySpot(const int client, float area[3])
 			m_goalIndex[client] = i;
 			if (m_paths[i].radius > 0.0)
 			{
-				area[0] = m_paths[i].origin[0] + GetRandomFloat(-m_paths[i].radius, m_paths[i].radius);
-				area[1] = m_paths[i].origin[1] + GetRandomFloat(-m_paths[i].radius, m_paths[i].radius);
+				area[0] = m_paths[i].origin[0] + crandomfloat(-m_paths[i].radius, m_paths[i].radius);
+				area[1] = m_paths[i].origin[1] + crandomfloat(-m_paths[i].radius, m_paths[i].radius);
 				area[2] = m_paths[i].origin[2];
 			}
 			else

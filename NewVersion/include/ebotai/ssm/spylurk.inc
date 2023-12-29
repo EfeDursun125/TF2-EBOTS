@@ -63,7 +63,7 @@ public void SpyLurkUpdate(const int client)
 		{
 			if (HasEntProp(m_knownSentry[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_knownSentry[client], Prop_Send, "m_bHasSapper") == 0)
 			{
-				SetProcess(client, PRO_SPYSAP, GetRandomFloat(40.0, 80.0), "| process started -> try to sap buildings");
+				SetProcess(client, PRO_SPYSAP, crandomfloat(40.0, 80.0), "| process started -> try to sap buildings");
 				return;
 			}
 			else
@@ -98,7 +98,7 @@ public void SpyLurkUpdate(const int client)
 
 			if (IsValidClient(m_goalEntity[client]) && IsPlayerAlive(m_goalEntity[client]))
 			{
-				SetProcess(client, PRO_SPYHUNT, GetRandomFloat(10.0, 20.0), "| process started -> try to hunt down enemies");
+				SetProcess(client, PRO_SPYHUNT, crandomfloat(10.0, 20.0), "| process started -> try to hunt down enemies");
 				return;
 			}
 		}
