@@ -183,14 +183,19 @@ stock int crandomint(const int min, const int max)
 	return frand() % (max - min + 1) + min;
 }
 
+stock float crandomfloat(const float min, const float max)
+{
+	return frand() * (max - min) * 0.0000305185 + min;
+}
+
 stock void GetRandomPoint(CNavArea area, float buffer[3])
 {
 	static float extentLow[3];
 	static float extentHigh[3];
 	area.GetExtent(extentLow, extentHigh);
 	
-	buffer[0] = GetRandomFloat(extentLow[0], extentHigh[0]);
-	buffer[1] = GetRandomFloat(extentLow[1], extentHigh[1]);
+	buffer[0] = crandomfloat(extentLow[0], extentHigh[0]);
+	buffer[1] = crandomfloat(extentLow[1], extentHigh[1]);
 	buffer[2] = (extentLow[2] + extentHigh[2]) * 0.5;
 }
 

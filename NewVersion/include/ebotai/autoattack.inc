@@ -39,7 +39,7 @@ stock void AutoAttack(const int client)
 	else if (m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092 || m_primaryID[client] == 1098)
 	{
 		if (m_attackTimer[client] < GetGameTime())
-			m_attackTimer[client] = GetGameTime() + GetRandomFloat(1.25, 2.25);
+			m_attackTimer[client] = GetGameTime() + crandomfloat(1.25, 2.25);
 		return;
 	}
 

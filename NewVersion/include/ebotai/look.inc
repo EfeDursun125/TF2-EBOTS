@@ -155,7 +155,7 @@ stock void LookAround(const int client)
 		else
 			GetAimOrigin(index, m_lookAt[client]);
 		
-		m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+		m_pauseTime[client] = GetGameTime() + crandomfloat(1.5, 2.5);
 	}
 	else if (m_isSlowThink[client] && m_ignoreEnemies[client] < GetGameTime() && m_class[client] != TFClass_Medic && ChanceOf(m_eBotSenseChance[client])) // no any friends near, who's footsteps is this or fire sounds?
 	{
@@ -190,8 +190,8 @@ stock void LookAround(const int client)
 				index = FindNearestWaypoint(GetEyePosition(search), 9999999999.0, client);
 				if (index != -1)
 				{
-					PlayerArea[0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius) + ((PlayerArea[0] - ClientEye[0]) * 1024.0);
-					PlayerArea[1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius) + ((PlayerArea[1] - ClientEye[1]) * 1024.0);
+					PlayerArea[0] = m_paths[index].origin[0] + crandomfloat(-m_paths[index].radius, m_paths[index].radius) + ((PlayerArea[0] - ClientEye[0]) * 1024.0);
+					PlayerArea[1] = m_paths[index].origin[1] + crandomfloat(-m_paths[index].radius, m_paths[index].radius) + ((PlayerArea[1] - ClientEye[1]) * 1024.0);
 					PlayerArea[2] = m_eyeOrigin[client][2];
 				}
 			}
@@ -218,7 +218,7 @@ stock void LookAround(const int client)
 					if (m_lowHealth[client] || m_lowAmmo[client] || m_difficulty[client] == 1)
 						m_attack2Timer[client] = GetGameTime() + 2.0;
 					else
-						m_attack2Timer[client] = GetGameTime() + GetRandomFloat(1.0, m_difficulty[client] + 2.0);
+						m_attack2Timer[client] = GetGameTime() + crandomfloat(1.0, m_difficulty[client] + 2.0);
 				}
 				else
 					m_attack2Timer[client] = 0.0;
@@ -227,7 +227,7 @@ stock void LookAround(const int client)
 			m_lookAt[client][0] = PlayerArea[0];
 			m_lookAt[client][1] = PlayerArea[1];
 			m_lookAt[client][2] = PlayerArea[2];
-			m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+			m_pauseTime[client] = GetGameTime() + crandomfloat(1.5, 2.5);
 			
 			return;
 		}
@@ -244,9 +244,9 @@ stock void LookAround(const int client)
 
 	GetClientEyePosition(client, BestLookPos);
 
-	BestLookPos[0] += GetRandomFloat(-1024.0, 1024.0);
-	BestLookPos[1] += GetRandomFloat(-1024.0, 1024.0);
-	BestLookPos[2] += GetRandomFloat(-256.0, 256.0);
+	BestLookPos[0] += crandomfloat(-1024.0, 1024.0);
+	BestLookPos[1] += crandomfloat(-1024.0, 1024.0);
+	BestLookPos[2] += crandomfloat(-256.0, 256.0);
 
 	if (m_hasWaypoints)
 	{
@@ -267,8 +267,8 @@ stock void LookAround(const int client)
 				}
 			}
 
-			SelectRandom[0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
-			SelectRandom[1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius);
+			SelectRandom[0] = m_paths[index].origin[0] + crandomfloat(-m_paths[index].radius, m_paths[index].radius);
+			SelectRandom[1] = m_paths[index].origin[1] + crandomfloat(-m_paths[index].radius, m_paths[index].radius);
 			SelectRandom[2] = m_paths[index].origin[2];
 		}
 	}
@@ -284,7 +284,7 @@ stock void LookAround(const int client)
 		m_lookAt[client][0] = SelectRandom[0] + ((SelectRandom[0] - ClientEye[0]) * 256.0);
 		m_lookAt[client][1] = SelectRandom[1] + ((SelectRandom[1] - ClientEye[1]) * 256.0);
 		m_lookAt[client][2] = SelectRandom[2] + GetHeight(client);
-		m_pauseTime[client] = GetGameTime() + GetRandomFloat(0.75, 1.75);
+		m_pauseTime[client] = GetGameTime() + crandomfloat(0.75, 1.75);
 	}
 	else if (m_isSlowThink[client] && IsMoving(client))
 	{
@@ -307,10 +307,10 @@ stock void LookAround(const int client)
 					}
 				}
 
-				m_lookAt[client][0] = m_paths[index].origin[0] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius) + ((m_pathAhead[client][0] - ClientEye[0]) * 1024.0);
-				m_lookAt[client][1] = m_paths[index].origin[1] + GetRandomFloat(-m_paths[index].radius, m_paths[index].radius) + ((m_pathAhead[client][1] - ClientEye[1]) * 1024.0);
+				m_lookAt[client][0] = m_paths[index].origin[0] + crandomfloat(-m_paths[index].radius, m_paths[index].radius) + ((m_pathAhead[client][0] - ClientEye[0]) * 1024.0);
+				m_lookAt[client][1] = m_paths[index].origin[1] + crandomfloat(-m_paths[index].radius, m_paths[index].radius) + ((m_pathAhead[client][1] - ClientEye[1]) * 1024.0);
 				m_lookAt[client][2] = m_paths[index].origin[2] + GetHeight(client);
-				m_pauseTime[client] = GetGameTime() + GetRandomFloat(0.75, 1.75);
+				m_pauseTime[client] = GetGameTime() + crandomfloat(0.75, 1.75);
 			}
 		}
 		else
@@ -323,7 +323,7 @@ stock void LookAround(const int client)
 				m_lookAt[client][0] += fw[0] * 256.0;
 				m_lookAt[client][1] += fw[0] * 256.0;
 				m_lookAt[client][2] += GetHeight(client);
-				m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.25);
+				m_pauseTime[client] = GetGameTime() + crandomfloat(1.5, 2.25);
 			}
 		}
 	}

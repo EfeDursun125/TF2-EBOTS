@@ -2358,8 +2358,8 @@ stock void AddToPath(const int currentIndex, const int client)
     if (radius > 0.0)
     {
         float origin[3];
-        origin[0] = m_paths[currentIndex].origin[0] + GetRandomFloat(-radius, radius);
-        origin[1] = m_paths[currentIndex].origin[1] + GetRandomFloat(-radius, radius);
+        origin[0] = m_paths[currentIndex].origin[0] + crandomfloat(-radius, radius);
+        origin[1] = m_paths[currentIndex].origin[1] + crandomfloat(-radius, radius);
         origin[2] = m_paths[currentIndex].origin[2];
         m_positions[client].PushArray(origin, 3);
     }

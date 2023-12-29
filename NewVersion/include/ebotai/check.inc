@@ -340,7 +340,7 @@ public void CheckSlowThink(const int client)
 
 		UseVoiceCommand(client);
 		
-		m_checkTimer[client] = GetGameTime() + GetRandomFloat(0.95, 1.05);
+		m_checkTimer[client] = GetGameTime() + crandomfloat(0.95, 1.05);
 	}
 	else
 		m_isSlowThink[client] = false;

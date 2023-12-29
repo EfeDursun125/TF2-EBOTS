@@ -55,14 +55,14 @@ stock void LookUpdate(const int client, const bool lookaround = true)
 					SelectBestCombatWeapon(client);
 				}
 
-				m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+				m_pauseTime[client] = GetGameTime() + crandomfloat(1.5, 2.5);
 			}
 			else if (m_hasEnemiesNear[client])
 			{
 				LookAtEnemiens(client);
 				AutoAttack(client);
 				SelectBestCombatWeapon(client);
-				m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+				m_pauseTime[client] = GetGameTime() + crandomfloat(1.5, 2.5);
 			}
 			else if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
 			{
@@ -74,7 +74,7 @@ stock void LookUpdate(const int client, const bool lookaround = true)
 					SelectBestCombatWeapon(client);
 				}
 
-				m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
+				m_pauseTime[client] = GetGameTime() + crandomfloat(1.5, 2.5);
 			}
 		}
 
