@@ -19,8 +19,6 @@ float CrouchTime[TFMaxPlayers];
 float m_spawnTime[TFMaxPlayers];
 float m_afkTime[TFMaxPlayers];
 
-char PlayerName[TFMaxPlayers][64];
-
 TFClassType m_class[TFMaxPlayers];
 int m_team[TFMaxPlayers];
 bool m_isAlive[TFMaxPlayers];
@@ -33,6 +31,8 @@ public Plugin myinfo =
 	version = "0.22",
 	url = "https://steamcommunity.com/id/EfeDursun91/"
 }
+
+bool isOT;
 
 #pragma tabsize 0
 #include <ebotai/gamemode>
@@ -110,6 +110,8 @@ public void OnPluginStart()
 	HookEvent("teamplay_point_captured", PointCaptured, EventHookMode_Post);
 	HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Post);
 	//HookEvent("teamplay_waiting_ends", PlayAnimation, EventHookMode_Post);
+	HookEvent("teamplay_overtime_begin", OvertimeStart);
+	HookEvent("teamplay_overtime_end", OvertimeEnd);
 	EBotDebug = CreateConVar("ebot_debug", "0", "", FCVAR_NONE);
 	EBotFPS = CreateConVar("ebot_run_fps", "0.1", "0.0333 = 30 FPS | 0.05 = 20 FPS | 0.1 = 10 FPS | 0.2 = 5 FPS", FCVAR_NONE);
 	EBotMelee = CreateConVar("ebot_melee_range", "128", "", FCVAR_NONE);
@@ -168,7 +170,8 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
-	g_seed += GetURandomInt();
+	isOT = false;
+	g_seed = GetTime();
 	spyTarget = FindConVar("tf_bot_spy_change_target_range_threshold");
 	spyKnife = FindConVar("tf_bot_spy_knife_range");
 
@@ -245,6 +248,18 @@ public void OnMapStart()
 	InitializeWaypoints();
 }
 
+public Action OvertimeStart(Handle event, char[] name, bool dontBroadcast)
+{
+	isOT = true;
+	return Plugin_Continue;
+}
+
+public Action OvertimeEnd(Handle event, char[] name, bool dontBroadcast)
+{
+	isOT = false;
+	return Plugin_Continue;
+}
+
 public Action Command_Afk(const int client, int args)
 {
 	if (args != 0 && args != 2)
@@ -265,10 +280,11 @@ public Action Command_Afk(const int client, int args)
 		{
 			PrintToChat(client, "[E-BOT] AFK-BOT is enabled.");
 			m_isAFK[client] = true;
-			GetClientName(client, PlayerName[client], 64);
-			char afkName[64];
-			FormatEx(afkName, sizeof(afkName), "%s (AFK)", PlayerName[client]);
-			SetClientName(client, afkName);
+
+			char name[32];
+			GetClientName(client, name, sizeof(name));
+			Format(name, sizeof(name), "%s (AFK)", name);
+			SetClientName(client, name);
 		}
 		else
 		{
@@ -276,7 +292,15 @@ public Action Command_Afk(const int client, int args)
 			PrintCenterText(client, "Your AFK Mode is now disabled.");
 			m_afkTime[client] = GetGameTime() + GetConVarFloat(EBotAFKTime);
 			m_isAFK[client] = false;
-			SetClientName(client, PlayerName[client]);
+
+			char name[32];
+			GetClientName(client, name, sizeof(name));
+			ReplaceString(name, sizeof(name), "(AFK)", "", true);
+			ReplaceString(name, sizeof(name), "(AFK", "", true);
+			ReplaceString(name, sizeof(name), "(AF", "", true);
+			ReplaceString(name, sizeof(name), "(A", "", true);
+			ReplaceString(name, sizeof(name), "(", "", true);
+			SetClientName(client, name);
 		}
 		
 		return Plugin_Handled;
@@ -1124,10 +1148,10 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 				else if (m_afkTime[client] < GetGameTime())
 				{
 					m_isAFK[client] = true;
-					GetClientName(client, PlayerName[client], 64);
-					char afkName[64];
-					FormatEx(afkName, sizeof(afkName), "%s (AFK)", PlayerName[client]);
-					SetClientName(client, afkName);
+					char name[32];
+					GetClientName(client, name, sizeof(name));
+					Format(name, sizeof(name), "%s (AFK)", name);
+					SetClientName(client, name);
 				}
 			}
 		}
@@ -1309,8 +1333,6 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 	if (!IsValidClient(client))
 		return Plugin_Handled;
 
-	m_afkTime[client] = GetGameTime() + 60.0;
-
 	if (IsEBot(client) || m_isAFK[client])
 	{
 		int i;
@@ -1409,7 +1431,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 									TF2_SetPlayerClass(client, TFClass_Pyro);
 								else if (rand == 2)
 								{
-									if (IsOnDefanse(client))
+									if (IsOnDefense(client))
 										TF2_SetPlayerClass(client, TFClass_Engineer);
 									else
 									{
@@ -1442,7 +1464,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 									TF2_SetPlayerClass(client, TFClass_Sniper);
 								else if (rand == 2)
 								{
-									if (IsOnDefanse(client))
+									if (IsOnDefense(client))
 										TF2_SetPlayerClass(client, TFClass_Engineer);
 									else
 									{
@@ -1625,6 +1647,8 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		else
 			m_useTeleporter[client] = false;
 	}
+	else
+		m_afkTime[client] = GetGameTime() + 60.0;
 
 	return Plugin_Handled;
 }
@@ -1796,9 +1820,8 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 
 		if (GetConVarInt(EBotDebug))
 			PrintHintTextToAll("Active Area: %s", GetAreaName(currentActiveArea));
-		
-		/*GameRules_SetProp("m_nRoundsPlayed", 0);
-		GameRules_SetProp("m_nMatchGroupType", 7);
+
+		/*GameRules_SetProp("m_nMatchGroupType", 7);
 		RequestFrame(Frame_RestartTime);*/
 	}
 
@@ -1807,10 +1830,10 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 	{
 		if (!IsValidClient(client))
 			continue;
-		
+
 		if (!IsEBot(client) && !m_isAFK[client])
 			continue;
-		
+
 		if (!m_isAlive[client])
 			continue;
 
@@ -2008,7 +2031,7 @@ public Action PrintHudTextOnStart(Handle timer)
 	return Plugin_Handled;
 }
 
-public Action PlayAnimation(Handle event, char[] name, bool dontBroadcast)
+/*public Action PlayAnimation(Handle event, char[] name, bool dontBroadcast)
 {
 	GameRules_SetProp("m_nRoundsPlayed", 0);
 	GameRules_SetProp("m_nMatchGroupType", 7);
@@ -2040,7 +2063,7 @@ void Frame_RestartTime()
 	gI_RestartTimerIteration = 10;
 	delete gH_RestartTimer;
 	Timer_RestartTime(null);
-}
+}*/
 
 public Action SetCheats(Handle timer)
 {
@@ -2052,6 +2075,7 @@ public Action SetCheats(Handle timer)
 		flags |= FCVAR_NOTIFY;
 		cheats.Flags = flags;
 	}
+
 	return Plugin_Handled;
 }
 
@@ -2144,7 +2168,7 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 			}
 		}
 
-		if (defaultReply && crandomint(1, 3) == 1)
+		if (defaultReply && crandomint(1, 5) == 1)
 		{
 			BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/chat/replies/ebot_default.txt");
 			File fp = OpenFile(filepath, "r");

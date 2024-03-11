@@ -625,7 +625,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 116);
 							CreateHat(client, 743);
 							CreateHat(client, 583);
-							CreateWeapon(client, "tf_weapon_pipebomblauncher", 0, 130);
+							CreateWeapon(client, "tf_weapon_pipebomblauncher", 1, 130);
 						}
 						case 3:
 						{
@@ -1092,7 +1092,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						}
 						case 10:
 						{
-							CreateWeapon(client, "tf_weapon_flaregun", 0, 39);
+							CreateWeapon(client, "tf_weapon_flaregun", 1, 39);
 							CreateWeapon(client, "tf_weapon_fireaxe", 2, 214);
 							CreateHat(client, 165);
 						}
@@ -1372,7 +1372,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						}
 						case 10:
 						{
-							CreateWeapon(client, "tf_weapon_sentry_revenge", 0, 39);
+							CreateWeapon(client, "tf_weapon_sentry_revenge", 0, 141);
 							CreateWeapon(client, "tf_weapon_wrench", 2, 155);
 							CreateHat(client, 165);
 						}
@@ -1386,7 +1386,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						}
 						case 13:
 						{
-							CreateWeapon(client, "tf_weapon_sentry_revenge", 0, 39);
+							CreateWeapon(client, "tf_weapon_sentry_revenge", 0, 141);
 							CreateWeapon(client, "tf_weapon_wrench", 2, 155);
 							CreateHat(client, 166);
 						}
@@ -1454,7 +1454,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						}
 						case 22:
 						{
-							CreateWeapon(client, "tf_weapon_sentry_revenge", 0, 39);
+							CreateWeapon(client, "tf_weapon_sentry_revenge", 0, 141);
 							CreateWeapon(client, "tf_weapon_wrench", 2, 155);
 							CreateHat(client, 30357);
 						}
