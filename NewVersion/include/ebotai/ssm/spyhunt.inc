@@ -200,9 +200,9 @@ public void SpyHuntUpdate(const int client)
 				GetClientEyeAngles(playerThreat, flTargetAng);
 				float iAngleDiff = AngleDiff(flBotAng[1], flTargetAng[1]);
 	
-				if (iAngleDiff > 90)
+				if (iAngleDiff > 89.0)
 					m_moveVel[client][1] = -300.0;
-				else if (iAngleDiff < -90)
+				else if (iAngleDiff < -89.0)
 					m_moveVel[client][1] = 300.0;
 			}
 

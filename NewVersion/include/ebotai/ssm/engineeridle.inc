@@ -43,7 +43,6 @@ public void EngineerIdleUpdate(const int client)
 	}
 
 	m_eBotDodgeRange[client] = 512;
-
 	CheckHealth(client);
 
 	if (m_lowAmmo[client])
@@ -129,40 +128,23 @@ public void EngineerIdleUpdate(const int client)
 		
 		return;
 	}
-	
-	if (WantsMoveSentryGun[client] && IsValidEntity(SentryGun[client]))
+
+	if (WantsMoveSentryGun[client] && !IsOnDefense(client) && IsValidEntity(SentryGun[client]))
 	{
 		targetOrigin = GetCenter(SentryGun[client]);
 
 		if (GetVectorDistance(eyePosition, targetOrigin, true) < Squaredf(200.0) && IsVisible(eyePosition, targetOrigin))
 		{
-			if (WantsMoveSentryGun[client])
-			{
-				MoveTo(client, targetOrigin);
-				m_lookAt[client] = targetOrigin;
-				m_buttons[client] |= IN_ATTACK2;
-				m_ignoreEnemies[client] = GetGameTime() + 1.0;
-				m_nextStuckCheck[client] = GetGameTime() + 5.0;
+			MoveTo(client, targetOrigin);
+			m_lookAt[client] = targetOrigin;
+			m_buttons[client] |= IN_ATTACK2;
+			m_ignoreEnemies[client] = GetGameTime() + 1.0;
+			m_nextStuckCheck[client] = GetGameTime() + 5.0;
 
-				if (GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
-				{
-					SetProcess(client, PRO_BUILDSENTRY, 60.0, "| process started -> wants to move sentry gun", false, false);
-					return;
-				}
-			}
-			else
+			if (GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
 			{
-				if (IsWeaponSlotActive(client, 2))
-				{
-					MoveTo(client, targetOrigin);
-					m_lookAt[client] = targetOrigin;
-					m_attackTimer[client] = GetGameTime() + 0.5;
-					m_duckTimer[client] = GetGameTime() + 0.5;
-					m_ignoreEnemies[client] = GetGameTime() + 1.0;
-					m_nextStuckCheck[client] = GetGameTime() + 5.0;
-				}
-				else
-					EquipWeaponSlot(client, 2);
+				SetProcess(client, PRO_BUILDSENTRY, 60.0, "| process started -> wants to move sentry gun", false, false);
+				return;
 			}
 		}
 		else
@@ -195,7 +177,7 @@ public void EngineerIdleUpdate(const int client)
 		return;
 	}
 	
-	if (WantsMoveDispenser[client] && IsValidEntity(Dispenser[client]))
+	if (WantsMoveDispenser[client] && !IsOnDefense(client) && IsValidEntity(Dispenser[client]))
 	{
 		targetOrigin = GetCenter(Dispenser[client]);
 
@@ -342,7 +324,7 @@ public void CheckEngineerBuildings(const int client)
     else
     {
         WantsBuildSentryGun[client] = true;
-        if (IsOnDefanse(client))
+        if (IsOnDefense(client))
             EngineerMoveSentryTimer[client] = GetGameTime() + 99999999.0;
         else
             EngineerMoveSentryTimer[client] = GetGameTime() + crandomfloat(90.0, 160.0);
@@ -381,7 +363,7 @@ public void CheckEngineerBuildings(const int client)
         else
         {
             WantsBuildDispenser[client] = false;
-            if (IsOnDefanse(client))
+            if (IsOnDefense(client))
                 EngineerMoveDispenserTimer[client] = GetGameTime() + 99999999.0;
             else
                 EngineerMoveDispenserTimer[client] = GetGameTime() + crandomfloat(120.0, 180.0);
