@@ -279,19 +279,27 @@ stock void SelectBestCombatWeapon(const int client)
 				EquipWeaponSlot(client, 1);
 			else if (m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
 				EquipWeaponSlot(client, 0);
-			else if (distance > Squaredf(1024.0))
+			else if (distance > Squaredf(768.0))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
 		}
 		else if (m_class[client] == TFClass_Engineer)
 		{
-			if (m_secondaryID[client] == 528)
-				EquipWeaponSlot(client, 0);
-			else if (distance > Squaredf(1024.0))
-				EquipWeaponSlot(client, 1);
+			if (m_secondaryID[client] == 140 || m_secondaryID[client] == 1086 || m_secondaryID[client] == 30668)
+			{
+				if (IsValidEntity(SentryGun[client]) && distance > Squaredf(768.0) && IsValidClient(m_nearestEnemy[client]) && IsVisible(GetCenter(SentryGun[client]), GetOrigin(m_nearestEnemy[client])))
+					EquipWeaponSlot(client, 1);
+				else
+					EquipWeaponSlot(client, 0);
+			}
 			else
-				EquipWeaponSlot(client, 0);
+			{
+				if (distance > Squaredf(768.0))
+					EquipWeaponSlot(client, 1);
+				else
+					EquipWeaponSlot(client, 0);
+			}
 		}
 		else if (m_class[client] == TFClass_Spy)
 			EquipWeaponSlot(client, 0);

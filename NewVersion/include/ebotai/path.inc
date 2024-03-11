@@ -15,6 +15,9 @@ stock bool IsPathPossible(const int client, const float startOrigin[3], const fl
 
 stock void FollowPath(const int client, float targetposition[3], const int entity = -1, const int index = -1)
 {
+	if (client == -1)
+		return;
+
 	if (m_spawnTime[client] + 1.0 > GetGameTime())
 	{
 		SelectObjective(client);
@@ -42,7 +45,7 @@ stock void FollowPath(const int client, float targetposition[3], const int entit
 		return;
 	}
 
-	if (m_positions[client] != null)
+	if (m_positions[client])
 	{
 		if (m_targetNode[client] >= 0 && m_targetNode[client] < m_positions[client].Length)
 		{
@@ -56,9 +59,7 @@ stock void FollowPath(const int client, float targetposition[3], const int entit
 			GetClientAbsOrigin(client, flPos);
 			
 			static float flToPos[3];
-			flToPos[0] = flGoPos[0];
-			flToPos[1] = flGoPos[1];
-			flToPos[2] = flGoPos[2];
+			flToPos = flGoPos;
 			flToPos[2] += GetHeight(client);
 
 			if (m_nextStuckCheck[client] < GetGameTime())
@@ -124,8 +125,8 @@ stock void FollowPath(const int client, float targetposition[3], const int entit
 						m_currentWaypointIndex[client]--;
 						m_targetNode[client]--;
 						m_currentIndex[client] = m_pathIndex[client].Get(m_currentWaypointIndex[client]);
-						wayorigin[0] += ((wayorigin[0] - m_paths[m_currentIndex[client]].origin[0]) / 3.0);
-						wayorigin[1] += ((wayorigin[1] - m_paths[m_currentIndex[client]].origin[1]) / 3.0);
+						wayorigin[0] += ((wayorigin[0] - m_paths[m_currentIndex[client]].origin[0]) * 0.33);
+						wayorigin[1] += ((wayorigin[1] - m_paths[m_currentIndex[client]].origin[1]) * 0.33);
 						wayorigin[2] -= GetHeight(client);
 						MakeVectorFromPoints(wayorigin, GetEyePosition(client), vec);
 						GetVectorAngles(vec, camangle);

@@ -13,6 +13,7 @@ public void CheckSlowThink(const int client)
 		}
 
 		m_class[client] = TF2_GetPlayerClass(client);
+		m_team[client] = GetClientTeam(client);
 		m_isSniper[client] = false;
 		m_isMedic[client] = false;
 		m_hasCrossbow[client] = false;
@@ -309,7 +310,7 @@ public void CheckSlowThink(const int client)
 				if (m_class[search] != TFClass_Spy)
 					continue;
 
-				// only pyro ebots can suspect ebot spies
+				// only pyro ebots can suspect ebot spies :)))
 				if (m_class[client] != TFClass_Pyro && IsEBot(search))
 					continue;
 				
@@ -349,7 +350,16 @@ public void CheckSlowThink(const int client)
 // automaticly triggers the hiding process
 public void CheckHideFromDanger(const int client)
 {
-	if (m_hasEntitiesNear[client] || m_enemiesNearPower[client] > m_friendsNearPower[client])
+	if (!m_isSlowThink[client])
+		return;
+
+	if (isOT)
+	{
+		if (!IsOnDefense(client))
+			return;
+	}
+
+	if (m_hasEntitiesNear[client])
 	{
 		SetProcess(client, PRO_HIDE, 60.0, "| process started -> hiding from danger", false, false);
 		return;
@@ -357,10 +367,13 @@ public void CheckHideFromDanger(const int client)
 
 	if (!m_hasEnemiesNear[client])
 		return;
-	
-	if (!m_isSlowThink[client])
+
+	if (m_enemiesNearPower[client] > m_friendsNearPower[client])
+	{
+		SetProcess(client, PRO_HIDE, 60.0, "| process started -> hiding from danger", false, false);
 		return;
-	
+	}
+
 	if (IsOnOffanse(client) && m_friendsNearCount[client] <= m_enemiesNearCount[client])
 	{
 		SetProcess(client, PRO_HIDE, 60.0, "| process started -> hiding from danger", false, false);
@@ -395,7 +408,13 @@ public void CheckHealth(const int client)
 {
 	if (!m_isSlowThink[client])
 		return;
-	
+
+	if (isOT)
+	{
+		if (!IsOnDefense(client))
+			return;
+	}
+
 	if (m_class[client] == TFClass_Spy && m_meleeID[client] == 356)
 	{
 		if (GetClientHealth(client) < 55.0)
@@ -435,6 +454,9 @@ public void CheckWalls(const int client)
 
 stock bool TryToHide(const int client)
 {
+	if (isOT)
+		return false;
+
 	if (m_class[client] == TFClass_Pyro && GetVectorDistance(GetOrigin(client), m_lookAt[client], true) > Squaredf(512.0))
 		return true;
 	else if (m_class[client] == TFClass_Sniper && GetVectorDistance(GetOrigin(client), m_lookAt[client], true) < Squaredf(512.0))

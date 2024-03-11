@@ -1,8 +1,8 @@
 // from https://github.com/EfeDursun125/CS-EBOT/blob/main/source/waypoint.cpp
 // higher version waypoints will be ignored due to updated waypoint system
-const int WaypointVersion = 3;
-const int MaxWaypoints = 2048;
-const int MaxPathIndex = 8;
+#define WaypointVersion 3
+#define MaxWaypoints 2048
+#define MaxPathIndex 8
 
 int nearestIndex = -1;
 int savedIndex = -1;
@@ -48,7 +48,7 @@ enum
     WAYPOINT_DONTHIDE = (1 << 20)
 };
 
-stock char[] GetWaypointName(int waypoint)
+stock char[] GetWaypointName(const int waypoint)
 {
 	char string[512] = "None";
     FormatEx(string, sizeof(string), "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", waypoint == 0 ? "None" : "", 
@@ -1299,7 +1299,7 @@ stock bool AStarFindPath(int srcIndex, int destIndex, const int client, float ta
     int currentIndex;
     int self;
     int wearable;
-    int limit = (m_waypointNumber / 2) + 2;
+    int limit = (m_waypointNumber / 2) + 32;
 
     float g;
     float f;
@@ -1347,7 +1347,7 @@ stock bool AStarFindPath(int srcIndex, int destIndex, const int client, float ta
         {
             self = m_paths[currentIndex].pathIndex[i];
             if (self == -1)
-                continue;
+                break;
             
             if (self == m_lastFailedWaypoint[client])
                 continue;
@@ -1484,7 +1484,7 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, const int client, 
     int currentIndex;
     int self;
     int wearable;
-    int limit = (m_waypointNumber / 2) + 2;
+    int limit = (m_waypointNumber / 2) + 32;
 
     float g;
     float f;
@@ -1811,7 +1811,7 @@ stock bool AStarVSH(int srcIndex, const int client)
     float dangerOrigin[3];
     dangerOrigin = GetOrigin(client);
 
-    int limit = (m_waypointNumber / 2) + 2;
+    int limit = (m_waypointNumber / 2) + 32;
 
     astar[srcIndex].f = GetVectorDistance(m_paths[srcIndex].origin, dangerOrigin, true);
 
@@ -2660,7 +2660,6 @@ stock void WaypointLoad()
         return;
 
     CreateTimer(15.0, PrintHudTextOnStart);
-    
     m_aboutTheWaypoint = "No waypoint file found\nBots will be idle";
 
     if (fp == null && NavMesh.IsLoaded())
@@ -2699,6 +2698,7 @@ stock void WaypointLoad()
 
     if (header.fileVersion == 1)
     {
+
         int i;
         PathOLD m_pathsOLD[MaxWaypoints];
 
@@ -2869,16 +2869,15 @@ stock void WaypointLoad()
         for (i = 0; i < m_waypointNumber; i++)
             fp.Read(m_paths[i], sizeof(WPath), 4);
     }
-    
+
     fp.Close();
-    
+
     if (isNav)
         m_hasNavpoints = true;
     else
         m_hasWaypoints = true;
-    
-    InitTypes();
 
+    InitTypes();
     return;
 }
 
@@ -2899,7 +2898,7 @@ stock void WaypointSave(const bool nav = false)
 
     char filepath[PLATFORM_MAX_PATH];
     BuildPath(Path_SM, filepath, sizeof(filepath), nav ? "ebot/waypoints/nav/%s.ewp" : "ebot/waypoints/%s.ewp", currentMap);
-    
+
     // remember the original waypoint author
     File rf = OpenFile(filepath, "rb");
     if (rf != null)
@@ -2907,14 +2906,14 @@ stock void WaypointSave(const bool nav = false)
         rf.Read(header, sizeof(header), 4);
         rf.Close();
     }
-    
+
     header.fileVersion = WaypointVersion;
     header.pointNumber = m_waypointNumber;
-    
+
     File fp = OpenFile(filepath, "wb");
     if (fp == null)
         return;
-    
+
     // write the all waypoint data
     fp.Write(header, sizeof(header), 4);
 
@@ -2922,7 +2921,7 @@ stock void WaypointSave(const bool nav = false)
     int i;
     for (i = 0; i < m_waypointNumber; i++)
         fp.Write(m_paths[i], sizeof(WPath), 4);
-    
+
     fp.Close();
     PrintHintTextToAll("%d waypoints saved sucsessfully!", m_waypointNumber);
 }
@@ -2955,7 +2954,7 @@ stock void DangerMapLoad()
 {
     if (m_waypointNumber <= 0)
         return;
-    
+
     char filepath[PLATFORM_MAX_PATH];
     BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/waypoints/data/%s.dm", currentMap);
     File fp = OpenFile(filepath, "rb");
@@ -2964,7 +2963,7 @@ stock void DangerMapLoad()
         ResetDangerMap(true);
         return;
     }
-    
+
     int i, j;
     for (j = 0; j < 7; j++)
     {

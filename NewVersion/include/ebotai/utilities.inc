@@ -168,8 +168,8 @@ Handle g_hCustomTaunt;
 
 bool m_isAFK[TFMaxPlayers];
 
-Handle gH_RestartTimer = null;
-int gI_RestartTimerIteration = 0;
+//Handle gH_RestartTimer = null;
+//int gI_RestartTimerIteration = 0;
 
 int g_seed;
 stock int frand()
@@ -614,40 +614,38 @@ stock void LookAtPosition(const int client, const float flGoal[3], float flAng[3
 {
 	static float delta;
 	delta = GetGameTime() - m_aimInterval[client];
-	m_aimInterval[client] = GetGameTime();
+	m_aimInterval[client] += delta;
+	if (delta > 0.064)
+		delta = 0.064;
 
 	static float flPos[3];
-    GetClientEyePosition(client, flPos);
-    
-    // get normalised direction from target to client
-    static float desired_dir[3];
-    MakeVectorFromPoints(flPos, flGoal, desired_dir);
-    GetVectorAngles(desired_dir, desired_dir);
-	
+	GetClientEyePosition(client, flPos);
+
+	static float desired_dir[3];
+	MakeVectorFromPoints(flPos, flGoal, desired_dir);
+	GetVectorAngles(desired_dir, desired_dir);
+
 	static float aimSpeed;
-	aimSpeed = 16.0 * delta;
-    
-    // ease the current direction to the target direction
-    flAng[0] += AngleNormalize(desired_dir[0] - flAng[0]) * aimSpeed;
-    flAng[1] += AngleNormalize(desired_dir[1] - flAng[1]) * aimSpeed;
+	aimSpeed = (8.0 + (2.0 * m_difficulty[client])) * delta;
+
+	flAng[0] += AngleNormalize(desired_dir[0] - flAng[0]) * aimSpeed;
+	flAng[1] += AngleNormalize(desired_dir[1] - flAng[1]) * aimSpeed;
 	TeleportEntity(client, NULL_VECTOR, flAng, NULL_VECTOR);
 }
 
 stock float AngleNormalize(float angle)
 {
 	angle = fmodf(angle, 360.0);
-	if (angle > 180) 
-		angle -= 360;
-	
-	if (angle < -180)
-		angle += 360;
-	
+	if (angle > 180.0)
+		angle -= 360.0;
+	else if (angle < -180.0)
+		angle += 360.0;
 	return angle;
 }
 
 stock float fmodf(const float number, const float denom)
 {
-	return number - RoundToFloor(number / denom) * denom;
+	return number - RoundToNearest(number / denom) * denom;
 }
 
 stock float AngleDiff(const float destAngle, const float srcAngle)
@@ -655,103 +653,61 @@ stock float AngleDiff(const float destAngle, const float srcAngle)
 	return AngleNormalize(destAngle - srcAngle);
 }
 
-stock float ApproachAngle(const float target, float value, float speed)
-{
-	float delta = AngleDiff(target, value);
-	
-	if (speed < 0.0) 
-		speed = -speed;
-	
-	if (delta > speed) 
-		value += speed;
-	else if (delta < -speed) 
-		value -= speed;
-	else
-		value = target;
-	
-	return AngleNormalize(value);
-}
-
 stock void MoveTo(const int client, const float flGoal[3])
 {
-	static float flPos[3];
-	GetClientAbsOrigin(client, flPos);
-	
-	static float fAng[3];
-	GetClientEyeAngles(client, fAng);
-	
 	static float newmove[3];
-	SubtractVectors(flGoal, flPos, newmove);
+	GetClientEyeAngles(client, newmove);
 
-	newmove[1] = -newmove[1];
-	
 	static float sin;
 	static float cos;
-	sin = Sine(fAng[1] * 0.01745329251);
-	cos = Cosine(fAng[1] * 0.01745329251);
-	
+	sin = Sine(newmove[1] * 0.01745329251);
+	cos = Cosine(newmove[1] * 0.01745329251);
+
+	GetClientAbsOrigin(client, newmove);
+	SubtractVectors(flGoal, newmove, newmove);
+
+	newmove[1] = -newmove[1];
+
 	m_moveVel[client][0] = cos * newmove[0] - sin * newmove[1];
 	m_moveVel[client][1] = sin * newmove[0] + cos * newmove[1];
 
 	ScaleVector(m_moveVel[client], GetEntPropFloat(client, Prop_Data, "m_flMaxspeed"));
 }
 
-stock void MoveToWaypoint(const int client, float flGoal[3])
+stock void MoveToWaypoint(const int client, const float flGoal[3])
 {
-	float flPos[3];
-	GetClientAbsOrigin(client, flPos);
-	
-	float flVel[3];
-	GetEntPropVector(client, Prop_Data, "m_vecAbsVelocity", flVel);
-	
-	float fps = GetConVarFloat(EBotFPS);
-	flPos[0] += flVel[0] * fps;
-	flPos[1] += flVel[1] * fps;
-	flGoal[0] -= flVel[0] * fps;
-	flGoal[1] -= flVel[1] * fps;
-
-	float fAng[3];
-	GetClientEyeAngles(client, fAng);
-	
 	float newmove[3];
-	SubtractVectors(flGoal, flPos, newmove);
-	
+	GetClientEyeAngles(client, newmove);
+
+	float sin = Sine(newmove[1] * 0.01745329251);
+	float cos = Cosine(newmove[1] * 0.01745329251);
+
+	GetClientAbsOrigin(client, newmove);
+	SubtractVectors(flGoal, newmove, newmove);
+
 	newmove[1] = -newmove[1];
-	
-	float sin = Sine(fAng[1] * 0.01745329251);
-	float cos = Cosine(fAng[1] * 0.01745329251);
-	
+
 	m_moveVel[client][0] = cos * newmove[0] - sin * newmove[1];
 	m_moveVel[client][1] = sin * newmove[0] + cos * newmove[1];
-
-	float maxSpeed = GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
-	float fixed = GetVectorDistance2D(flPos, flGoal) - (10.0 + (fps * maxSpeed));
-	if (fixed < fps)
-		fixed = fps;
-
-	m_nextStuckCheck[client] = GetGameTime() + 5.0;
-	ScaleVector(m_moveVel[client], fixed);
 }
 
-stock void MoveOut(const int client, float flGoal[3])
+stock void MoveOut(const int client, const float flGoal[3])
 {
-	float flPos[3];
-	GetClientAbsOrigin(client, flPos);
-
-	float fAng[3];
-	GetClientEyeAngles(client, fAng);
-	
 	float newmove[3];
-	SubtractVectors(flGoal, flPos, newmove);
-	
-	float sin = Sine(fAng[1] * 0.01745329251);
-	float cos = Cosine(fAng[1] * 0.01745329251);
-	
+	GetClientEyeAngles(client, newmove);
+
+	float sin = Sine(newmove[1] * 0.01745329251);
+	float cos = Cosine(newmove[1] * 0.01745329251);
+
+	GetClientAbsOrigin(client, newmove);
+	SubtractVectors(newmove, flGoal, newmove);
+
+	newmove[1] = -newmove[1];
+
 	m_moveVel[client][0] = cos * newmove[0] - sin * newmove[1];
 	m_moveVel[client][1] = sin * newmove[0] + cos * newmove[1];
-	
-	NormalizeVector(m_moveVel[client], m_moveVel[client]);
-	ScaleVector(m_moveVel[client], 500.0);
+
+	ScaleVector(m_moveVel[client], GetEntPropFloat(client, Prop_Data, "m_flMaxspeed"));
 }
 
 stock void BackstabMove(const int client, const int target, const bool moveForward = true)
@@ -766,9 +722,9 @@ stock void BackstabMove(const int client, const int target, const bool moveForwa
 	else if (moveForward)
 		m_moveVel[client][0] = 500.0;
 	
-	if (iAngleDiff > 90)
+	if (iAngleDiff > 89.0)
 		m_moveVel[client][1] = -500.0;
-	else if (iAngleDiff < -90)
+	else if (iAngleDiff < -89.0)
 		m_moveVel[client][1] = 500.0;
 }
 
@@ -776,14 +732,14 @@ stock bool IsValidClient(const int client)
 {
 	if (client < 1 || client > MaxClients)
 		return false;
-	
+
 	if (!IsClientInGame(client))
 		return false;
-	
+
 	return true;
 }
 
-stock bool IsVisible(float start[3], float end[3])
+stock bool IsVisible(const float start[3], const float end[3])
 {
 	TR_TraceRayFilter(start, end, MASK_CUSTOM, RayType_EndPoint, TraceEntityFilterStuff);
 	if (TR_GetFraction() == 1.0) 
@@ -795,7 +751,7 @@ stock bool IsVisible(float start[3], float end[3])
 float hully[3] = {-18.0, -18.0, -18.0};
 float hullx[3] = {18.0, 18.0, 18.0};
 
-stock bool IsVisibleWaypoint(float start[3], float end[3])
+stock bool IsVisibleWaypoint(const float start[3], const float end[3])
 {
 	static float fstart[3];
 	static float fend[3];
@@ -814,7 +770,7 @@ stock bool IsVisibleWaypoint(float start[3], float end[3])
 	return fr >= 1.0;
 }
 
-stock bool IsVisibleWaypointDebug(float start[3], float end[3])
+stock bool IsVisibleWaypointDebug(const float start[3], const float end[3])
 {
 	float fstart[3];
 	float fend[3];
@@ -830,7 +786,7 @@ stock bool IsVisibleWaypointDebug(float start[3], float end[3])
 	return TR_GetFraction() >= 0.9;
 }
 
-stock float[] VectorWithRoot(float origin[3], float root1 = 0.0, float root2 = 0.0, float root3 = 0.0)
+stock float[] VectorWithRoot(const float origin[3], const float root1 = 0.0, const float root2 = 0.0, const float root3 = 0.0)
 {
 	float vector[3];
 	vector[0] = origin[0] + root1;
@@ -839,7 +795,7 @@ stock float[] VectorWithRoot(float origin[3], float root1 = 0.0, float root2 = 0
 	return vector;
 }
 
-stock float[] VectorAsFloat(int origin[3])
+stock float[] VectorAsFloat(const int origin[3])
 {
 	float vector[3];
 	vector[0] = float(origin[0]);
@@ -899,7 +855,7 @@ stock int GetEntityThrower(const int entity)
 	return GetEntPropEnt(entity, Prop_Send, "m_hThrower");
 }
 
-stock bool IsWeaponSlotActive(int client, int slot)
+stock bool IsWeaponSlotActive(const int client, const int slot)
 {
     return GetPlayerWeaponSlot(client, slot) == GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 }
@@ -1119,9 +1075,11 @@ stock bool IsAttacking(const int client)
 
 stock float GetHeight(const int client)
 {
-	static float eyepos[3]; eyepos = GetEyePosition(client);
-	static float origin[3]; origin = GetOrigin(client);
-	return (eyepos[2] - origin[2]);
+	static float eyepos[3];
+	eyepos = GetEyePosition(client);
+	static float origin[3];
+	origin = GetOrigin(client);
+	return eyepos[2] - origin[2];
 }
 
 stock int GetAmmo(const int client, const int slot)
@@ -1488,14 +1446,12 @@ stock void ClampAngle(float fAngles[3])
 {
 	if (fAngles[0] > 89.0)
 		fAngles[0] -= 360.0;
-
-	if (fAngles[0] < -89.0)
+	else if (fAngles[0] < -89.0)
 		fAngles[0] += 360.0;
 
 	if (fAngles[1] > 180.0)
 		fAngles[1] -= 360.0;
-
-	if (fAngles[1] <-180.0)
+	else if (fAngles[1] < -180.0)
 		fAngles[1] += 360.0;
 }
 
@@ -2152,10 +2108,10 @@ stock FindEntityByTargetname(const char[] targetname, const char[] classname)
 	char namebuf[32];
 	int index = -1;
 	namebuf[0] = '\0';
-	
+
 	while (strcmp(namebuf, targetname) != 0 && (index = FindEntityByClassname(index, classname)) != -1)
 		GetEntPropString(index, Prop_Data, "m_iName", namebuf, sizeof(namebuf));
-	
+
 	return index;
 }
 
