@@ -149,7 +149,9 @@ stock void FollowPath(const int client, float targetposition[3], const int entit
 
 					if (m_paths[m_currentIndex[client]].flags & WAYPOINT_JUMP || m_paths[m_currentIndex[client]].flags & WAYPOINT_DOUBLEJUMP)
 					{
-						m_positions[client].GetArray(m_targetNode[client], flGoPos);
+						if (m_targetNode[client] != -1)
+							m_positions[client].GetArray(m_targetNode[client], flGoPos);
+
 						MoveTo(client, flGoPos);
 
 						if (!(m_buttons[client] & IN_JUMP))
@@ -344,7 +346,7 @@ stock NavDirType ComputeDirection(CNavArea area, const float flPos[3])
 
 public float PathCostFastest(CNavArea area, CNavArea fromArea, CNavLadder ladder, int elevator, float length)
 {
-	if (fromArea == NULL_AREA)
+	if (!fromArea)
 		return 0.0;
 	
 	static float center[3];
@@ -358,7 +360,7 @@ public float PathCostFastest(CNavArea area, CNavArea fromArea, CNavLadder ladder
 
 public float TFPathCost(CNavArea area, CNavArea fromArea, CNavLadder ladder, int elevator, float length)
 {
-	if (fromArea == NULL_AREA)
+	if (!fromArea)
 		return 0.0;
 	
 	static float center[3];

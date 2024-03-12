@@ -1269,7 +1269,7 @@ stock bool AStarFindPath(int srcIndex, int destIndex, const int client, float ta
         return false;
     }
 
-	if (srcIndex < 1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
+	if (srcIndex  == -1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
 		srcIndex = FindWaypoint(GetOrigin(client), client);
     
     if (srcIndex == destIndex)
@@ -1287,19 +1287,21 @@ stock bool AStarFindPath(int srcIndex, int destIndex, const int client, float ta
     astar[srcIndex].g = CostNormal(srcIndex, destIndex, client);
     astar[srcIndex].f = astar[srcIndex].g + HeuristicNormal(srcIndex, destIndex);
     
-    if (m_hidingSpots[client] == null)
+    if (!m_hidingSpots[client])
     {
         delete m_hidingSpots[client];
         m_hidingSpots[client] = new ArrayList();
     }
     
-    if (m_hidingSpots[client] != null)
+    if (m_hidingSpots[client])
         m_hidingSpots[client].Clear();
     
     int currentIndex;
     int self;
     int wearable;
     int limit = (m_waypointNumber / 2) + 32;
+    if (m_class[client] == TFClass_Engineer)
+        limit *= 2
 
     float g;
     float f;
@@ -1410,6 +1412,9 @@ stock bool AStarFindPath(int srcIndex, int destIndex, const int client, float ta
     m_lastFailedWaypoint[client] = destIndex;
 
     ArrayList PossiblePath = new ArrayList();
+    if (!PossiblePath)
+        return AStarFindShortestPath(srcIndex, destIndex, client, targetposition);
+
     for (i = 0; i < m_waypointNumber; i++)
     {
         if (astar[i].is_closed)
@@ -1437,7 +1442,7 @@ stock bool AStarFindPath(int srcIndex, int destIndex, const int client, float ta
     }
 
     // just roam around :(
-    if (PossiblePath.Length > 0)
+    if (PossiblePath.Length)
     {
         i = PossiblePath.Get(crandomint(0, PossiblePath.Length - 1));
         delete PossiblePath;
@@ -1451,7 +1456,7 @@ stock bool AStarFindPath(int srcIndex, int destIndex, const int client, float ta
 // A* for second try
 stock bool AStarFindShortestPath(int srcIndex, int destIndex, const int client, float targetposition[3] = NULL_VECTOR)
 {
-	if (destIndex < 1)
+	if (destIndex == -1)
     {
         if (GetConVarInt(EBotDebug) == 1)
         {
@@ -1463,7 +1468,7 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, const int client, 
         return false;
     }
     
-	if (srcIndex < 1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
+	if (srcIndex == -1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
 		srcIndex = FindWaypoint(GetOrigin(client), client);
     
     if (srcIndex == destIndex)
@@ -1485,6 +1490,8 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, const int client, 
     int self;
     int wearable;
     int limit = (m_waypointNumber / 2) + 32;
+    if (m_class[client] == TFClass_Engineer)
+        limit *= 2
 
     float g;
     float f;
@@ -1573,6 +1580,9 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, const int client, 
     }
 
     ArrayList PossiblePath = new ArrayList();
+    if (!PossiblePath)
+        return false;
+
     for (i = 0; i < m_waypointNumber; i++)
     {
         if (astar[i].is_closed)
@@ -1580,7 +1590,7 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, const int client, 
     }
 
     // just roam around :(
-    if (PossiblePath.Length > 0)
+    if (PossiblePath.Length)
     {
         i = PossiblePath.Get(crandomint(0, PossiblePath.Length - 1));
         delete PossiblePath;
@@ -1593,7 +1603,7 @@ stock bool AStarFindShortestPath(int srcIndex, int destIndex, const int client, 
 
 stock bool AStarFindHidingSpot(int srcIndex, const int client, float dangerOrigin[3])
 {
-	if (srcIndex < 1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
+	if (srcIndex == -1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
 		srcIndex = FindWaypoint(GetOrigin(client), client);
     
     int i;
@@ -1778,6 +1788,9 @@ stock bool AStarFindHidingSpot(int srcIndex, const int client, float dangerOrigi
     }
 
     ArrayList PossiblePath = new ArrayList();
+    if (!PossiblePath)
+        return false;
+
     for (i = 0; i < m_waypointNumber; i++)
     {
         if (astar[i].is_closed)
@@ -1785,7 +1798,7 @@ stock bool AStarFindHidingSpot(int srcIndex, const int client, float dangerOrigi
     }
 
     // just roam around :(
-    if (PossiblePath.Length > 0)
+    if (PossiblePath.Length)
     {
         i = PossiblePath.Get(crandomint(0, PossiblePath.Length - 1));
         delete PossiblePath;
@@ -1798,7 +1811,7 @@ stock bool AStarFindHidingSpot(int srcIndex, const int client, float dangerOrigi
 
 stock bool AStarVSH(int srcIndex, const int client)
 {
-	if (srcIndex < 1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
+	if (srcIndex == -1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
 		srcIndex = FindWaypoint(GetOrigin(client), client);
 
     for (int i = 0; i < m_waypointNumber; i++)
@@ -1893,6 +1906,9 @@ stock bool AStarVSH(int srcIndex, const int client)
     }
 
     ArrayList PossiblePath = new ArrayList();
+    if (!PossiblePath)
+        return false;
+
     for (int i = 0; i < m_waypointNumber; i++)
     {
         if (astar[i].is_closed)
@@ -1900,7 +1916,7 @@ stock bool AStarVSH(int srcIndex, const int client)
     }
 
     // just roam around :(
-    if (PossiblePath.Length > 0)
+    if (PossiblePath.Length)
     {
         int i = PossiblePath.Get(crandomint(0, PossiblePath.Length - 1));
         delete PossiblePath;
@@ -1913,7 +1929,7 @@ stock bool AStarVSH(int srcIndex, const int client)
 
 stock bool AStarFindHealthPack(int srcIndex, const int client)
 {
-	if (srcIndex < 1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
+	if (srcIndex == -1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
 		srcIndex = FindWaypoint(GetOrigin(client), client);
     
     int i;
@@ -2010,6 +2026,9 @@ stock bool AStarFindHealthPack(int srcIndex, const int client)
     }
 
     ArrayList PossiblePath = new ArrayList();
+    if (!PossiblePath)
+        return false;
+
     for (i = 0; i < m_waypointNumber; i++)
     {
         if (astar[i].is_closed)
@@ -2017,7 +2036,7 @@ stock bool AStarFindHealthPack(int srcIndex, const int client)
     }
 
     // just roam around :(
-    if (PossiblePath.Length > 0)
+    if (PossiblePath.Length)
     {
         i = PossiblePath.Get(crandomint(0, PossiblePath.Length - 1));
         delete PossiblePath;
@@ -2075,7 +2094,7 @@ stock bool IsValidHealthPack(const int entity)
 
 stock bool AStarFindAmmoPack(int srcIndex, const int client)
 {
-	if (srcIndex < 1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
+	if (srcIndex == -1 || !IsVisibleToWaypoint(GetEyePosition(client), srcIndex, GetHeight(client)))
 		srcIndex = FindWaypoint(GetOrigin(client), client);
     
     int i;
@@ -2173,6 +2192,9 @@ stock bool AStarFindAmmoPack(int srcIndex, const int client)
     }
 
     ArrayList PossiblePath = new ArrayList();
+    if (!PossiblePath)
+        return false;
+
     for (i = 0; i < m_waypointNumber; i++)
     {
         if (astar[i].is_closed)
@@ -2180,7 +2202,7 @@ stock bool AStarFindAmmoPack(int srcIndex, const int client)
     }
 
     // just roam around :(
-    if (PossiblePath.Length > 0)
+    if (PossiblePath.Length)
     {
         i = PossiblePath.Get(crandomint(0, PossiblePath.Length - 1));
         delete PossiblePath;
@@ -2523,22 +2545,20 @@ stock int FindWaypointFastest(float origin[3])
 
 stock void DeletePathNodes(const int client)
 {
-	if (m_positions[client] == null)
+	if (!m_positions[client])
 	{
 		delete m_positions[client];
 		m_positions[client] = new ArrayList(3);
 	}
-
-	if (m_positions[client] != null)
+    else
 		m_positions[client].Clear();
 	
-	if (m_pathIndex[client] == null)
+	if (!m_pathIndex[client])
 	{
 		delete m_pathIndex[client];
 		m_pathIndex[client] = new ArrayList();
 	}
-
-	if (m_pathIndex[client] != null)
+	else
 		m_pathIndex[client].Clear();
 }
 

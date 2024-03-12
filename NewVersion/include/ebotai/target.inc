@@ -309,42 +309,54 @@ public void FindEnemyEntities(const int client)
 	static float center[3];
 
 	static int i;
-	for (i = 0; i <= GetMaxEntities(); i++)
+	for (i = MaxClients; i <= GetMaxEntities(); i++)
 	{
 		if (!IsValidEntity(i))
 			continue;
-		
-		GetEntityClassname(i, class, sizeof(class));
-		if (!StrEqual(class, "obj_sentrygun", false) && !StrEqual(class, "obj_dispenser", false) && !StrEqual(class, "obj_teleporter", false) && !StrEqual(class, "tf_projectile_pipe_remote", false) && !StrEqual(class, "tf_zombie", false) && !StrEqual(class, "tank_boss", false) && !StrEqual(class, "merasmus", false) && !StrEqual(class, "eyeball_boss", false) && !StrEqual(class, "headless_hatman", false) && !StrEqual(class, "tf_robot_destruction_robot", false))
-			continue;
 
-		if (GetTeamNumber(i) == m_team[client])
+		if (HasEntProp(i, Prop_Send, "m_bHasSapper"))
 		{
-			if (m_useTeleporter[client])
-			{
-				GetEntityClassname(i, class, sizeof(class));
-				if (!StrEqual(class, "obj_teleporter", false))
-					continue;
-				
-				if (TF2_GetObjectMode(i) != TFObjectMode_Entrance)
-					continue;
+			if (GetEntProp(i, Prop_Send, "m_bHasSapper"))
+				continue;
 
-				if (!IsVisible(GetEyePosition(client), GetOrigin(i)))
-					continue;
-				
-				if (!HasEntProp(i, Prop_Send, "m_bHasSapper") || GetEntProp(i, Prop_Send, "m_bHasSapper") != 0)
-					continue;
-				
-				if (GetEntProp(i, Prop_Send, "m_iState") == 2 || GetEntProp(i, Prop_Send, "m_iState") == 6 && GetEntProp(i, Prop_Send, "m_iUpgradeLevel") == 3)
-					m_teleporterEntity[client] = i;
+			if (GetEntProp(i, Prop_Send, "m_iTeamNum") == m_team[client])
+			{
+				if (m_useTeleporter[client])
+				{
+					GetEntityClassname(i, class, sizeof(class));
+					if (StrEqual(class, "obj_teleporter", false))
+					{
+						if (TF2_GetObjectMode(i) != TFObjectMode_Entrance)
+							continue;
+
+						if (GetEntProp(i, Prop_Send, "m_iState") == 2 || GetEntProp(i, Prop_Send, "m_iState") == 6 && GetEntProp(i, Prop_Send, "m_iUpgradeLevel") == 3)
+						{
+							if (IsVisible(GetEyePosition(client), GetOrigin(i)))
+								m_teleporterEntity[client] = i;
+						}
+					}
+				}
+
+				continue;
 			}
 
-			continue;
+			GetEntityClassname(i, class, sizeof(class));
+			if (!StrEqual(class, "obj_sentrygun", false) && !StrEqual(class, "obj_dispenser", false) && !StrEqual(class, "obj_teleporter", false))
+				continue;
 		}
-		
-		if (HasEntProp(i, Prop_Send, "m_bHasSapper") && GetEntProp(i, Prop_Send, "m_bHasSapper") != 0)
-			continue;
-		
+		else
+		{
+			if (!HasEntProp(i, Prop_Send, "m_iTeamNum"))
+				continue;
+
+			if (GetEntProp(i, Prop_Send, "m_iTeamNum") == m_team[client])
+				continue;
+
+			GetEntityClassname(i, class, sizeof(class));
+			if (!StrEqual(class, "tf_projectile_pipe_remote", false) && !StrEqual(class, "tf_zombie", false) && !StrEqual(class, "tank_boss", false) && !StrEqual(class, "merasmus", false) && !StrEqual(class, "eyeball_boss", false) && !StrEqual(class, "headless_hatman", false) && !StrEqual(class, "tf_robot_destruction_robot", false))
+				continue;
+		}
+
 		eyeposition = GetEyePosition(client);
 		center = GetCenter(i);
 		if (!IsVisible(eyeposition, center))

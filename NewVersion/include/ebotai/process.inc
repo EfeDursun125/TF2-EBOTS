@@ -3,11 +3,11 @@ int RememberedProcess[TFMaxPlayers];
 float CurrentProcessTime[TFMaxPlayers];
 float RememberedProcessTime[TFMaxPlayers];
 
-stock void SetProcess(const int client, const int process, const float time = 9999.0, const char[] debugnote = "clear", const bool ignoredebug = false, const bool remember = true)
+stock bool SetProcess(const int client, const int process, const float time = 9999.0, const char[] debugnote = "clear", const bool ignoredebug = false, const bool remember = true)
 {
 	if (FailedProcess[client] == process)
-		return;
-	
+		return false;
+
 	if (CurrentProcess[client] != process && IsReadyForTheProcess(client, process))
 	{
 		if (!ignoredebug && GetConVarInt(EBotDebug))
@@ -23,7 +23,10 @@ stock void SetProcess(const int client, const int process, const float time = 99
 		CurrentProcess[client] = process;
 		StartProcess(client, process);
 		CurrentProcessTime[client] = GetGameTime() + time;
+		return true;
 	}
+
+	return false;
 }
 
 public void StartProcess(const int client, const int process)
@@ -70,7 +73,7 @@ public void StartProcess(const int client, const int process)
 public void EndProcess(const int client, const int process)
 {
 	CurrentProcessTime[client] = GetGameTime();
-	
+
 	switch (process)
 	{
 		case PRO_DEFAULT:
@@ -112,7 +115,7 @@ public void EndProcess(const int client, const int process)
 
 public void UpdateProcess(const int client)
 {
-	if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcessTime[client] < GetGameTime() && CurrentProcess[client] != PRO_SPYLURK && CurrentProcess[client] != PRO_SPYHUNT)
+	if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcess[client] != PRO_ENGINEERIDLE && CurrentProcessTime[client] < GetGameTime() && CurrentProcess[client] != PRO_SPYLURK && CurrentProcess[client] != PRO_SPYHUNT)
 	{
 		if (GetConVarInt(EBotDebug))
 			PrintToServer("%N is cancelled %s process -> timed out.", client, GetProcessName(CurrentProcess[client]));
@@ -133,7 +136,7 @@ public void UpdateProcess(const int client)
 		CurrentProcess[client] = PRO_DEFAULT;
 		StartProcess(client, PRO_DEFAULT);
 	}
-	
+
 	switch (CurrentProcess[client])
 	{
 		case PRO_DEFAULT:
@@ -294,5 +297,6 @@ stock char[] GetProcessName(const int process)
 		case PRO_HUNTENEMY:
 			string = "HUNT ENEMY";
 	}
+
 	return string;
 }

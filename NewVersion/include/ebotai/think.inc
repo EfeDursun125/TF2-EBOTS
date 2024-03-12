@@ -11,7 +11,7 @@ stock void LookUpdate(const int client, const bool lookaround = true)
 		if (IsWeaponSlotActive(client, 0))
 		{
 			m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
-			if (m_friendDistance[client] <= Squaredf(192.0))
+			if (m_friendDistance[client] < Squaredf(192.0))
 				m_attack2Timer[client] = GetGameTime() + 0.2;
 			else
 				MoveTo(client, GetOrigin(m_nearestFriend[client]));
@@ -25,7 +25,7 @@ stock void LookUpdate(const int client, const bool lookaround = true)
 		if (IsWeaponSlotActive(client, 1))
 		{
 			m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
-			if (m_friendDistance[client] <= Squaredf(192.0))
+			if (m_friendDistance[client] < Squaredf(192.0))
 				m_buttons[client] |= IN_ATTACK2;
 			else
 				MoveTo(client, GetOrigin(m_nearestFriend[client]));

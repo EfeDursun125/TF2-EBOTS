@@ -307,7 +307,7 @@ stock void FindPayload()
 stock void FindHostEntity()
 {
 	int i;
-	for (i = 1; i < MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
 		if (IsValidClient(i) && !IsFakeClient(i))
 		{
@@ -322,7 +322,7 @@ stock int FindBotByName(const char[] name)
 {
 	int i;
 	char buffer[MAX_NAME_LENGTH];
-	for (i = 1; i < MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
 		if (IsValidClient(i) && IsFakeClient(i))
 		{
@@ -343,9 +343,9 @@ stock int GetTeamsCount(const int team)
 {
 	int i;
 	int count = 0;
-	for (i = 1; i < MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
-		if (IsValidClient(i) && GetClientTeam(i) == team)
+		if (IsValidClient(i) && m_team[i] == team)
 			count++;
 	}
 	return count;
@@ -355,7 +355,7 @@ stock int GetBotCount()
 {
 	int i;
 	int count = 0;
-	for (i = 1; i < MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
 		if (IsValidClient(i) && IsEBot(i))
 			count++;
@@ -367,9 +367,9 @@ stock int GetPlayersCount()
 {
 	int i;
 	int count = 0;
-	for (i = 1; i < MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
-		if (IsValidClient(i) && !IsEBot(i) && GetClientTeam(i) != 1)
+		if (IsValidClient(i) && !IsEBot(i) && m_team[i] != 1)
 			count++;
 	}
 	return count;
@@ -379,9 +379,9 @@ stock int GetPlayersCountRed()
 {
 	int i;
 	int count = 0;
-	for (i = 1; i < MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
-		if (IsValidClient(i) && GetClientTeam(i) == 2)
+		if (IsValidClient(i) && m_team[i] == 2)
 			count++;
 	}
 	return count;
@@ -391,9 +391,9 @@ stock int GetPlayersCountBlu()
 {
 	int i;
 	int count = 0;
-	for (i = 1; i < MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
-		if (IsValidClient(i) && GetClientTeam(i) == 3)
+		if (IsValidClient(i) && m_team[i] == 3)
 			count++;
 	}
 	return count;
@@ -403,9 +403,9 @@ stock int GetTotalPlayersCount()
 {
 	int i;
 	int count = 0;
-	for (i = 1; i < MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
-		if (IsValidClient(i) && GetClientTeam(i) != 1)
+		if (IsValidClient(i) && m_team[i] != 1)
 			count++;
 	}
 	return count;
@@ -497,6 +497,7 @@ stock bool FakeClientCommandThrottled(const int client, const char[] command)
 {
 	if (g_flNextCommand[client] > GetGameTime())
 		return false;
+
 	FakeClientCommand(client, command);
 	g_flNextCommand[client] = GetGameTime() + 0.4;
 	return true;
@@ -899,9 +900,9 @@ stock bool TF2_HasTheFlag(const int client)
 	else if (isMVM)
 	{
 		int ent;
-    	while ((ent = FindEntityByClassname(ent, "item_teamflag")) != -1)
+    	while (IsValidEntity((ent = FindEntityByClassname(ent, "item_teamflag"))))
     	{
-        	if (IsValidEntity(ent) && GetEntPropEnt(ent, Prop_Data, "m_hOwnerEntity") == client)
+        	if (GetEntPropEnt(ent, Prop_Data, "m_hOwnerEntity") == client)
             	return true;
     	}
 	}
@@ -920,7 +921,7 @@ stock int FindLeader(const int team)
 		if (!IsValidClient(i))
 			continue;
 
-		if (GetClientTeam(i) != team)
+		if (m_team[i] != team)
 			continue;
 		
 		score = GetClientScore(i);
@@ -945,7 +946,7 @@ stock int FindBestKD(const int team)
 		if (!IsValidClient(i))
 			continue;
 
-		if (GetClientTeam(i) != team)
+		if (m_team[i] != team)
 			continue;
 		
 		score = GetKDR(i);
@@ -1151,12 +1152,12 @@ public bool ExcludeFilter(int entity, int contentsMask, any iExclude)
 	GetEntityClassname(entity, class, sizeof(class));
 	if (StrEqual(class, "player"))
 	{
-		if (GetClientTeam(entity) == GetClientTeam(iExclude))
+		if (m_team[entity] == m_team[iExclude])
 			return false;
 	}
 	else if (StrEqual(class, "entity_medigun_shield"))
 	{
-		if (GetEntProp(entity, Prop_Send, "m_iTeamNum") == GetClientTeam(iExclude))
+		if (GetEntProp(entity, Prop_Send, "m_iTeamNum") == m_team[iExclude])
 			return false;
 	}
 	else if (StrEqual(class, "func_respawnroomvisualizer"))
@@ -1176,12 +1177,12 @@ public bool StuckFilter(int entity, int contentsMask, any iExclude)
 	GetEntityClassname(entity, class, sizeof(class));
 	if (StrEqual(class, "player"))
 	{
-		if (GetClientTeam(entity) == GetClientTeam(iExclude))
+		if (m_team[entity] == m_team[iExclude])
 			return false;
 	}
 	else if (StrEqual(class, "entity_medigun_shield"))
 	{
-		if (GetEntProp(entity, Prop_Send, "m_iTeamNum") == GetClientTeam(iExclude))
+		if (GetEntProp(entity, Prop_Send, "m_iTeamNum") == m_team[iExclude])
 			return false;
 	}
 	else if (StrEqual(class, "func_respawnroomvisualizer"))
@@ -1196,7 +1197,7 @@ stock int GetPlayerStickyCount(const int client)
 	int x;
 	int StickyCount = 0;
 	char ClassName[32];
-	for (x = 0; x <= GetMaxEntities(); x++)
+	for (x = MaxClients; x <= GetMaxEntities(); x++)
 	{
 		if (!IsValidEntity(x))
 			continue;
@@ -1222,7 +1223,7 @@ stock int GetBluControlPointCount()
 	int x;
 	int count = 0;
 	char ClassName[32];
-	for (x = 0; x <= GetMaxEntities(); x++)
+	for (x = MaxClients; x <= GetMaxEntities(); x++)
 	{
 		if (!IsValidEntity(x))
 			continue;
@@ -1247,17 +1248,14 @@ stock int GetBluControlPointCount()
 stock int GetNearestEnemyControlPoint(const int client)
 {
 	int NearestControlPoint = -1;
-	
+
 	float distance = -1.0; 
 	float nearestDistance = 9999999999999999.0;
-	
+
 	int iControlPoint;
-	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+	while (IsValidEntity((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point"))))
 	{
-		if (!IsValidEntity(iControlPoint))
-			continue;
-		
-		if (GetClientTeam(client) == GetTeamNumber(iControlPoint))
+		if (m_team[client] == GetTeamNumber(iControlPoint))
 			continue;
 		
 		distance = GetFastDistance(GetOrigin(client), GetOrigin(iControlPoint));
@@ -1278,11 +1276,8 @@ stock int GetNearestPayload(const int client, const int team)
 	float nearestDistance = 9999999999999999.0;
 	int iPayload;
 
-	while ((iPayload = FindEntityByClassname(iPayload, "mapobj_cart_dispenser")) != -1)
+	while (IsValidEntity((iPayload = FindEntityByClassname(iPayload, "mapobj_cart_dispenser"))))
 	{
-		if (!IsValidEntity(iPayload))
-			continue;
-		
 		if (GetTeamNumber(iPayload) != team)
 			continue;
 		
@@ -1561,15 +1556,12 @@ stock int GetUsableSniperHintsCount(const int team)
 {
 	int SniperHintsCount = 0;
 	int iEntity;
-	while ((iEntity = FindEntityByClassname(iEntity, "func_tfbot_hint")) != -1)
+	while (IsValidEntity((iEntity = FindEntityByClassname(iEntity, "func_tfbot_hint"))))
 	{
-		if (!IsValidEntity(iEntity))
-			continue;
-			
-		if (GetEntProp(iEntity, Prop_Data, "m_hint") != 0)
+		if (GetEntProp(iEntity, Prop_Data, "m_hint"))
 			continue;
 		
-		if (GetEntProp(iEntity, Prop_Data, "m_isDisabled") == 1)
+		if (GetEntProp(iEntity, Prop_Data, "m_isDisabled"))
 			continue;
 			
 		if (GetTeamNumber(iEntity) == team) // don't use enemy hints. but still can use UNDEFINED TEAM hints. (team != GetTeamNumber(iEntity) is team only hints.)
@@ -1583,19 +1575,17 @@ stock int GetUsableSniperHintsCount(const int team)
 
 stock int GetRandomSniperSpot(const int team)
 {
-	int iEntity;
-	int iSelectedHint = -1;
 	ArrayList SniperHints = new ArrayList();
+	if (!SniperHints)
+		return -1;
 
-	while ((iEntity = FindEntityByClassname(iEntity, "func_tfbot_hint")) != -1)
+	int iEntity, iSelectedHint = -1;
+	while (IsValidEntity((iEntity = FindEntityByClassname(iEntity, "func_tfbot_hint"))))
 	{
-		if (!IsValidEntity(iEntity))
+		if (GetEntPropEnt(iEntity, Prop_Data, "m_hint"))
 			continue;
 		
-		if (GetEntPropEnt(iEntity, Prop_Data, "m_hint") != 0)
-			continue;
-		
-		if (GetEntProp(iEntity, Prop_Data, "m_isDisabled") == 1)
+		if (GetEntProp(iEntity, Prop_Data, "m_isDisabled"))
 			continue;
 			
 		if (GetTeamNumber(iEntity) == team)
@@ -1604,7 +1594,7 @@ stock int GetRandomSniperSpot(const int team)
 		SniperHints.Push(iEntity);
 	}
 
-	if (SniperHints.Length > 0)
+	if (SniperHints.Length)
 		iSelectedHint = SniperHints.Get(crandomint(0, SniperHints.Length - 1));
 
 	delete SniperHints;
@@ -1613,8 +1603,8 @@ stock int GetRandomSniperSpot(const int team)
 
 stock int TF2_GetObject(const int client, TFObjectType type, TFObjectMode mode)
 {
-	int iObject = INVALID_ENT_REFERENCE;
-	while ((iObject = FindEntityByClassname(iObject, "obj_*")) != -1)
+	int iObject;
+	while (IsValidEntity((iObject = FindEntityByClassname(iObject, "obj_*"))))
 	{
 		if (GetEntPropEnt(iObject, Prop_Send, "m_hBuilder") == client && TF2_GetObjectType(iObject) == type && TF2_GetObjectMode(iObject) == mode && !GetEntProp(iObject, Prop_Send, "m_bPlacing") && !GetEntProp(iObject, Prop_Send, "m_bDisposableBuilding"))		
 			return iObject;
@@ -1785,7 +1775,7 @@ stock bool NameAlreadyTakenByPlayer(const char[] name)
 {
 	int i;
 	char buffer[MAX_NAME_LENGTH];
-	for (i = 1; i < MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
 		if (!IsValidClient(i))
 			continue;
@@ -1924,46 +1914,46 @@ stock bool IsRevealedSpyByTarget(const int client, const int target)
 
 	if (GetVectorDistance(GetOrigin(client), GetOrigin(target), true) <= Squaredf(72.0))
 		return true;
-	
+
 	if (IsStealthed(client))
 		return (GetPercentInvisible(client) < 1.0);
-	
+
 	if (!IsStealthed(client) && m_knownSpy[target] == client)
 		return true;
-	
+
 	if (!TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		return true;
-	
+
 	if (IsStealthed(client) && TF2_IsPlayerInCondition(client, TFCond_CloakFlicker))
 		return true;
-	
+
 	if (!TF2_IsPlayerInCondition(client, TFCond_CritOnFirstBlood) && TF2_IsPlayerInCondition(target, TFCond_CritOnFirstBlood))
 		return true;
-	
+
 	if (!TF2_IsPlayerInCondition(client, TFCond_CritOnWin) && TF2_IsPlayerInCondition(target, TFCond_CritOnWin))
 		return true;
-	
+
 	if (!TF2_IsPlayerInCondition(client, TFCond_CritOnFlagCapture) && TF2_IsPlayerInCondition(target, TFCond_CritOnFlagCapture))
 		return true;
-	
+
 	if (TF2_IsPlayerInCondition(client, TFCond_Bleeding))
 		return true;
-	
+
 	if (TF2_IsPlayerInCondition(client, TFCond_Bonked))
 		return true;
-	
+
 	if (TF2_IsPlayerInCondition(client, TFCond_Dazed))
 		return true;
-	
+
 	if (TF2_IsPlayerInCondition(client, TFCond_Gas))
 		return true;
-	
+
 	if (TF2_IsPlayerInCondition(client, TFCond_Jarated))
 		return true;
-	
+
 	if (TF2_IsPlayerInCondition(client, TFCond_Milked))
 		return true;
-	
+
 	return false;
 }
 
@@ -1971,21 +1961,17 @@ stock int GetEnemyControlPointCount(const int client)
 {
 	int EnemyControlPointCount = 0;
 	int iControlPoint;
-	
-	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+	while (IsValidEntity((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point"))))
 	{
-		if (!IsValidEntity(iControlPoint))
+		if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked"))
 			continue;
 
-		if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked") != 0)
+		if (m_team[client] == GetTeamNumber(iControlPoint))
 			continue;
-		
-		if (GetClientTeam(client) == GetTeamNumber(iControlPoint))
-			continue;
-		
+
 		EnemyControlPointCount++;
 	}
-	
+
 	return EnemyControlPointCount;
 }
 
@@ -1995,18 +1981,14 @@ stock int GetNearestMyControlPoint(const int client)
 	float distance; 
 	float nearestDistance = 999999999999999.0;
 	int iControlPoint;
-	
-	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+	while (IsValidEntity((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point"))))
 	{
-		if (!IsValidEntity(iControlPoint))
+		if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked"))
 			continue;
-		
-		if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked") != 0)
+
+		if (m_team[client] != GetTeamNumber(iControlPoint))
 			continue;
-		
-		if (GetClientTeam(client) != GetTeamNumber(iControlPoint))
-			continue;
-		
+
 		distance = GetVectorDistance(GetOrigin(client), GetOrigin(iControlPoint), true);
 		if (distance < nearestDistance)
 		{
@@ -2014,7 +1996,7 @@ stock int GetNearestMyControlPoint(const int client)
 			nearestDistance = distance;
 		}
 	}
-	
+
 	return NearestControlPoint;
 }
 
@@ -2022,36 +2004,29 @@ stock int GetMyControlPointCount(const int client)
 {
 	int MyControlPointCount = 0;
 	int iControlPoint;
-	
-	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+	while (IsValidEntity((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point"))))
 	{
-		if (!IsValidEntity(iControlPoint))
+		if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked"))
 			continue;
-		
-		if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked") != 0)
+
+		if (m_team[client] != GetTeamNumber(iControlPoint))
 			continue;
-		
-		if (GetClientTeam(client) != GetTeamNumber(iControlPoint))
-			continue;
-		
+
 		MyControlPointCount++;
 	}
-	
+
 	return MyControlPointCount;
 }
 
 stock int GetNearestBluControlPoint()
 {
 	int iControlPoint;
-	while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+	while (IsValidEntity((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point"))))
 	{
-		if (!IsValidEntity(iControlPoint))
-			continue;
-		
 		if (GetTeamNumber(iControlPoint) != 3)
 			continue;
 	}
-	
+
 	return iControlPoint;
 }
 
@@ -2064,17 +2039,14 @@ stock int GetNearestDefendableControlPoint(const int client)
 	
 	if (GetNearestBluControlPoint() != -1)
 	{
-		while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+		while (IsValidEntity((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point"))))
 		{
-			if (!IsValidEntity(iControlPoint))
+			if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked"))
 				continue;
-			
-			if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked") != 0)
+
+			if (m_team[client] != GetTeamNumber(iControlPoint))
 				continue;
-			
-			if (GetClientTeam(client) != GetTeamNumber(iControlPoint))
-				continue;
-			
+
 			distance = GetVectorDistance(GetOrigin(GetNearestBluControlPoint()), GetOrigin(iControlPoint), true);
 			if (distance < nearestDistance)
 			{
@@ -2085,17 +2057,14 @@ stock int GetNearestDefendableControlPoint(const int client)
 	}
 	else
 	{
-		while ((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point")) != -1)
+		while (IsValidEntity((iControlPoint = FindEntityByClassname(iControlPoint, "team_control_point"))))
 		{
-			if (!IsValidEntity(iControlPoint))
+			if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked"))
 				continue;
-			
-			if (GetEntProp(iControlPoint, Prop_Data, "m_bLocked") != 0)
+
+			if (m_team[client] != GetTeamNumber(iControlPoint))
 				continue;
-			
-			if (GetClientTeam(client) != GetTeamNumber(iControlPoint))
-				continue;
-			
+
 			NearestControlPoint = iControlPoint;
 		}
 	}

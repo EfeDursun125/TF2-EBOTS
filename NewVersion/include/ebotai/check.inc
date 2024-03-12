@@ -4,6 +4,39 @@ public void CheckSlowThink(const int client)
 {
 	if (m_checkTimer[client] < GetGameTime())
 	{
+		if (HardResetTimer[client] < GetGameTime())
+		{
+			m_enemiesNearCount[client] = 0;
+			m_friendsNearCount[client] = 0;
+			m_hasEnemiesNear[client] = false;
+			m_hasFriendsNear[client] = false;
+			m_lowAmmo[client] = false;
+			m_lowHealth[client] = false;
+			m_knownSpy[client] = -1;
+			m_goalIndex[client] = -1;
+			m_goalEntity[client] = -1;
+			m_goalPosition[client] = NULL_VECTOR;
+			m_lastFailedWaypoint[client] = -1;
+			m_currentIndex[client] = -1;
+			m_lastEnemySeen[client] = 0.0;
+			m_lastEntitySeen[client] = 0.0;
+			m_stopTime[client] = 0.0;
+			m_pauseTime[client] = 0.0;
+			m_ignoreEnemies[client] = 0.0;
+			CrouchTime[client] = 0.0;
+			m_aimInterval[client] = GetGameTime();
+			DeletePathNodes(client);
+
+			if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+				SetProcess(client, PRO_ENGINEERIDLE, 99999.0, "", true);
+			else if (TF2_GetPlayerClass(client) == TFClass_Spy)
+				SetProcess(client, PRO_SPYLURK, 99999.0, "", true);
+			else
+				SetProcess(client, PRO_DEFAULT, 99999.0, "", true);
+
+			HardResetTimer[client] = GetGameTime() + 120.0;
+		}
+
 		m_isSlowThink[client] = true;
 
 		if (m_isAFK[client])
