@@ -521,7 +521,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 3:
 						{
 							CreateWeapon(client, "tf_weapon_rocketlauncher", 0, 513);
-							CreateWeapon(client, "tf_weapon_shotgun", 1, 1153);
+							CreateWeapon(client, "tf_weapon_shotgun_soldier", 1, 1153);
 							CreateHat(client, 261);
 							CreateHat(client, 343);
 							CreateHat(client, 165);
@@ -587,7 +587,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 13:
 						{
 							CreateWeapon(client, "tf_weapon_rocketlauncher", 0, 414);
-							CreateWeapon(client, "tf_weapon_shotgun", 1, 415);
+							CreateWeapon(client, "tf_weapon_shotgun_soldier", 1, 415);
 							CreateWeapon(client, "tf_weapon_katana", 2, 357);
 							CreateHat(client, 152);
 							CreateHat(client, 30126);
@@ -953,7 +953,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 8:
 						{
 							CreateWeapon(client, "tf_weapon_minigun", 0, 654);
-							CreateWeapon(client, "tf_weapon_shotgun", 1, 1153);
+							CreateWeapon(client, "tf_weapon_shotgun_hwg", 1, 1153);
 							CreateWeapon(client, "tf_weapon_fists", 2, 239);
 							CreateHat(client, 96);
 							CreateHat(client, 30342);
@@ -975,7 +975,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 11:
 						{
 							CreateWeapon(client, "tf_weapon_minigun", 0, 958);
-							CreateWeapon(client, "tf_weapon_shotgun", 1, 1153);
+							CreateWeapon(client, "tf_weapon_shotgun_hwg", 1, 1153);
 							CreateWeapon(client, "tf_weapon_fists", 2, 239);
 							CreateHat(client, 162);
 							CreateHat(client, 143);
@@ -989,7 +989,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 13:
 						{
 							CreateWeapon(client, "tf_weapon_minigun", 0, 802);
-							CreateWeapon(client, "tf_weapon_shotgun", 1, 15047);
+							CreateWeapon(client, "tf_weapon_shotgun_hwg", 1, 15047);
 							CreateWeapon(client, "tf_weapon_fists", 2, 587);
 							CreateHat(client, 97);
 							CreateHat(client, 30302);
@@ -1006,7 +1006,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 15:
 						{
 							CreateWeapon(client, "tf_weapon_minigun", 0, 424);
-							CreateWeapon(client, "tf_weapon_shotgun", 1, 1153);
+							CreateWeapon(client, "tf_weapon_shotgun_hwg", 1, 1153);
 							CreateWeapon(client, "tf_weapon_fists", 2, 310);
 						}
 						case 16:
@@ -1041,7 +1041,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 3:
 						{
 							CreateWeapon(client, "tf_weapon_fireaxe", 2, 153);
-							CreateWeapon(client, "tf_weapon_shotgun", 1, 1153);
+							CreateWeapon(client, "tf_weapon_shotgun_pyro", 1, 1153);
 							CreateHat(client, 261);
 							CreateHat(client, 343);
 							CreateHat(client, 165);
@@ -1065,7 +1065,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 6:
 						{
 							CreateWeapon(client, "tf_weapon_flamethrower", 0, 741);
-							CreateWeapon(client, "tf_weapon_shotgun", 1, 415);
+							CreateWeapon(client, "tf_weapon_shotgun_pyro", 1, 415);
 						}
 						case 7:
 						{
@@ -1099,7 +1099,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 11:
 						{
 							CreateWeapon(client, "tf_weapon_flamethrower", 0, 1146);
-							CreateWeapon(client, "tf_weapon_shotgun", 1, 415);
+							CreateWeapon(client, "tf_weapon_shotgun_pyro", 1, 415);
 							CreateWeapon(client, "tf_weapon_fireaxe", 2, 348);
 							CreateHat(client, 213);
 							CreateHat(client, 30400);
@@ -1114,7 +1114,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 13:
 						{
 							CreateWeapon(client, "tf_weapon_flamethrower", 0, 215);
-							CreateWeapon(client, "tf_weapon_shotgun", 1, 1153);
+							CreateWeapon(client, "tf_weapon_shotgun_pyro", 1, 1153);
 							CreateWeapon(client, "tf_weapon_fireaxe", 2, 153);
 							CreateHat(client, 570);
 							CreateHat(client, 937);
@@ -1147,7 +1147,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 17:
 						{
 							CreateWeapon(client, "tf_weapon_flamethrower", 0, 215);
-							CreateWeapon(client, "tf_weapon_shotgun", 1, 415);
+							CreateWeapon(client, "tf_weapon_shotgun_pyro", 1, 415);
 							CreateWeapon(client, "tf_weapon_fireaxe", 2, 326);
 						}
 						case 18:
@@ -1218,7 +1218,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						{
 							CreateWeapon(client, "tf_weapon_revolver", 0, 61);
 							CreateWeapon(client, "tf_weapon_knife", 2, 665);
-							CreateWeapon(client, "tf_weapon_sapper", 1, 1080);
+							CreateWeapon(client, "tf_weapon_sapper", 1, 1102);
 							CreateWeapon(client, "tf_weapon_invis", 4, 947);
 							CreateHat(client, 30405);
 							CreateHat(client, 30404);
@@ -1242,7 +1242,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 11:
 						{
 							CreateWeapon(client, "tf_weapon_revolver", 0, 61);
-							CreateWeapon(client, "tf_weapon_sapper", 1, 1080);
+							CreateWeapon(client, "tf_weapon_sapper", 1, 1102);
 							CreateWeapon(client, "tf_weapon_knife", 2, 225);
 							CreateWeapon(client, "tf_weapon_invis", 4, 59);
 							CreateHat(client, 30397);
@@ -1338,7 +1338,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						}
 						case 5:
 						{
-							CreateWeapon(client, "tf_weapon_shotgun", 0, 15085);
+							CreateWeapon(client, "tf_weapon_shotgun_primary", 0, 15085);
 							CreateWeapon(client, "tf_weapon_wrench", 2, 329);
 							CreateHat(client, 48);
 						}
@@ -1349,14 +1349,14 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						}
 						case 7:
 						{
-							CreateWeapon(client, "tf_weapon_shotgun", 0, 15109);
+							CreateWeapon(client, "tf_weapon_shotgun_primary", 0, 15109);
 							CreateWeapon(client, "tf_weapon_wrench", 2, 329);
 							CreateHat(client, 30402);
 							CreateHat(client, 30403);
 						}
 						case 8:
 						{
-							CreateWeapon(client, "tf_weapon_shotgun", 0, 15152);
+							CreateWeapon(client, "tf_weapon_shotgun_primary", 0, 15152);
 							CreateWeapon(client, "tf_weapon_laser_pointer", 1, 1086);
 							CreateWeapon(client, "tf_weapon_wrench", 2, 169);
 							CreateHat(client, 162);
@@ -1392,7 +1392,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						}
 						case 14:
 						{
-							CreateWeapon(client, "tf_weapon_shotgun", 0, 1153);
+							CreateWeapon(client, "tf_weapon_shotgun_primary", 0, 1153);
 							CreateWeapon(client, "tf_weapon_pistol", 1, 294);
 							CreateWeapon(client, "tf_weapon_wrench", 2, 589);
 							CreateHat(client, 165);
@@ -1401,7 +1401,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						}
 						case 15:
 						{
-							CreateWeapon(client, "tf_weapon_shotgun", 0, 1141);
+							CreateWeapon(client, "tf_weapon_shotgun_primary", 0, 1141);
 							CreateWeapon(client, "tf_weapon_pistol", 1, 30666);
 							CreateWeapon(client, "tf_weapon_wrench", 2, 329);
 							CreateHat(client, 30066);

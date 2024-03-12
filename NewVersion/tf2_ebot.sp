@@ -1,4 +1,4 @@
-const int TFMaxPlayers = 101;
+#define TFMaxPlayers 101
 
 #include <sourcemod>
 #include <sdktools>
@@ -13,6 +13,7 @@ CNavMesh NavMesh;
 
 float autoupdate = 0.0;
 
+float HardResetTimer[TFMaxPlayers];
 float DJTime[TFMaxPlayers];
 float NoDodge[TFMaxPlayers];
 float CrouchTime[TFMaxPlayers];
@@ -165,6 +166,7 @@ public void OnPluginStart()
 		m_team[i] = GetClientTeam(i);
 		m_isAlive[i] = IsPlayerAlive(i);
 		m_ignoreEnemies[i] = 0.0;
+		HardResetTimer[i] = GetGameTime() + 120.0;
 	}
 }
 
@@ -175,10 +177,10 @@ public void OnMapStart()
 	spyTarget = FindConVar("tf_bot_spy_change_target_range_threshold");
 	spyKnife = FindConVar("tf_bot_spy_knife_range");
 
-	if (spyTarget == null)
+	if (!spyTarget)
 		spyTarget = CreateConVar("tf_bot_spy_change_target_range_threshold", "300", "", FCVAR_CHEAT);
 
-	if (spyKnife == null)
+	if (!spyKnife)
 		spyKnife = CreateConVar("tf_bot_spy_knife_range", "300", "If threat is closer than this, prefer our knife", FCVAR_CHEAT);
 	
 	m_isAlive[0] = false;
@@ -262,13 +264,7 @@ public Action OvertimeEnd(Handle event, char[] name, bool dontBroadcast)
 
 public Action Command_Afk(const int client, int args)
 {
-	if (args != 0 && args != 2)
-	{
-		ReplyToCommand(client, "[E-BOT] Usage: sm_afk <target> [0/1]");
-		return Plugin_Handled;
-	}
-	
-	if (args == 0) // For People
+	if (!args) // For People
 	{
 		if (GetConVarInt(EBotAFKCommand) != 1)
 		{
@@ -334,7 +330,7 @@ public Action Command_Afk(const int client, int args)
 		{
 			if (IsValidClient(target_list[i]))
 			{
-				if (value == 0)
+				if (!value)
 				{
 					if (CheckCommandAccess(client, "sm_afk_access", ADMFLAG_ROOT))
 					{
@@ -355,6 +351,8 @@ public Action Command_Afk(const int client, int args)
 			}
 		}
 	}
+	else
+		ReplyToCommand(client, "[E-BOT] Usage: sm_afk <target> [0/1]");
 
 	return Plugin_Handled;
 }
@@ -371,34 +369,36 @@ public void EBotDeathChat(const int client)
 		return;
 
 	char filepath[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/chat/ebot_deadchat.txt");
-    File fp = OpenFile(filepath, "r");
-    if (fp != null)
-    {
+	BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/chat/ebot_deadchat.txt");
+	File fp = OpenFile(filepath, "r");
+	if (fp)
+	{
 		ArrayList RandomChat = new ArrayList(ByteCountToCells(65));
-
-		char line[MAX_NAME_LENGTH];
-        while (!fp.EndOfFile())
+		if (RandomChat)
 		{
-			fp.ReadLine(line, sizeof(line));
-			if (!line)
-				continue;
+			char line[MAX_NAME_LENGTH];
+			while (!fp.EndOfFile())
+			{
+				fp.ReadLine(line, sizeof(line));
+				if (!line)
+					continue;
 			
-			if (StrContains(line, "//") != -1)
-				continue;
+				if (StrContains(line, "//") != -1)
+					continue;
 			
-			TrimString(line);
-			RandomChat.PushString(line);
-		}
+				TrimString(line);
+				RandomChat.PushString(line);
+			}
 
-		if (RandomChat.Length > 0)
-		{
-			char ChosenOne[MAX_NAME_LENGTH];
-			RandomChat.GetString(crandomint(0, RandomChat.Length - 1), ChosenOne, sizeof(ChosenOne));
-			DataPack pack;
-			CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
-			pack.WriteCell(client);
-			pack.WriteString(ChosenOne);
+			if (RandomChat.Length)
+			{
+				char ChosenOne[MAX_NAME_LENGTH];
+				RandomChat.GetString(crandomint(0, RandomChat.Length - 1), ChosenOne, sizeof(ChosenOne));
+				DataPack pack;
+				CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
+				pack.WriteCell(client);
+				pack.WriteString(ChosenOne);
+			}
 		}
 
 		fp.Close();
@@ -841,12 +841,14 @@ public Action AddEBot(const int client, int args)
 
 public void AddEBotConsole()
 {
+	ArrayList BotNames = new ArrayList(ByteCountToCells(65));
+	if (!BotNames)
+		return;
+
 	char filepath[PLATFORM_MAX_PATH];
     BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/ebot_names.txt");
-    File fp = OpenFile(filepath, "r");
-
-	ArrayList BotNames = new ArrayList(ByteCountToCells(65));
-    if (fp != null)
+	File fp = OpenFile(filepath, "r");
+    if (fp)
     {
 		char line[MAX_NAME_LENGTH];
         while (!fp.EndOfFile())
@@ -868,7 +870,7 @@ public void AddEBotConsole()
 		fp.Close();
     }
 
-	if (BotNames.Length > 0)
+	if (BotNames.Length)
 		BotNames.GetString(crandomint(0, BotNames.Length - 1), ChosenName, sizeof(ChosenName));
 	else
 		FormatEx(ChosenName, sizeof(ChosenName), "ebot %d", crandomint(0, 9999));
@@ -879,7 +881,7 @@ public void AddEBotConsole()
 		FormatEx(ChosenName, sizeof(ChosenName), "Engineer Gaming");
 	
 	ConVar cheats = FindConVar("sv_cheats");
-	if (cheats != null)
+	if (cheats)
 	{
 		if (cheats.BoolValue)
 			ServerCommand("bot -name \"%s\"", ChosenName);
@@ -1108,6 +1110,9 @@ public void OnGameFrame()
 				int i;
 				for (i = m_targetNode[bot]; i > 0; i--)
 				{
+					if ((i - 1) < 0 || i > m_positions[bot].Length)
+						continue;
+
 					float flFromPos[3];
 					float flToPos[3];
 					m_positions[bot].GetArray(i, flFromPos, 3);
@@ -1175,7 +1180,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 	// trigger scout double jump
 	if (DJTime[client] < GetGameTime())
 	{
-		if (m_positions[client] != null && m_positions[client].Length > 0)
+		if (m_positions[client] && m_positions[client].Length && m_targetNode[client] != -1)
 		{
 			float flGoPos[3];
 			m_positions[client].GetArray(m_targetNode[client], flGoPos);
@@ -1298,7 +1303,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 
 		vel = m_moveVel[client];
 
-		if (m_currentIndex[client] > 0 && m_paths[m_currentIndex[client]].flags & WAYPOINT_DEMOCHARGE && m_class[client] == TFClass_DemoMan)
+		if (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags & WAYPOINT_DEMOCHARGE && m_class[client] == TFClass_DemoMan)
 		{
 			m_currentWaypointIndex[client]--;
 			m_targetNode[client]--;
@@ -1583,6 +1588,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_ignoreEnemies[client] = 0.0;
 		CrouchTime[client] = 0.0;
 		m_aimInterval[client] = GetGameTime();
+		HardResetTimer[client] = GetGameTime() + 120.0;
 		DeletePathNodes(client);
 
 		if (TF2_GetPlayerClass(client) == TFClass_Engineer)
@@ -1597,10 +1603,24 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 			SetProcess(client, PRO_SPYLURK, 99999.0, "", true);
 		else
 			SetProcess(client, PRO_DEFAULT, 99999.0, "", true);
-		
+
+		m_nextStuckCheck[client] = GetGameTime() + 10.0;
+		m_spawnTime[client] = GetGameTime();
+		m_class[client] = TF2_GetPlayerClass(client);
+		m_team[client] = GetClientTeam(client);
+
+		m_teleporterEntity[client] = -1;
+		if (ChanceOf(60))
+			m_useTeleporter[client] = true;
+		else
+			m_useTeleporter[client] = false;
+
 		if (m_hasRouteWaypoints)
 		{
 			ArrayList RouteWaypoints = new ArrayList();
+			if (!RouteWaypoints)
+				return Plugin_Handled;
+
 			for (i = 0; i < m_waypointNumber; i++)
 			{
 				if (!(m_paths[i].flags & WAYPOINT_ROUTE))
@@ -1623,7 +1643,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 				RouteWaypoints.Push(i);
 			}
 
-			if (RouteWaypoints.Length > 0)
+			if (RouteWaypoints.Length)
 				i = RouteWaypoints.Get(crandomint(0, RouteWaypoints.Length - 1));
 			else
 				i = -1;
@@ -1635,17 +1655,6 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 				m_nextStuckCheck[client] = GetGameTime() + 10.0;
 			}
 		}
-
-		m_nextStuckCheck[client] = GetGameTime() + 10.0;
-		m_spawnTime[client] = GetGameTime();
-		m_class[client] = TF2_GetPlayerClass(client);
-		m_team[client] = GetClientTeam(client);
-
-		m_teleporterEntity[client] = -1;
-		if (ChanceOf(60))
-			m_useTeleporter[client] = true;
-		else
-			m_useTeleporter[client] = false;
 	}
 	else
 		m_afkTime[client] = GetGameTime() + 60.0;
@@ -1698,7 +1707,7 @@ public Action BotSap(Handle event, char[] name, bool dontBroadcast)
 		{
 			FakeClientCommand(engineer, "voicemenu 1 1");
 			int index = FindWaypointFastest(GetOrigin(engineer));
-			if (index > 0)
+			if (index != -1)
 				AStarFindShortestPath(-1, index, engineer, m_paths[index].origin);
 
 			m_knownSpy[engineer] = spy;
@@ -1740,7 +1749,7 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 		{
 			m_damageTime[victim] = GetGameTime();
 
-			if ((!m_hasEnemiesNear[victim] || !m_isAlive[m_nearestEnemy[victim]]) && !TF2_IsPlayerInCondition(victim, TFCond_OnFire))
+			if ((!m_hasEnemiesNear[victim] || (m_nearestEnemy[victim] != -1 && !m_isAlive[m_nearestEnemy[victim]])) && !TF2_IsPlayerInCondition(victim, TFCond_OnFire))
 			{
 				m_lookAt[victim] = GetEyePosition(attacker);
 				m_pauseTime[victim] = GetGameTime() + crandomfloat(2.5, 5.0);
@@ -1748,7 +1757,7 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 				m_hasEnemiesNear[victim] = true;
 			}
 
-			if (m_currentIndex[victim] > 0)
+			if (m_currentIndex[victim] != -1)
 				IncreaseDamage(victim, m_currentIndex[victim], damage);
 			else
 			{
@@ -1790,7 +1799,7 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 				return Plugin_Handled;
 			}
 		}
-		else if (!m_hasEntitiesNear[victim] && attacker > TFMaxPlayers && IsValidEntity(attacker))
+		else if (!m_hasEntitiesNear[victim] && attacker > MaxClients && IsValidEntity(attacker))
 		{
 			m_damageTime[victim] = GetGameTime();
 			m_pauseTime[victim] = GetGameTime() + crandomfloat(2.5, 5.0);
@@ -1839,8 +1848,11 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 
 		if (m_hasRouteWaypoints)
 		{
-			int index = -1;
 			ArrayList RouteWaypoints = new ArrayList();
+			if (!RouteWaypoints)
+				continue;
+
+			int index = -1;
 			for (i = 0; i < m_waypointNumber; i++)
 			{
 				if (!(m_paths[i].flags & WAYPOINT_ROUTE))
@@ -1857,14 +1869,13 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 				cteam = GetClientTeam(client);
  				if (cteam == 3 && m_paths[i].team == 2)
     				continue;
-				
-   				if (cteam == 2 && m_paths[i].team == 3)
+   				else if (cteam == 2 && m_paths[i].team == 3)
         			continue;
 
 				RouteWaypoints.Push(i);
 			}
 
-			if (RouteWaypoints.Length > 0)
+			if (RouteWaypoints.Length)
 				index = RouteWaypoints.Get(crandomint(0, RouteWaypoints.Length - 1));
 			
 			delete RouteWaypoints;
@@ -2051,7 +2062,7 @@ public Action Timer_RestartTime(Handle timer)
 		return Plugin_Continue;
 	}
 
-	if (gI_RestartTimerIteration > 0)
+	if (gI_RestartTimerIteration)
 		return Plugin_Continue;
 
 	gH_RestartTimer = null;
@@ -2068,7 +2079,7 @@ void Frame_RestartTime()
 public Action SetCheats(Handle timer)
 {
 	ConVar cheats = FindConVar("sv_cheats");
-	if (cheats != null)
+	if (cheats)
 	{
 		cheats.SetBool(false, false, false);
 		int flags = cheats.Flags;
@@ -2137,31 +2148,34 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 			TrimString(message);
 			BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/chat/replies/%s.txt", message);
 			File fp = OpenFile(filepath, "r");
-			if (fp != null)
+			if (fp)
 			{
 				ArrayList RandomReply = new ArrayList(ByteCountToCells(65));
-				char line[256];
-				while (!fp.EndOfFile())
+				if (RandomReply)
 				{
-					fp.ReadLine(line, sizeof(line));
-					if (!line)
-						continue;
+					char line[256];
+					while (!fp.EndOfFile())
+					{
+						fp.ReadLine(line, sizeof(line));
+						if (!line)
+							continue;
 
-					TrimString(line);
-					RandomReply.PushString(line);
-				}
+						TrimString(line);
+						RandomReply.PushString(line);
+					}
 
-				if (RandomReply.Length > 0)
-				{
-					char ChosenOne[MAX_NAME_LENGTH];
-					RandomReply.GetString(crandomint(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
-					DataPack pack;
-					CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
-					pack.WriteCell(client);
-					pack.WriteString(ChosenOne);
-					fp.Close();
-					defaultReply = false
-					break;
+					if (RandomReply.Length)
+					{
+						char ChosenOne[MAX_NAME_LENGTH];
+						RandomReply.GetString(crandomint(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
+						DataPack pack;
+						CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
+						pack.WriteCell(client);
+						pack.WriteString(ChosenOne);
+						fp.Close();
+						defaultReply = false
+						break;
+					}
 				}
 
 				fp.Close();
@@ -2172,28 +2186,31 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 		{
 			BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/chat/replies/ebot_default.txt");
 			File fp = OpenFile(filepath, "r");
-			if (fp != null)
+			if (fp)
 			{
 				ArrayList RandomReply = new ArrayList(ByteCountToCells(65));
-				char line[256];
-				while (!fp.EndOfFile())
+				if (RandomReply)
 				{
-					fp.ReadLine(line, sizeof(line));
-					if (!line)
-						continue;
+					char line[256];
+					while (!fp.EndOfFile())
+					{
+						fp.ReadLine(line, sizeof(line));
+						if (!line)
+							continue;
 
-					TrimString(line);
-					RandomReply.PushString(line);
-				}
+						TrimString(line);
+						RandomReply.PushString(line);
+					}
 
-				if (RandomReply.Length > 0)
-				{
-					char ChosenOne[MAX_NAME_LENGTH];
-					RandomReply.GetString(crandomint(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
-					DataPack pack;
-					CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
-					pack.WriteCell(client);
-					pack.WriteString(ChosenOne);
+					if (RandomReply.Length)
+					{
+						char ChosenOne[MAX_NAME_LENGTH];
+						RandomReply.GetString(crandomint(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
+						DataPack pack;
+						CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
+						pack.WriteCell(client);
+						pack.WriteString(ChosenOne);
+					}
 				}
 
 				fp.Close();
@@ -2217,5 +2234,6 @@ public Action ReplyToChat(Handle timer, DataPack pack)
 		FakeClientCommand(client, "say %s", str);
 		lastChat = client;
 	}
+
 	return Plugin_Continue;
 }
