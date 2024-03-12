@@ -28,6 +28,8 @@ stock void HuntUpdate(const int client)
 		FinishCurrentProcess(client, false, "victim is not valid or already dead");
 		return;
 	}
+	else
+		FollowPath(client, GetOrigin(m_goalEntity[client]));
 
 	if (m_hasEnemiesNear[client] && m_nearestEnemy[client] == m_goalEntity[client])
 		SetProcess(client, PRO_ATTACK, 180.0, "", true);
@@ -38,8 +40,6 @@ stock void HuntUpdate(const int client)
 	CheckHideFromDanger(client);
 	CheckHealth(client);
 	CheckAmmo(client);
-
-	FollowPath(client, GetOrigin(m_goalEntity[client]));
 }
 
 stock void HuntEnd(const int client)

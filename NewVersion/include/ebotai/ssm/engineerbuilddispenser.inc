@@ -22,6 +22,7 @@ public void BuildDispenserStart(const int client)
 
 public void BuildDispenserUpdate(const int client)
 {
+	m_goalEntity[client] = -1;
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);

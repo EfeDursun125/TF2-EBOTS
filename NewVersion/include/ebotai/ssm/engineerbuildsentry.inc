@@ -27,6 +27,7 @@ public void BuildSentryStart(const int client)
 
 public void BuildSentryUpdate(const int client)
 {
+	m_goalEntity[client] = -1;
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
@@ -89,12 +90,21 @@ public void BuildSentryEnd(const int client)
 
 public void PickSentrySpot(const int client, float area[3])
 {
-	static int i;
+	int i;
 	if ((m_hasWaypoints || m_hasNavpoints) && m_hasSentryWaypoints)
 	{
 		ArrayList BestSentrySpots = new ArrayList();
+		if (!BestSentrySpots)
+			return;
+
 		ArrayList GoodSentrySpots = new ArrayList();
+		if (!GoodSentrySpots)
+			return;
+
 		ArrayList AllSentrySpots = new ArrayList();
+		if (!AllSentrySpots)
+			return;
+
 		for (i = 0; i < m_waypointNumber; i++)
 		{
 			if (!(m_paths[i].flags & WAYPOINT_SENTRY))
@@ -125,11 +135,11 @@ public void PickSentrySpot(const int client, float area[3])
 				AllSentrySpots.Push(i);
 		}
 
-		if (BestSentrySpots.Length > 0)
+		if (BestSentrySpots.Length)
 			i = BestSentrySpots.Get(crandomint(0, BestSentrySpots.Length - 1));
-		else if (GoodSentrySpots.Length > 0)
+		else if (GoodSentrySpots.Length)
 			i = GoodSentrySpots.Get(crandomint(0, GoodSentrySpots.Length - 1));
-		else if (AllSentrySpots.Length > 0)
+		else if (AllSentrySpots.Length)
 			i = AllSentrySpots.Get(crandomint(0, AllSentrySpots.Length - 1));
 		else
 			i = -1;
@@ -251,11 +261,10 @@ public void PickSentrySpot(const int client, float area[3])
 stock bool PickSentrySpotNAV(const int client, const float goal[3], float position[3], const float maxRange = 1300.0)
 {
 	CNavArea area = NavMesh.GetNearestNavArea(goal, false, 768.0, false, false, m_team[client]);
-	if (area == NULL_AREA)
+	if (!area)
 		return false;
-	
-	static AreasCollector areas;
-	areas = NavMesh.CollectSurroundingAreas(area, maxRange);
+
+	AreasCollector areas = NavMesh.CollectSurroundingAreas(area, maxRange);
 	
 	int i;
 	float height;
@@ -269,10 +278,12 @@ stock bool PickSentrySpotNAV(const int client, const float goal[3], float positi
 
 		if (IsDangerous(client, point, height))
 			continue;
-		
+
+		delete areas;
 		position = point;
 		return true;
 	}
 
+	delete areas;
 	return false;
 }

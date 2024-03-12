@@ -29,6 +29,7 @@ public void BuildTeleExitStart(const int client)
 
 public void BuildTeleExitUpdate(const int client)
 {
+	m_goalEntity[client] = -1;
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
@@ -93,10 +94,19 @@ stock void PickTeleExitSpot(const int client, float area[3] = NULL_VECTOR)
 {
 	if ((m_hasWaypoints || m_hasNavpoints) && m_hasTeleporterExitWaypoints)
 	{
-		int i;
 		ArrayList BestTeleExitSpots = new ArrayList();
+		if (!BestTeleExitSpots)
+			return;
+
 		ArrayList GoodTeleExitSpots = new ArrayList();
+		if (!GoodTeleExitSpots)
+			return;
+
 		ArrayList AllTeleExitSpots = new ArrayList();
+		if (!AllTeleExitSpots)
+			return;
+
+		int i;
 		for (i = 0; i < m_waypointNumber; i++)
 		{
 			if (!(m_paths[i].flags & WAYPOINT_TELEPORTEREXIT))
@@ -126,11 +136,11 @@ stock void PickTeleExitSpot(const int client, float area[3] = NULL_VECTOR)
 				AllTeleExitSpots.Push(i);
 		}
 
-		if (BestTeleExitSpots.Length > 0)
+		if (BestTeleExitSpots.Length)
 			i = BestTeleExitSpots.Get(crandomint(0, BestTeleExitSpots.Length - 1));
-		else if (GoodTeleExitSpots.Length > 0)
+		else if (GoodTeleExitSpots.Length)
 			i = GoodTeleExitSpots.Get(crandomint(0, GoodTeleExitSpots.Length - 1));
-		else if (AllTeleExitSpots.Length > 0)
+		else if (AllTeleExitSpots.Length)
 			i = AllTeleExitSpots.Get(crandomint(0, AllTeleExitSpots.Length - 1));
 		else
 			i = -1;
@@ -142,7 +152,7 @@ stock void PickTeleExitSpot(const int client, float area[3] = NULL_VECTOR)
 		if (i != -1)
 		{
 			m_goalIndex[client] = i;
-			if (m_paths[i].radius > 0)
+			if (m_paths[i].radius > 0.0)
 			{
 				area[0] = m_paths[i].origin[0] + crandomfloat(-m_paths[i].radius, m_paths[i].radius);
 				area[1] = m_paths[i].origin[1] + crandomfloat(-m_paths[i].radius, m_paths[i].radius);

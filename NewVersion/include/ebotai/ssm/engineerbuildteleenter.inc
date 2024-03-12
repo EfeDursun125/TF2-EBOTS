@@ -29,6 +29,7 @@ public void BuildTeleEnterStart(const int client)
 
 public void BuildTeleEnterUpdate(const int client)
 {
+	m_goalEntity[client] = -1;
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
@@ -96,10 +97,19 @@ stock void PickTeleEnterSpot(const int client, float area[3] = NULL_VECTOR)
 {
 	if ((m_hasWaypoints || m_hasNavpoints) && m_hasTeleporterEnterWaypoints)
 	{
-		int i;
 		ArrayList BestTeleEnterSpots = new ArrayList();
+		if (!BestTeleEnterSpots)
+			return;
+
 		ArrayList GoodTeleEnterSpots = new ArrayList();
+		if (!GoodTeleEnterSpots)
+			return;
+
 		ArrayList AllTeleEnterSpots = new ArrayList();
+		if (!AllTeleEnterSpots)
+			return;
+
+		int i;
 		for (i = 0; i < m_waypointNumber; i++)
 		{
 			if (!(m_paths[i].flags & WAYPOINT_TELEPORTERENTER))
@@ -129,11 +139,11 @@ stock void PickTeleEnterSpot(const int client, float area[3] = NULL_VECTOR)
 				AllTeleEnterSpots.Push(i);
 		}
 
-		if (BestTeleEnterSpots.Length > 0)
+		if (BestTeleEnterSpots.Length)
 			i = BestTeleEnterSpots.Get(crandomint(0, BestTeleEnterSpots.Length - 1));
-		else if (GoodTeleEnterSpots.Length > 0)
+		else if (GoodTeleEnterSpots.Length)
 			i = GoodTeleEnterSpots.Get(crandomint(0, GoodTeleEnterSpots.Length - 1));
-		else if (AllTeleEnterSpots.Length > 0)
+		else if (AllTeleEnterSpots.Length)
 			i = AllTeleEnterSpots.Get(crandomint(0, AllTeleEnterSpots.Length - 1));
 		else
 			i = -1;

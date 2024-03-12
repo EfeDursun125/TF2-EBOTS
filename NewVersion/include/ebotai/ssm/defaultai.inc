@@ -6,18 +6,31 @@ public bool DefaultRequirements(const int client)
 public void DefaultStart(const int client)
 {
 	if (!GameRules_GetProp("m_bPlayingMedieval") && m_class[client] == TFClass_Engineer)
-		SetProcess(client, PRO_ENGINEERIDLE, 99999.0, "", true);
-	
+	{
+		RememberedProcess[client] = PRO_ENGINEERIDLE;
+		CurrentProcess[client] = PRO_ENGINEERIDLE;
+		EngineerIdleStart(client);
+		return;
+	}
+
 	if (m_class[client] == TFClass_Spy)
-		SetProcess(client, PRO_SPYLURK, 99999.0, "", true);
+	{
+		RememberedProcess[client] = PRO_SPYLURK;
+		CurrentProcess[client] = PRO_SPYLURK;
+		SpyLurkStart(client);
+		return;
+	}
 }
 
 stock bool MustFindObjective(const int client, const int index, const int current)
 {
-	if (current <= 0)
+	if (isCTF)
 		return true;
-	
-	if (index <= 0 || ((m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092) && m_paths[current].flags & WAYPOINT_SNIPER) || m_paths[index].flags & WAYPOINT_ROUTE || (m_paths[index].activeArea != 0 && !(m_paths[index].activeArea & currentActiveArea)) || (current > 0 && (m_paths[current].flags & WAYPOINT_ROUTE || m_paths[current].flags & WAYPOINT_RESUPPLY || m_paths[current].flags & WAYPOINT_HEALTH || m_paths[current].flags & WAYPOINT_AMMO || m_paths[current].flags & WAYPOINT_CAPTUREPOINT)))
+
+	if (current == -1)
+		return true;
+
+	if (index == -1 || ((m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092) && m_paths[current].flags & WAYPOINT_SNIPER) || m_paths[index].flags & WAYPOINT_ROUTE || (m_paths[index].activeArea != 0 && !(m_paths[index].activeArea & currentActiveArea)) || (current != -1 && (m_paths[current].flags & WAYPOINT_ROUTE || m_paths[current].flags & WAYPOINT_RESUPPLY || m_paths[current].flags & WAYPOINT_HEALTH || m_paths[current].flags & WAYPOINT_AMMO || m_paths[current].flags & WAYPOINT_CAPTUREPOINT)))
 		return true;
 
 	if (isCP)
@@ -44,19 +57,23 @@ public void DefaultUpdate(const int client)
 {
 	if (IsMedic(client) || HasCrossbow(client))
 	{
-		if (m_hasEnemiesNear[client] && m_hasFriendsNear[client] && m_friendDistance[client] <= m_enemyDistance[client])
+		if (m_hasEnemiesNear[client] && m_hasFriendsNear[client] && m_friendDistance[client] < m_enemyDistance[client])
 			SetProcess(client, PRO_HEAL, (m_difficulty[client] + 8.0), "", true);
 		else if (!m_hasEnemiesNear[client] && m_hasFriendsNear[client])
 			SetProcess(client, PRO_HEAL, (m_difficulty[client] + 8.0), "", true);
 	}
 	else if (m_class[client] == TFClass_Spy)
 	{
+		RememberedProcess[client] = PRO_SPYLURK;
 		CurrentProcess[client] = PRO_SPYLURK;
+		SpyLurkUpdate(client);
 		return;
 	}
 	else if (m_class[client] == TFClass_Engineer)
 	{
+		RememberedProcess[client] = PRO_ENGINEERIDLE;
 		CurrentProcess[client] = PRO_ENGINEERIDLE;
+		EngineerIdleUpdate(client);
 		return;
 	}
 
@@ -169,13 +186,22 @@ public void SelectObjective(const int client)
 	int index;
 	if ((m_hasWaypoints || m_hasNavpoints) && m_hasSniperWaypoints && IsSniper(client) && !TF2_HasTheFlag(client))
 	{
-		if (m_goalIndex[client] != -1 && m_paths[m_goalIndex[client]].flags & WAYPOINT_SNIPER && (m_paths[m_goalIndex[client]].activeArea == 0 || m_paths[m_goalIndex[client]].activeArea & currentActiveArea))
+		if (m_goalIndex[client] != -1 && m_paths[m_goalIndex[client]].flags & WAYPOINT_SNIPER && (!m_paths[m_goalIndex[client]].activeArea || m_paths[m_goalIndex[client]].activeArea & currentActiveArea))
 			return;
-		
-		index = -1;
+
 		ArrayList BestSniperPoints = new ArrayList();
+		if (!BestSniperPoints)
+			return;
+
 		ArrayList GoodSniperPoints = new ArrayList();
+		if (!GoodSniperPoints)
+			return;
+
 		ArrayList AllSniperPoints = new ArrayList();
+		if (!AllSniperPoints)
+			return;
+
+		index = -1;
 		for (i = 0; i < m_waypointNumber; i++)
 		{
 			if (!(m_paths[i].flags & WAYPOINT_SNIPER))
@@ -202,11 +228,11 @@ public void SelectObjective(const int client)
 				AllSniperPoints.Push(i);
 		}
 
-		if (BestSniperPoints.Length > 0)
+		if (BestSniperPoints.Length)
 			index = BestSniperPoints.Get(crandomint(0, BestSniperPoints.Length - 1));
-		else if (GoodSniperPoints.Length > 0)
+		else if (GoodSniperPoints.Length)
 			index = GoodSniperPoints.Get(crandomint(0, GoodSniperPoints.Length - 1));
-		else if (AllSniperPoints.Length > 0)
+		else if (AllSniperPoints.Length)
 			index = AllSniperPoints.Get(crandomint(0, AllSniperPoints.Length - 1));
 		
 		delete BestSniperPoints;
@@ -231,13 +257,22 @@ public void SelectObjective(const int client)
 
 	if ((m_hasWaypoints || m_hasNavpoints) && m_hasStickyWaypoints && m_class[client] == TFClass_DemoMan && !TF2_HasTheFlag(client))
 	{
-		if (m_goalIndex[client] != -1 && m_paths[m_goalIndex[client]].flags & WAYPOINT_DEMOMANCAMP && (m_paths[m_goalIndex[client]].activeArea == 0 || m_paths[m_goalIndex[client]].activeArea & currentActiveArea))
+		if (m_goalIndex[client] != -1 && m_paths[m_goalIndex[client]].flags & WAYPOINT_DEMOMANCAMP && (!m_paths[m_goalIndex[client]].activeArea || m_paths[m_goalIndex[client]].activeArea & currentActiveArea))
 			return;
-		
-		index = -1;
+
 		ArrayList BestDemoSpots = new ArrayList();
+		if (!BestDemoSpots)
+			return;
+
 		ArrayList GoodDemoSpots = new ArrayList();
+		if (!GoodDemoSpots)
+			return;
+
 		ArrayList AllDemoSpots = new ArrayList();
+		if (!AllDemoSpots)
+			return;
+
+		index = -1;
 		for (i = 0; i < m_waypointNumber; i++)
 		{
 			if (!(m_paths[i].flags & WAYPOINT_DEMOMANCAMP))
@@ -264,11 +299,11 @@ public void SelectObjective(const int client)
 				AllDemoSpots.Push(i);
 		}
 
-		if (BestDemoSpots.Length > 0)
+		if (BestDemoSpots.Length)
 			index = BestDemoSpots.Get(crandomint(0, BestDemoSpots.Length - 1));
-		else if (GoodDemoSpots.Length > 0)
+		else if (GoodDemoSpots.Length)
 			index = GoodDemoSpots.Get(crandomint(0, GoodDemoSpots.Length - 1));
-		else if (AllDemoSpots.Length > 0)
+		else if (AllDemoSpots.Length)
 			index = AllDemoSpots.Get(crandomint(0, AllDemoSpots.Length - 1));
 
 		delete BestDemoSpots;
@@ -329,11 +364,19 @@ public void SelectObjective(const int client)
 
 		if (m_hasCaptureWaypoints && (m_hasWaypoints || m_hasNavpoints))
 		{
-			index = -1;
 			ArrayList BestDefendPoints = new ArrayList();
+			if (!BestDefendPoints)
+				return;
+
 			ArrayList GoodDefendPoints = new ArrayList();
+			if (!GoodDefendPoints)
+				return;
+
 			ArrayList AllDefendPoints = new ArrayList();
-			
+			if (!AllDefendPoints)
+				return;
+
+			index = -1;
 			for (i = 0; i < m_waypointNumber; i++)
 			{
 				// blocked waypoint
@@ -366,11 +409,11 @@ public void SelectObjective(const int client)
 					AllDefendPoints.Push(i);
 			}
 
-			if (BestDefendPoints.Length > 0)
+			if (BestDefendPoints.Length)
 				index = BestDefendPoints.Get(crandomint(0, BestDefendPoints.Length - 1));
-			else if (GoodDefendPoints.Length > 0)
+			else if (GoodDefendPoints.Length)
 				index = GoodDefendPoints.Get(crandomint(0, GoodDefendPoints.Length - 1));
-			else if (AllDefendPoints.Length > 0)
+			else if (AllDefendPoints.Length)
 				index = AllDefendPoints.Get(crandomint(0, AllDefendPoints.Length - 1));
 			
 			delete BestDefendPoints;
@@ -423,10 +466,19 @@ public void SelectObjective(const int client)
 		{
 			if (m_team[client] == 2)
 			{
-				index = -1;
 				ArrayList BestDefendPoints = new ArrayList();
+				if (!BestDefendPoints)
+					return;
+
 				ArrayList GoodDefendPoints = new ArrayList();
+				if (!GoodDefendPoints)
+					return;
+
 				ArrayList AllDefendPoints = new ArrayList();
+				if (!AllDefendPoints)
+					return;
+
+				index = -1;
 				for (i = 0; i < m_waypointNumber; i++)
 				{
 					if (m_lastFailedWaypoint[client] == i)
@@ -456,11 +508,11 @@ public void SelectObjective(const int client)
 						AllDefendPoints.Push(i);
 				}
 
-				if (BestDefendPoints.Length > 0)
+				if (BestDefendPoints.Length)
 					index = BestDefendPoints.Get(crandomint(0, BestDefendPoints.Length - 1));
-				else if (GoodDefendPoints.Length > 0)
+				else if (GoodDefendPoints.Length)
 					index = GoodDefendPoints.Get(crandomint(0, GoodDefendPoints.Length - 1));
-				else if (AllDefendPoints.Length > 0)
+				else if (AllDefendPoints.Length)
 					index = AllDefendPoints.Get(crandomint(0, AllDefendPoints.Length - 1));
 				
 				delete BestDefendPoints;
@@ -560,12 +612,27 @@ public void SelectObjective(const int client)
 	{
 		if (m_hasWaypoints || m_hasNavpoints)
 		{
-			index = -1;
 			ArrayList BestControlPoints = new ArrayList();
+			if (!BestControlPoints)
+				return;
+
 			ArrayList ControlPoints = new ArrayList();
+			if (!ControlPoints)
+				return;
+
 			ArrayList BestDefendPoints = new ArrayList();
+			if (!BestDefendPoints)
+				return;
+
 			ArrayList GoodDefendPoints = new ArrayList();
+			if (!GoodDefendPoints)
+				return;
+
 			ArrayList AllDefendPoints = new ArrayList();
+			if (!AllDefendPoints)
+				return;
+
+			index = -1;
 			for (i = 0; i < m_waypointNumber; i++)
 			{
 				if (m_lastFailedWaypoint[client] == i)
@@ -603,15 +670,15 @@ public void SelectObjective(const int client)
 					AllDefendPoints.Push(i);
 			}
 
-			if (BestControlPoints.Length > 0)
+			if (BestControlPoints.Length)
 				index = BestControlPoints.Get(crandomint(0, BestControlPoints.Length - 1));
-			else if (ControlPoints.Length > 0)
+			else if (ControlPoints.Length)
 				index = ControlPoints.Get(crandomint(0, ControlPoints.Length - 1));
-			else if (BestDefendPoints.Length > 0)
+			else if (BestDefendPoints.Length)
 				index = BestDefendPoints.Get(crandomint(0, BestDefendPoints.Length - 1));
-			else if (GoodDefendPoints.Length > 0)
+			else if (GoodDefendPoints.Length)
 				index = GoodDefendPoints.Get(crandomint(0, GoodDefendPoints.Length - 1));
-			else if (AllDefendPoints.Length > 0)
+			else if (AllDefendPoints.Length)
 				index = AllDefendPoints.Get(crandomint(0, AllDefendPoints.Length - 1));
 			
 			delete BestControlPoints;
@@ -711,7 +778,7 @@ stock void ObjectiveMovement(const int client)
 
 	if ((m_hasWaypoints || m_hasNavpoints) && m_class[client] == TFClass_DemoMan && m_hasStickyWaypoints)
 	{
-		if (m_goalIndex[client] != -1 && (m_paths[m_goalIndex[client]].activeArea == 0 || m_paths[m_goalIndex[client]].activeArea & currentActiveArea))
+		if (m_goalIndex[client] != -1 && (!m_paths[m_goalIndex[client]].activeArea || m_paths[m_goalIndex[client]].activeArea & currentActiveArea))
 		{
 			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) < Squaredf(4.0))
 			{
@@ -728,7 +795,7 @@ stock void ObjectiveMovement(const int client)
 	}
 	else if ((m_hasWaypoints || m_hasNavpoints) && IsSniper(client) && m_hasSniperWaypoints)
 	{
-		if (m_goalIndex[client] != -1 && (m_paths[m_goalIndex[client]].activeArea == 0 || m_paths[m_goalIndex[client]].activeArea & currentActiveArea))
+		if (m_goalIndex[client] != -1 && (!m_paths[m_goalIndex[client]].activeArea || m_paths[m_goalIndex[client]].activeArea & currentActiveArea))
 		{
 			if (GetVectorDistance(GetOrigin(client), m_goalPosition[client], true) < Squaredf(4.0))
 			{
