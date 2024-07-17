@@ -1,4 +1,4 @@
-#define TFMaxPlayers 101
+const int TFMaxPlayers = 101;
 
 #include <sourcemod>
 #include <sdktools>
@@ -13,7 +13,6 @@ CNavMesh NavMesh;
 
 float autoupdate = 0.0;
 
-float HardResetTimer[TFMaxPlayers];
 float DJTime[TFMaxPlayers];
 float NoDodge[TFMaxPlayers];
 float CrouchTime[TFMaxPlayers];
@@ -24,12 +23,12 @@ TFClassType m_class[TFMaxPlayers];
 int m_team[TFMaxPlayers];
 bool m_isAlive[TFMaxPlayers];
 
-public Plugin myinfo = 
+public Plugin myinfo =
 {
 	name = "[TF2] E-BOT",
 	author = "EfeDursun125",
 	description = "",
-	version = "0.22",
+	version = "0.24",
 	url = "https://steamcommunity.com/id/EfeDursun91/"
 }
 
@@ -66,17 +65,11 @@ bool isOT;
 #include <ebotai/ssm/engineerbuildteleenter>
 #include <ebotai/ssm/engineerbuildteleexit>
 #include <ebotai/ssm/hide>
+#include <ebotai/ssm/followpath>
 
-bool isLate;
-public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) 
-{
-	isLate = late;
-	return APLRes_Success;
-}
-
+// trigger on plugin start
 public void OnPluginStart()
 {
-	CreateDirectory("addons/sourcemod/ebot", 3);
 	RegConsoleCmd("ebot_waypoint_on", WaypointOn);
 	RegConsoleCmd("ebot_waypoint_off", WaypointOff);
 	RegConsoleCmd("ebot_waypoint_add", WaypointCreate);
@@ -99,10 +92,8 @@ public void OnPluginStart()
 	RegConsoleCmd("ebot_waypoint_set_aim_end", SetAim2);
 	RegConsoleCmd("ebot_addbot", AddEBot);
 	RegConsoleCmd("ebot_kickbot", KickEBot);
-	RegConsoleCmd("ebot_bench_custom", Bench);
-	RegConsoleCmd("ebot_test_randgen_int", TestRGI);
-	RegConsoleCmd("ebot_test_randgen_float", TestRGF);
 	RegConsoleCmd("sm_afk", Command_Afk);
+	CreateDirectory("addons/sourcemod/ebot", 3);
 	HookEvent("player_sapped_object", BotSap, EventHookMode_Post);
 	HookEvent("player_spawn", BotSpawn, EventHookMode_Post);
 	HookEvent("player_death", BotDeath, EventHookMode_Post);
@@ -138,12 +129,8 @@ public void OnPluginStart()
 	EBotAFKCommand = CreateConVar("ebot_afk_by_command", "1", "", FCVAR_NONE);
 	EBotAFKTime = CreateConVar("ebot_afk_time", "120", "", FCVAR_NONE);
 
-	if (isLate)
-		OnMapStart();
-
 	int i;
-	char namebuf[32];
-	for (i = 0; i <= MaxClients; i++)
+	for (i = 1; i <= MaxClients; i++)
 	{
 		if (!IsValidClient(i))
 			continue;
@@ -154,7 +141,9 @@ public void OnPluginStart()
 			continue;
 		}
 
+		char namebuf[32];
     	GetEntPropString(i, Prop_Data, "m_iName", namebuf, sizeof(namebuf));
+
     	if (!StrEqual("ebot", namebuf))
 			continue;
 
@@ -166,7 +155,6 @@ public void OnPluginStart()
 		m_team[i] = GetClientTeam(i);
 		m_isAlive[i] = IsPlayerAlive(i);
 		m_ignoreEnemies[i] = 0.0;
-		HardResetTimer[i] = GetGameTime() + 120.0;
 	}
 }
 
@@ -177,12 +165,12 @@ public void OnMapStart()
 	spyTarget = FindConVar("tf_bot_spy_change_target_range_threshold");
 	spyKnife = FindConVar("tf_bot_spy_knife_range");
 
-	if (!spyTarget)
+	if (spyTarget == null)
 		spyTarget = CreateConVar("tf_bot_spy_change_target_range_threshold", "300", "", FCVAR_CHEAT);
 
-	if (!spyKnife)
+	if (spyKnife == null)
 		spyKnife = CreateConVar("tf_bot_spy_knife_range", "300", "If threat is closer than this, prefer our knife", FCVAR_CHEAT);
-	
+
 	m_isAlive[0] = false;
 	m_team[0] = -3;
 
@@ -209,11 +197,11 @@ public void OnMapStart()
 	{
 		if (IsValidHealthPack(x))
 			healthpacks++;
-		
+
 		if (IsValidAmmoPack(x))
 			ammopacks++;
 	}
-	
+
 	if (isCTF)
 	{
 		int flag;
@@ -253,18 +241,28 @@ public void OnMapStart()
 public Action OvertimeStart(Handle event, char[] name, bool dontBroadcast)
 {
 	isOT = true;
+	if (GetConVarInt(EBotDebug) == 1)
+		PrintHintTextToAll("Overtime is started!");
 	return Plugin_Continue;
 }
 
 public Action OvertimeEnd(Handle event, char[] name, bool dontBroadcast)
 {
 	isOT = false;
+	if (GetConVarInt(EBotDebug) == 1)
+		PrintHintTextToAll("Overtime is over!");
 	return Plugin_Continue;
 }
 
 public Action Command_Afk(const int client, int args)
 {
-	if (!args) // For People
+	if (args != 0 && args != 2)
+	{
+		ReplyToCommand(client, "[E-BOT] Usage: sm_afk <target> [0/1]");
+		return Plugin_Handled;
+	}
+
+	if (args == 0) // For People
 	{
 		if (GetConVarInt(EBotAFKCommand) != 1)
 		{
@@ -276,7 +274,6 @@ public Action Command_Afk(const int client, int args)
 		{
 			PrintToChat(client, "[E-BOT] AFK-BOT is enabled.");
 			m_isAFK[client] = true;
-
 			char name[32];
 			GetClientName(client, name, sizeof(name));
 			Format(name, sizeof(name), "%s (AFK)", name);
@@ -288,7 +285,6 @@ public Action Command_Afk(const int client, int args)
 			PrintCenterText(client, "Your AFK Mode is now disabled.");
 			m_afkTime[client] = GetGameTime() + GetConVarFloat(EBotAFKTime);
 			m_isAFK[client] = false;
-
 			char name[32];
 			GetClientName(client, name, sizeof(name));
 			ReplaceString(name, sizeof(name), "(AFK)", "", true);
@@ -298,7 +294,7 @@ public Action Command_Afk(const int client, int args)
 			ReplaceString(name, sizeof(name), "(", "", true);
 			SetClientName(client, name);
 		}
-		
+
 		return Plugin_Handled;
 	}
 	else if (args == 2)
@@ -307,14 +303,14 @@ public Action Command_Afk(const int client, int args)
 		GetCmdArg(1, arg1, sizeof(arg1));
 		char arg2[8];
 		GetCmdArg(2, arg2, sizeof(arg2));
-		
+
 		int value = StringToInt(arg2);
 		if (value != 0 && value != 1)
 		{
 			ReplyToCommand(client, "[E-BOT] Usage: sm_afk <target> [0/1]");
 			return Plugin_Handled;
 		}
-		
+
 		char target_name[MAX_TARGET_LENGTH];
 		int target_list[TFMaxPlayers];
 		int target_count;
@@ -330,7 +326,7 @@ public Action Command_Afk(const int client, int args)
 		{
 			if (IsValidClient(target_list[i]))
 			{
-				if (!value)
+				if (value == 0)
 				{
 					if (CheckCommandAccess(client, "sm_afk_access", ADMFLAG_ROOT))
 					{
@@ -351,8 +347,6 @@ public Action Command_Afk(const int client, int args)
 			}
 		}
 	}
-	else
-		ReplyToCommand(client, "[E-BOT] Usage: sm_afk <target> [0/1]");
 
 	return Plugin_Handled;
 }
@@ -369,36 +363,34 @@ public void EBotDeathChat(const int client)
 		return;
 
 	char filepath[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/chat/ebot_deadchat.txt");
-	File fp = OpenFile(filepath, "r");
-	if (fp)
-	{
+    BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/chat/ebot_deadchat.txt");
+    File fp = OpenFile(filepath, "r");
+    if (fp != null)
+    {
 		ArrayList RandomChat = new ArrayList(ByteCountToCells(65));
-		if (RandomChat)
-		{
-			char line[MAX_NAME_LENGTH];
-			while (!fp.EndOfFile())
-			{
-				fp.ReadLine(line, sizeof(line));
-				if (!line)
-					continue;
-			
-				if (StrContains(line, "//") != -1)
-					continue;
-			
-				TrimString(line);
-				RandomChat.PushString(line);
-			}
 
-			if (RandomChat.Length)
-			{
-				char ChosenOne[MAX_NAME_LENGTH];
-				RandomChat.GetString(crandomint(0, RandomChat.Length - 1), ChosenOne, sizeof(ChosenOne));
-				DataPack pack;
-				CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
-				pack.WriteCell(client);
-				pack.WriteString(ChosenOne);
-			}
+		char line[MAX_NAME_LENGTH];
+        while (!fp.EndOfFile())
+		{
+			fp.ReadLine(line, sizeof(line));
+			if (!line)
+				continue;
+
+			if (StrContains(line, "//") != -1)
+				continue;
+
+			TrimString(line);
+			RandomChat.PushString(line);
+		}
+
+		if (RandomChat.Length > 0)
+		{
+			char ChosenOne[MAX_NAME_LENGTH];
+			RandomChat.GetString(crandomint(0, RandomChat.Length - 1), ChosenOne, sizeof(ChosenOne));
+			DataPack pack;
+			CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
+			pack.WriteCell(client);
+			pack.WriteString(ChosenOne);
 		}
 
 		fp.Close();
@@ -416,7 +408,7 @@ public void OnClientPutInServer(int client)
 		DispatchKeyValue(ebot, "targetname", "ebot");
 		DispatchSpawn(ebot);
 		ActivateEntity(ebot);
-		
+
 		m_isEBot[ebot] = true;
 
 		FakeClientCommand(ebot, "jointeam auto");
@@ -477,12 +469,12 @@ public void OnClientPutInServer(int client)
 	m_isAlive[client] = false;
 	m_team[client] = -3;
 	m_ignoreEnemies[client] = 0.0;
-	
+
 	if (GetConVarInt(EBotDifficulty) < 0 || GetConVarInt(EBotDifficulty) > 4)
 		m_difficulty[client] = crandomint(0, 4);
 	else
 		m_difficulty[client] = GetConVarInt(EBotDifficulty);
-	
+
 	// check host entity
 	if (m_hasHostEntity == false)
 		FindHostEntity();
@@ -558,7 +550,7 @@ public Action SetRadius(const int client, int args)
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
-	
+
 	return Plugin_Handled;
 }
 
@@ -574,13 +566,13 @@ public Action AddRadius(const int client, int args)
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
-	
+
 	return Plugin_Handled;
 }
 
 public Action SetFlag(const int client, int args)
 {
-	
+
 	if (GetVectorDistance(GetOrigin(m_hostEntity), m_paths[nearestIndex].origin, true) < Squaredf(64.0))
 	{
 		char flag[32];
@@ -683,7 +675,7 @@ public Action SetTeam(const int client, int args)
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
-	
+
 	return Plugin_Handled;
 }
 
@@ -696,7 +688,7 @@ public Action Select(const int client, int args)
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
-	
+
 	return Plugin_Handled;
 }
 
@@ -711,7 +703,7 @@ public Action PathAdd(const int client, int args)
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
-	
+
 	return Plugin_Handled;
 }
 
@@ -726,7 +718,7 @@ public Action PathDelete(const int client, int args)
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
-	
+
 	return Plugin_Handled;
 }
 
@@ -751,7 +743,7 @@ public Action SetArea(const int client, int args)
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
-	
+
 	return Plugin_Handled;
 }
 
@@ -775,7 +767,7 @@ public Action AddArea(const int client, int args)
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
-	
+
 	return Plugin_Handled;
 }
 
@@ -799,7 +791,7 @@ public Action RemoveArea(const int client, int args)
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
-	
+
 	return Plugin_Handled;
 }
 
@@ -814,7 +806,7 @@ public Action SetAim1(const int client, int args)
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
-	
+
 	return Plugin_Handled;
 }
 
@@ -829,7 +821,7 @@ public Action SetAim2(const int client, int args)
 	}
 	else
 		PrintHintTextToAll("Move closer to waypoint");
-	
+
 	return Plugin_Handled;
 }
 
@@ -841,14 +833,12 @@ public Action AddEBot(const int client, int args)
 
 public void AddEBotConsole()
 {
-	ArrayList BotNames = new ArrayList(ByteCountToCells(65));
-	if (!BotNames)
-		return;
-
 	char filepath[PLATFORM_MAX_PATH];
     BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/ebot_names.txt");
-	File fp = OpenFile(filepath, "r");
-    if (fp)
+    File fp = OpenFile(filepath, "r");
+
+	ArrayList BotNames = new ArrayList(ByteCountToCells(65));
+    if (fp != null)
     {
 		char line[MAX_NAME_LENGTH];
         while (!fp.EndOfFile())
@@ -856,32 +846,32 @@ public void AddEBotConsole()
 			fp.ReadLine(line, sizeof(line));
 			if (!line)
 				continue;
-			
+
 			if (StrContains(line, "//") != -1)
 				continue;
-			
+
 			TrimString(line);
 			if (NameAlreadyTakenByPlayer(line))
 				continue;
-			
+
 			BotNames.PushString(line);
 		}
 
 		fp.Close();
     }
 
-	if (BotNames.Length)
+	if (BotNames.Length > 0)
 		BotNames.GetString(crandomint(0, BotNames.Length - 1), ChosenName, sizeof(ChosenName));
 	else
 		FormatEx(ChosenName, sizeof(ChosenName), "ebot %d", crandomint(0, 9999));
-	
+
 	if (crandomint(1, 10) == 1 && !NameAlreadyTakenByPlayer("Rick May"))
 		FormatEx(ChosenName, sizeof(ChosenName), "Rick May");
 	else if (crandomint(1, 10) == 1 && !NameAlreadyTakenByPlayer("Engineer Gaming"))
 		FormatEx(ChosenName, sizeof(ChosenName), "Engineer Gaming");
-	
+
 	ConVar cheats = FindConVar("sv_cheats");
-	if (cheats)
+	if (cheats != null)
 	{
 		if (cheats.BoolValue)
 			ServerCommand("bot -name \"%s\"", ChosenName);
@@ -905,88 +895,6 @@ public Action KickEBot(const int client, int args)
 	return Plugin_Handled;
 }
 
-public Action Bench(const int client, int args)
-{
-	int i;
-	float my;
-	float their;
-
-	Handle prof = CreateProfiler();
-	StartProfiling(prof);
-	for (i = 0; i < 10000000; i++)
-		GetRandomInt(-1000, 1000);
-	StopProfiling(prof);
-	their = GetProfilerTime(prof);
-
-	StartProfiling(prof);
-	for (i = 0; i < 10000000; i++)
-		crandomint(-1000, 1000);
-	StopProfiling(prof);
-	my = GetProfilerTime(prof);
-
-	PrintToServer(" ");
-	PrintToServer(" ");
-	PrintToServer(" ");
-	PrintToServer("Benchmarks:");
-	PrintToServer(" ");
-	PrintToServer(" -> Random Int:");
-	PrintToServer("     E-Bot: %f seconds", my);
-	PrintToServer("     Engine: %f seconds", their);
-	PrintToServer("     Result: E-Bot's is %f times faster!", their / my);
-
-	StartProfiling(prof);
-	for (i = 0; i < 10000000; i++)
-		GetRandomFloat(-1000.0, 1000.0);
-	StopProfiling(prof);
-	their = GetProfilerTime(prof);
-
-	StartProfiling(prof);
-	for (i = 0; i < 10000000; i++)
-		crandomfloat(-1000.0, 1000.0);
-	StopProfiling(prof);
-	my = GetProfilerTime(prof);
-
-	PrintToServer(" ");
-	PrintToServer(" -> Random Float:");
-	PrintToServer("     E-Bot: %f seconds", my);
-	PrintToServer("     Engine: %f seconds", their);
-	PrintToServer("     Result: E-Bot's is %f times faster!", their / my);
-	PrintToServer(" ");
-	PrintToServer(" ");
-	PrintToServer(" ");
-
-	CloseHandle(prof);
-	return Plugin_Handled;
-}
-
-public Action TestRGI(const int client, int args)
-{
-	int i;
-	Handle prof;
-	prof = CreateProfiler();
-	StartProfiling(prof);
-	for (i = 0; i < 100; i++)
-		PrintToServer("%i", crandomint(-1000, 1000));
-	StopProfiling(prof);
-	PrintToServer("Range is between -1000 to 1000, time taken %f seconds.", GetProfilerTime(prof));
-	CloseHandle(prof);
-	return Plugin_Handled;
-}
-
-public Action TestRGF(const int client, int args)
-{
-	int i;
-	Handle prof;
-	prof = CreateProfiler();
-	StartProfiling(prof);
-	for (i = 0; i < 100; i++)
-		PrintToServer("%f", crandomfloat(-1000.0, 1000.0));
-	StopProfiling(prof);
-	PrintToServer("Range is between -1000.0 to 1000.0, time taken %f seconds.", GetProfilerTime(prof));
-	CloseHandle(prof);
-	return Plugin_Handled;
-}
-
 public void KickEBotConsole()
 {
 	int EBotTeam;
@@ -996,19 +904,19 @@ public void KickEBotConsole()
 		EBotTeam = 3;
 	else
 		EBotTeam = crandomint(2, 3);
-	
+
 	int i;
 	for (i = 1; i <= MaxClients; i++)
 	{
 		if (!IsValidClient(i))
 			continue;
-		
+
 		if (!IsEBot(i))
 			continue;
-		
+
 		if (GetClientTeam(i) != EBotTeam)
 			continue;
-		
+
 		KickClient(i);
 		m_isEBot[i] = false;
 		break;
@@ -1039,7 +947,7 @@ public void OnGameFrame()
 				else if ((blu + 1) < red)
 					KickEBotConsole();
 			}
-			
+
 			BotCheckTimer = GetGameTime() + 1.0;
 		}
 	}
@@ -1052,17 +960,17 @@ public void OnGameFrame()
 		{
 			currentActiveArea = search;
 
-			if (GetConVarInt(EBotDebug))
+			if (GetConVarInt(EBotDebug) == 1)
 				PrintHintTextToAll("Active Area: %s", GetAreaName(currentActiveArea));
-			
+
 			for (search = 1; search <= MaxClients; search++)
 			{
 				if (!IsValidClient(search))
 					continue;
-				
+
 				if (!IsEBot(search))
 					continue;
-				
+
 				if (CurrentProcess[search] != PRO_DEFAULT)
 					continue;
 
@@ -1077,34 +985,34 @@ public void OnGameFrame()
 	DrawWaypoints();
 	AutoWaypoint();
 
-	if (GetConVarInt(EBotDebug))
+	if (GetConVarInt(EBotDebug) == 1)
 	{
 		if (!IsValidClient(m_hostEntity))
 		{
 			FindHostEntity();
 			return;
 		}
-		
+
 		if (hudtext < GetGameTime())
 		{
 			int bot = GetEntPropEnt(m_hostEntity, Prop_Send, "m_hObserverTarget");
 			if (IsValidClient(bot) && IsFakeClient(bot))
 			{
 				SetHudTextParams(0.0, -1.0, 0.52, 255, 255, 255, 255, 2, 1.0, 0.0, 0.0);
-        		ShowHudText(m_hostEntity, -1, "Goal Index: %d\nGoal Pos: %d %d %d\nGoal Ent: %d\nEnemy Near: %s\nFriend Near: %s\nEnt Near: %s\nSense: %d\nCurrent Process: %s\nRemembered Process: %s\nDiff: %d\nMax DMG: RED - %d | BLU - %d", 
-				m_goalIndex[bot], 
-				RoundFloat(m_goalPosition[bot][0]), 
-				RoundFloat(m_goalPosition[bot][1]), 
-				RoundFloat(m_goalPosition[bot][2]), 
-				m_goalEntity[bot], 
-				m_hasEnemiesNear[bot] ? "Yes" : "No", 
-				m_hasFriendsNear[bot] ? "Yes" : "No", 
-				m_hasEntitiesNear[bot] ? "Yes" : "No", 
-				m_eBotSenseChance[bot], 
-				GetProcessName(CurrentProcess[bot]), 
-				GetProcessName(RememberedProcess[bot]), 
-				m_difficulty[bot], 
-				RoundFloat(m_maxDamageRed[bot]), 
+        		ShowHudText(m_hostEntity, -1, "Goal Index: %d\nGoal Pos: %d %d %d\nGoal Ent: %d\nEnemy Near: %s\nFriend Near: %s\nEnt Near: %s\nSense: %d\nCurrent Process: %s\nRemembered Process: %s\nDiff: %d\nMax DMG: RED - %d | BLU - %d",
+				m_goalIndex[bot],
+				RoundFloat(m_goalPosition[bot][0]),
+				RoundFloat(m_goalPosition[bot][1]),
+				RoundFloat(m_goalPosition[bot][2]),
+				m_goalEntity[bot],
+				m_hasEnemiesNear[bot] ? "Yes" : "No",
+				m_hasFriendsNear[bot] ? "Yes" : "No",
+				m_hasEntitiesNear[bot] ? "Yes" : "No",
+				m_eBotSenseChance[bot],
+				GetProcessName(CurrentProcess[bot], bot),
+				GetProcessName(RememberedProcess[bot], bot),
+				m_difficulty[bot],
+				RoundFloat(m_maxDamageRed[bot]),
 				RoundFloat(m_maxDamageBlu[bot]));
 
 				int i;
@@ -1120,7 +1028,7 @@ public void OnGameFrame()
 					TE_SetupBeamPoints(flFromPos, flToPos, m_laserIndex, m_laserIndex, 0, 30, 0.5, 1.0, 1.0, 5, 0.0, {0, 255, 0, 255}, 30);
 					TE_SendToClient(m_hostEntity);
 				}
-				
+
 				hudtext = GetGameTime() + 0.5;
 			}
 		}
@@ -1128,7 +1036,7 @@ public void OnGameFrame()
 
 	if (GetConVarFloat(EBotFPS) > 0.2)
 		SetConVarFloat(EBotFPS, 0.2);
-	
+
 	if (GetConVarFloat(EBotFPS) < 0.0333)
 		SetConVarFloat(EBotFPS, 0.0333);
 }
@@ -1137,7 +1045,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 {
 	if (!IsClientInGame(client))
 		return Plugin_Continue;
-	
+
 	if (!IsEBot(client) && !m_isAFK[client])
 	{
 		m_class[client] = TF2_GetPlayerClass(client);
@@ -1167,7 +1075,8 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 	// auto backstab
 	if (IsWeaponSlotActive(client, 2))
 	{
-		int melee = GetPlayerWeaponSlot(client, TFWeaponSlot_Melee);
+		static int melee;
+		melee = GetPlayerWeaponSlot(client, TFWeaponSlot_Melee);
 		if (IsValidEntity(melee) && HasEntProp(melee, Prop_Send, "m_bReadyToBackstab"))
 		{
 			if (GetEntProp(melee, Prop_Send, "m_bReadyToBackstab"))
@@ -1180,7 +1089,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 	// trigger scout double jump
 	if (DJTime[client] < GetGameTime())
 	{
-		if (m_positions[client] && m_positions[client].Length && m_targetNode[client] != -1)
+		if (m_positions[client] && m_positions[client].Length > 0 && m_targetNode[client] != -1)
 		{
 			float flGoPos[3];
 			m_positions[client].GetArray(m_targetNode[client], flGoPos);
@@ -1193,7 +1102,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 	}
 	else if (CrouchTime[client] > GetGameTime())
 		buttons |= IN_DUCK;
-	
+
 	// check if client pressing any buttons and set them
 	if (m_buttons[client] != 0)
 	{
@@ -1209,7 +1118,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 		{
 			if (m_attackTimer[client] > GetGameTime())
 				buttons |= IN_ATTACK;
-		
+
 			if (m_attack2Timer[client] > GetGameTime())
 				buttons |= IN_ATTACK2;
 		}
@@ -1218,7 +1127,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			buttons |= IN_DUCK;
 		else if (GetEntProp(client, Prop_Send, "m_bJumping"))
 			buttons |= IN_DUCK;
-		
+
 		if (m_thinkTimer[client] < GetGameTime())
 		{
 			if (CurrentProcess[client] != PRO_ATTACK)
@@ -1227,7 +1136,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 				m_moveVel[client][1] = 0.0;
 				m_moveVel[client][2] = 0.0;
 			}
-			
+
 			m_origin[client] = GetOrigin(client);
 			m_eyeOrigin[client] = GetEyePosition(client);
 
@@ -1241,7 +1150,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			{
 				if (m_hasEnemiesNear[client] && m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
 				{
-					float center[3];
+					static float center[3];
 					center = GetCenter(m_nearestEntity[client]);
 
 					if (m_enemyDistance[client] < GetVectorDistance(GetOrigin(client), center, true))
@@ -1282,17 +1191,26 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 
 			if (m_duckTimer[client] < GetGameTime())
 			{
-				int nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
+				static int nOldButtons;
+				nOldButtons = GetEntProp(client, Prop_Data, "m_nOldButtons");
 				if (nOldButtons & (IN_JUMP|IN_DUCK))
 					SetEntProp(client, Prop_Data, "m_nOldButtons", (nOldButtons &= ~(IN_JUMP|IN_DUCK)));
 			}
-			
+
 			if (CurrentProcess[client] == PRO_BUILDDISPENSER && m_isSlowThink[client] && crandomint(1, 3) == 1)
 			{
-				m_lookAt[client][0] = m_eyeOrigin[client][0] + crandomfloat(-128.0, 128.0);
-				m_lookAt[client][1] = m_eyeOrigin[client][1] + crandomfloat(-128.0, 128.0);
-				m_lookAt[client][2] = m_eyeOrigin[client][2] + crandomfloat(-128.0, 128.0);
-				
+				if (m_hasWaypoints)
+				{
+					m_lookAt[client] = m_paths[crandomint(1, m_waypointNumber)].origin;
+					m_lookAt[client][2] = GetHeight(client);
+				}
+				else
+				{
+					m_lookAt[client][0] = crandomfloat(1.0, 359.0);
+					m_lookAt[client][1] = crandomfloat(1.0, 359.0);
+					m_lookAt[client][2] = crandomfloat(1.0, 359.0);
+				}
+
 				// force deploy
 				buttons |= IN_ATTACK;
 			}
@@ -1303,7 +1221,7 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 
 		vel = m_moveVel[client];
 
-		if (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags & WAYPOINT_DEMOCHARGE && m_class[client] == TFClass_DemoMan)
+		if (m_currentIndex[client] > 0 && m_paths[m_currentIndex[client]].flags & WAYPOINT_DEMOCHARGE && m_class[client] == TFClass_DemoMan)
 		{
 			m_currentWaypointIndex[client]--;
 			m_targetNode[client]--;
@@ -1327,23 +1245,28 @@ public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3], float
 			buttons |= IN_ATTACK2;
 		}
 	}
-	
+
 	return Plugin_Continue;
 }
 
 // trigger when bot spawns
 public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 {
-	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	static int client;
+	client = GetClientOfUserId(GetEventInt(event, "userid"));
 	if (!IsValidClient(client))
 		return Plugin_Handled;
 
+	m_afkTime[client] = GetGameTime() + 60.0;
+
 	if (IsEBot(client) || m_isAFK[client])
 	{
-		int i;
-		int j;
-		float totalRed = 0.0;
-		float totalBlu = 0.0;
+		static int i;
+		static int j;
+		static float totalRed;
+		totalRed = 0.0;
+		static float totalBlu;
+		totalBlu = 0.0;
 
 		for (i = 0; i < m_waypointNumber; i++)
 		{
@@ -1365,13 +1288,15 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		SetFakeClientConVar(client, "tf_medigun_autoheal", "0");
 		SetFakeClientConVar(client, "cl_autoreload", "1");
 
-		int team = GetClientTeam(client);
+		static int team;
+		team = GetClientTeam(client);
 		if (GetConVarBool(EBotChangeClass))
 		{
-			int rand = crandomint(1, 100);
+			static int rand;
+			rand = crandomint(1, 100);
 			if (rand <= GetConVarInt(EBotChangeClassChance) && client != FindLeader(team) && client != FindBestKD(team) && (TF2_GetPlayerClass(client) != TFClass_Engineer || (!IsValidEntity(SentryGun[client]) && !IsValidEntity(TeleporterExit[client]))))
 			{
-				char nickname[32];
+				static char nickname[32];
        		 	GetClientName(client, nickname, sizeof(nickname))
         		if (!StrEqual("Rick May", nickname) && !StrEqual("Engineer Gaming", nickname))
 				{
@@ -1390,7 +1315,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 							{
 								if (currentActiveArea & AREA1)
 									TF2_SetPlayerClass(client, TFClass_Sniper);
-								else 
+								else
 									TF2_SetPlayerClass(client, TFClass_DemoMan);
 							}
 							else
@@ -1588,7 +1513,6 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		m_ignoreEnemies[client] = 0.0;
 		CrouchTime[client] = 0.0;
 		m_aimInterval[client] = GetGameTime();
-		HardResetTimer[client] = GetGameTime() + 120.0;
 		DeletePathNodes(client);
 
 		if (TF2_GetPlayerClass(client) == TFClass_Engineer)
@@ -1604,6 +1528,44 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 		else
 			SetProcess(client, PRO_DEFAULT, 99999.0, "", true);
 
+		if (m_hasRouteWaypoints)
+		{
+			ArrayList RouteWaypoints = new ArrayList();
+			for (i = 0; i < m_waypointNumber; i++)
+			{
+				if (!(m_paths[i].flags & WAYPOINT_ROUTE))
+					continue;
+
+				// blocked waypoint
+   				if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
+					continue;
+
+				if (m_lastFailedWaypoint[client] == i)
+					continue;
+
+    			// not for our team
+ 				if (m_team[client] == 3 && m_paths[i].team == 2)
+					continue;
+
+   				if (m_team[client] == 2 && m_paths[i].team == 3)
+					continue;
+
+				RouteWaypoints.Push(i);
+			}
+
+			if (RouteWaypoints.Length > 0)
+				i = RouteWaypoints.Get(crandomint(0, RouteWaypoints.Length - 1));
+			else
+				i = -1;
+
+			delete RouteWaypoints;
+			if (i != -1)
+			{
+				AStarFindPath(-1, i, client, m_paths[i].origin);
+				m_nextStuckCheck[client] = GetGameTime() + 10.0;
+			}
+		}
+
 		m_nextStuckCheck[client] = GetGameTime() + 10.0;
 		m_spawnTime[client] = GetGameTime();
 		m_class[client] = TF2_GetPlayerClass(client);
@@ -1614,50 +1576,7 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 			m_useTeleporter[client] = true;
 		else
 			m_useTeleporter[client] = false;
-
-		if (m_hasRouteWaypoints)
-		{
-			ArrayList RouteWaypoints = new ArrayList();
-			if (!RouteWaypoints)
-				return Plugin_Handled;
-
-			for (i = 0; i < m_waypointNumber; i++)
-			{
-				if (!(m_paths[i].flags & WAYPOINT_ROUTE))
-					continue;
-				
-				// blocked waypoint
-   				if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
-					continue;
-
-				if (m_lastFailedWaypoint[client] == i)
-					continue;
-				
-    			// not for our team
- 				if (m_team[client] == 3 && m_paths[i].team == 2)
-					continue;
-				
-   				if (m_team[client] == 2 && m_paths[i].team == 3)
-					continue;
-
-				RouteWaypoints.Push(i);
-			}
-
-			if (RouteWaypoints.Length)
-				i = RouteWaypoints.Get(crandomint(0, RouteWaypoints.Length - 1));
-			else
-				i = -1;
-			
-			delete RouteWaypoints;
-			if (i != -1)
-			{
-				AStarFindPath(-1, i, client, m_paths[i].origin);
-				m_nextStuckCheck[client] = GetGameTime() + 10.0;
-			}
-		}
 	}
-	else
-		m_afkTime[client] = GetGameTime() + 60.0;
 
 	return Plugin_Handled;
 }
@@ -1665,54 +1584,57 @@ public Action BotSpawn(Handle event, char[] name, bool dontBroadcast)
 // trigger when bot spawns
 public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 {
-	int victim = GetClientOfUserId(GetEventInt(event, "userid"));
-	if (IsValidClient(victim))
-	{
-		int client = GetClientOfUserId(GetEventInt(event, "attacker"));
-		if (IsValidClient(client))
-		{
-			if (IsEBot(victim) || m_isAFK[victim])
-			{
-				CurrentProcess[victim] = PRO_DEFAULT;
-				RememberedProcess[victim] = PRO_DEFAULT;
-				m_lastKiller[victim] = client;
-				EBotDeathChat(victim);
-			}
+	static int victim;
+	static int client;
+	victim = GetClientOfUserId(GetEventInt(event, "userid"));
+	client = GetClientOfUserId(GetEventInt(event, "attacker"));
 
-			if (IsEBot(client) || m_isAFK[client])
+	if (IsValidClient(victim) && IsValidClient(client))
+	{
+		if (IsEBot(victim) || m_isAFK[victim])
+		{
+			CurrentProcess[victim] = PRO_DEFAULT;
+			RememberedProcess[victim] = PRO_DEFAULT;
+			m_lastKiller[victim] = client;
+			EBotDeathChat(victim);
+		}
+
+		if (IsEBot(client) || m_isAFK[client])
+		{
+			if (m_class[client] == TFClass_Spy)
+				TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), m_class[victim], victim);
+
+			if (crandomint(1, 3) == 1 && !m_lowHealth[client] && !m_hasEntitiesNear[client])
 			{
-				if (m_class[client] == TFClass_Spy)
-					TF2_DisguisePlayer(client, (GetClientTeam(client) == 2 ? TFTeam_Blue : TFTeam_Red), m_class[victim], victim);
-		
-				if (crandomint(1, 3) == 1 && !m_lowHealth[client] && !m_hasEntitiesNear[client])
-				{
-					FindFriendsAndEnemiens(client);
-					if (!m_hasEnemiesNear[client] && (!m_hasFriendsNear[client] || m_class[client] == TFClass_Sniper))
-						PlayTaunt(client, 463);
-				}
+				FindFriendsAndEnemiens(client);
+				if (!m_hasEnemiesNear[client] && (!m_hasFriendsNear[client] || m_class[client] == TFClass_Sniper))
+					PlayTaunt(client, 463);
 			}
 		}
 	}
-	
+
 	return Plugin_Handled;
 }
 
 public Action BotSap(Handle event, char[] name, bool dontBroadcast)
 {
-	int spy = GetClientOfUserId(GetEventInt(event, "userid"));
+	static int spy;
+	static int engineer;
+	spy = GetClientOfUserId(GetEventInt(event, "userid"));
+	engineer = GetClientOfUserId(GetEventInt(event, "ownerid"));
+
+	if (IsValidClient(engineer) && (IsEBot(engineer) || m_isAFK[engineer]))
+	{
+		FakeClientCommand(engineer, "voicemenu 1 1");
+		int index = FindWaypointFastest(GetOrigin(engineer));
+		if (index > 0)
+			AStarFindShortestPath(-1, index, engineer, m_paths[index].origin);
+
+		m_knownSpy[engineer] = spy;
+	}
+
 	if (IsValidClient(spy))
 	{
-		int engineer = GetClientOfUserId(GetEventInt(event, "ownerid"));
-		if (IsValidClient(engineer) && (IsEBot(engineer) || m_isAFK[engineer]))
-		{
-			FakeClientCommand(engineer, "voicemenu 1 1");
-			int index = FindWaypointFastest(GetOrigin(engineer));
-			if (index != -1)
-				AStarFindShortestPath(-1, index, engineer, m_paths[index].origin);
-
-			m_knownSpy[engineer] = spy;
-		}
-
 		int search;
 		for (search = 1; search <= MaxClients; search++)
 		{
@@ -1728,7 +1650,7 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 {
 	if (!IsValidClient(victim))
 		return Plugin_Continue;
-	
+
 	if (victim == attacker)
 	{
 		if (!m_hasRocketJumpWaypoints || m_lowHealth[victim] || m_class[victim] != TFClass_Soldier)
@@ -1749,7 +1671,7 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 		{
 			m_damageTime[victim] = GetGameTime();
 
-			if ((!m_hasEnemiesNear[victim] || (m_nearestEnemy[victim] != -1 && !m_isAlive[m_nearestEnemy[victim]])) && !TF2_IsPlayerInCondition(victim, TFCond_OnFire))
+			if ((!m_hasEnemiesNear[victim] || !m_isAlive[m_nearestEnemy[victim]]) && !TF2_IsPlayerInCondition(victim, TFCond_OnFire))
 			{
 				m_lookAt[victim] = GetEyePosition(attacker);
 				m_pauseTime[victim] = GetGameTime() + crandomfloat(2.5, 5.0);
@@ -1757,7 +1679,7 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 				m_hasEnemiesNear[victim] = true;
 			}
 
-			if (m_currentIndex[victim] != -1)
+			if (m_currentIndex[victim] > 0)
 				IncreaseDamage(victim, m_currentIndex[victim], damage);
 			else
 			{
@@ -1776,7 +1698,7 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 			{
 				if (crandomint(1, GetMaxHealth(victim)) > GetClientHealth(victim))
 					ActiveCloak(victim);
-			
+
 				if (ChanceOf(m_eBotSenseChance[attacker]) && IsEBot(attacker))
 					m_knownSpy[attacker] = victim;
 				else
@@ -1799,7 +1721,7 @@ public Action OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 				return Plugin_Handled;
 			}
 		}
-		else if (!m_hasEntitiesNear[victim] && attacker > MaxClients && IsValidEntity(attacker))
+		else if (!m_hasEntitiesNear[victim] && attacker > TFMaxPlayers && IsValidEntity(attacker))
 		{
 			m_damageTime[victim] = GetGameTime();
 			m_pauseTime[victim] = GetGameTime() + crandomfloat(2.5, 5.0);
@@ -1819,7 +1741,7 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 		currentActiveAreaInt = 0;
 		currentActiveArea = AREA1;
 
-		if (GetConVarInt(EBotDebug))
+		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active Area: %s", GetAreaName(currentActiveArea));
 	}
 	else
@@ -1827,10 +1749,11 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 		currentActiveAreaInt = GetBluControlPointCount();
 		currentActiveArea = (1 << (currentActiveAreaInt + 1));
 
-		if (GetConVarInt(EBotDebug))
+		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active Area: %s", GetAreaName(currentActiveArea));
 
-		/*GameRules_SetProp("m_nMatchGroupType", 7);
+		/*GameRules_SetProp("m_nRoundsPlayed", 0);
+		GameRules_SetProp("m_nMatchGroupType", 7);
 		RequestFrame(Frame_RestartTime);*/
 	}
 
@@ -1848,36 +1771,34 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 
 		if (m_hasRouteWaypoints)
 		{
-			ArrayList RouteWaypoints = new ArrayList();
-			if (!RouteWaypoints)
-				continue;
-
 			int index = -1;
+			ArrayList RouteWaypoints = new ArrayList();
 			for (i = 0; i < m_waypointNumber; i++)
 			{
 				if (!(m_paths[i].flags & WAYPOINT_ROUTE))
 					continue;
-				
+
 				// blocked waypoint
    				if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 					continue;
 
 				if (m_lastFailedWaypoint[client] == i)
 					continue;
-				
+
     			// not for our team
 				cteam = GetClientTeam(client);
  				if (cteam == 3 && m_paths[i].team == 2)
     				continue;
-   				else if (cteam == 2 && m_paths[i].team == 3)
+
+   				if (cteam == 2 && m_paths[i].team == 3)
         			continue;
 
 				RouteWaypoints.Push(i);
 			}
 
-			if (RouteWaypoints.Length)
+			if (RouteWaypoints.Length > 0)
 				index = RouteWaypoints.Get(crandomint(0, RouteWaypoints.Length - 1));
-			
+
 			delete RouteWaypoints;
 			if (index != -1)
 			{
@@ -1887,7 +1808,7 @@ public Action OnRoundStart(Handle event, char[] name, bool dontBroadcast)
 		}
 	}
 
-	return Plugin_Continue;
+	return Plugin_Handled;
 }
 
 public Action PointStartCapture(Handle event, char[] name, bool dontBroadcast)
@@ -1897,7 +1818,7 @@ public Action PointStartCapture(Handle event, char[] name, bool dontBroadcast)
 		currentActiveAreaInt = 1
 		currentActiveArea = AREA2;
 
-		if (GetConVarInt(EBotDebug))
+		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active Area: %s", GetAreaName(currentActiveArea));
 	}
 	else if (!isKOTH)
@@ -1917,7 +1838,7 @@ public Action PointStartCapture(Handle event, char[] name, bool dontBroadcast)
 			currentActiveArea = AREA1;
 		}
 
-		if (GetConVarInt(EBotDebug))
+		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active Area: %s", GetAreaName(currentActiveArea));
 	}
 
@@ -1931,7 +1852,7 @@ public Action PointUnlocked(Handle event, char[] name, bool dontBroadcast)
 		currentActiveAreaInt = 1
 		currentActiveArea = AREA2;
 
-		if (GetConVarInt(EBotDebug))
+		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active Area: %s", GetAreaName(currentActiveArea));
 	}
 	else if (isKOTH)
@@ -1956,7 +1877,7 @@ public Action PointUnlocked(Handle event, char[] name, bool dontBroadcast)
 			currentActiveArea = AREA1;
 		}
 
-		if (GetConVarInt(EBotDebug))
+		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active Area: %s", GetAreaName(currentActiveArea));
 	}
 
@@ -1970,7 +1891,7 @@ public Action PointCaptured(Handle event, char[] name, bool dontBroadcast)
 		currentActiveAreaInt = 1;
 		currentActiveArea = AREA2;
 
-		if (GetConVarInt(EBotDebug))
+		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active Area: %s", GetAreaName(currentActiveArea));
 	}
 	else if (isKOTH)
@@ -2014,9 +1935,9 @@ public Action PointCaptured(Handle event, char[] name, bool dontBroadcast)
 			currentActiveArea = AREA1;
 		}
 
-		if (GetConVarInt(EBotDebug))
+		if (GetConVarInt(EBotDebug) == 1)
 			PrintHintTextToAll("Active Area: %s", GetAreaName(currentActiveArea));
-		
+
 		for (search = 1; search <= MaxClients; search++)
 		{
 			if (!IsValidClient(search))
@@ -2042,12 +1963,12 @@ public Action PrintHudTextOnStart(Handle timer)
 	return Plugin_Handled;
 }
 
-/*public Action PlayAnimation(Handle event, char[] name, bool dontBroadcast)
+public Action PlayAnimation(Handle event, char[] name, bool dontBroadcast)
 {
 	GameRules_SetProp("m_nRoundsPlayed", 0);
 	GameRules_SetProp("m_nMatchGroupType", 7);
 	RequestFrame(Frame_RestartTime);
-	return Plugin_Continue;
+	return Plugin_Handled;
 }
 
 public Action Timer_RestartTime(Handle timer)
@@ -2062,7 +1983,7 @@ public Action Timer_RestartTime(Handle timer)
 		return Plugin_Continue;
 	}
 
-	if (gI_RestartTimerIteration)
+	if (gI_RestartTimerIteration > 0)
 		return Plugin_Continue;
 
 	gH_RestartTimer = null;
@@ -2074,19 +1995,18 @@ void Frame_RestartTime()
 	gI_RestartTimerIteration = 10;
 	delete gH_RestartTimer;
 	Timer_RestartTime(null);
-}*/
+}
 
 public Action SetCheats(Handle timer)
 {
 	ConVar cheats = FindConVar("sv_cheats");
-	if (cheats)
+	if (cheats != null)
 	{
 		cheats.SetBool(false, false, false);
 		int flags = cheats.Flags;
 		flags |= FCVAR_NOTIFY;
 		cheats.Flags = flags;
 	}
-
 	return Plugin_Handled;
 }
 
@@ -2123,13 +2043,13 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 
 		if (!IsEBot(repliedBy) && !m_isAFK[repliedBy])
 			continue;
-		
+
 		if (m_isAlive[repliedBy])
 			continue;
 
 		if (!ChanceOf(GetConVarInt(EBotReplyToChat)))
 			continue;
-		
+
 		copyString = true;
 		break;
 	}
@@ -2148,34 +2068,31 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 			TrimString(message);
 			BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/chat/replies/%s.txt", message);
 			File fp = OpenFile(filepath, "r");
-			if (fp)
+			if (fp != null)
 			{
 				ArrayList RandomReply = new ArrayList(ByteCountToCells(65));
-				if (RandomReply)
+				char line[256];
+				while (!fp.EndOfFile())
 				{
-					char line[256];
-					while (!fp.EndOfFile())
-					{
-						fp.ReadLine(line, sizeof(line));
-						if (!line)
-							continue;
+					fp.ReadLine(line, sizeof(line));
+					if (!line)
+						continue;
 
-						TrimString(line);
-						RandomReply.PushString(line);
-					}
+					TrimString(line);
+					RandomReply.PushString(line);
+				}
 
-					if (RandomReply.Length)
-					{
-						char ChosenOne[MAX_NAME_LENGTH];
-						RandomReply.GetString(crandomint(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
-						DataPack pack;
-						CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
-						pack.WriteCell(client);
-						pack.WriteString(ChosenOne);
-						fp.Close();
-						defaultReply = false
-						break;
-					}
+				if (RandomReply.Length > 0)
+				{
+					char ChosenOne[MAX_NAME_LENGTH];
+					RandomReply.GetString(crandomint(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
+					DataPack pack;
+					CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
+					pack.WriteCell(client);
+					pack.WriteString(ChosenOne);
+					fp.Close();
+					defaultReply = false
+					break;
 				}
 
 				fp.Close();
@@ -2186,31 +2103,28 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 		{
 			BuildPath(Path_SM, filepath, sizeof(filepath), "ebot/chat/replies/ebot_default.txt");
 			File fp = OpenFile(filepath, "r");
-			if (fp)
+			if (fp != null)
 			{
 				ArrayList RandomReply = new ArrayList(ByteCountToCells(65));
-				if (RandomReply)
+				char line[256];
+				while (!fp.EndOfFile())
 				{
-					char line[256];
-					while (!fp.EndOfFile())
-					{
-						fp.ReadLine(line, sizeof(line));
-						if (!line)
-							continue;
+					fp.ReadLine(line, sizeof(line));
+					if (!line)
+						continue;
 
-						TrimString(line);
-						RandomReply.PushString(line);
-					}
+					TrimString(line);
+					RandomReply.PushString(line);
+				}
 
-					if (RandomReply.Length)
-					{
-						char ChosenOne[MAX_NAME_LENGTH];
-						RandomReply.GetString(crandomint(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
-						DataPack pack;
-						CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
-						pack.WriteCell(client);
-						pack.WriteString(ChosenOne);
-					}
+				if (RandomReply.Length > 0)
+				{
+					char ChosenOne[MAX_NAME_LENGTH];
+					RandomReply.GetString(crandomint(0, RandomReply.Length - 1), ChosenOne, sizeof(ChosenOne));
+					DataPack pack;
+					CreateDataTimer(crandomfloat(2.0, 7.0), ReplyToChat, pack);
+					pack.WriteCell(client);
+					pack.WriteString(ChosenOne);
 				}
 
 				fp.Close();
@@ -2234,6 +2148,5 @@ public Action ReplyToChat(Handle timer, DataPack pack)
 		FakeClientCommand(client, "say %s", str);
 		lastChat = client;
 	}
-
 	return Plugin_Continue;
 }
