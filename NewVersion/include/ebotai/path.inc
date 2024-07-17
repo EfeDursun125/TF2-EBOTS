@@ -2,13 +2,13 @@ stock bool IsPathPossible(const int client, const float startOrigin[3], const fl
 {
 	CNavArea startArea = NavMesh.GetNavArea(startOrigin, 256.0);
 	CNavArea goalArea = NavMesh.GetNavArea(endOrigin, 256.0);
-	
+
 	if (!startArea || !goalArea)
 		return false;
-	
+
 	if (startArea == goalArea)
 		return true;
-	
+
 	CNavArea closestArea = NULL_AREA;
 	return NavMesh.BuildPath(startArea, goalArea, endOrigin, PathCostFastest, closestArea, flMaxPathLength, m_team[client], false);
 }
@@ -18,25 +18,15 @@ stock void FollowPath(const int client, float targetposition[3], const int entit
 	if (client == -1)
 		return;
 
-	if (m_spawnTime[client] + 1.0 > GetGameTime())
-	{
-		SelectObjective(client);
-		return;
-	}
-
 	if (IsNullVector(targetposition))
 	{
 		DeletePathNodes(client);
 		SelectObjective(client);
 		return;
 	}
-	
+
 	if (m_stopTime[client] > GetGameTime() && !TF2_IsPlayerInCondition(client, TFCond_OnFire))
-	{
-		if (TF2_IsPlayerInCondition(client, TFCond_Zoomed) && (m_hasEnemiesNear[client] || m_hasEntitiesNear[client]))
-			m_stopTime[client] = GetGameTime() + 10.0;
 		return;
-	}
 
 	if (!m_hasWaypoints && !m_hasNavpoints && GetVectorDistance(GetOrigin(client), targetposition, true) < Squaredf(128.0))
 	{
@@ -54,10 +44,10 @@ stock void FollowPath(const int client, float targetposition[3], const int entit
 
 			static float flGoPos[3];
 			m_positions[client].GetArray(m_targetNode[client], flGoPos);
-			
+
 			static float flPos[3]
 			GetClientAbsOrigin(client, flPos);
-			
+
 			static float flToPos[3];
 			flToPos = flGoPos;
 			flToPos[2] += GetHeight(client);
@@ -89,9 +79,9 @@ stock void FollowPath(const int client, float targetposition[3], const int entit
 
 				MoveTo(client, flGoPos);
 			}
-			
+
 			flGoPos[2] = flPos[2];
-			
+
 			if (m_hasWaypoints)
 			{
 				static float flNodeDist;
@@ -107,12 +97,12 @@ stock void FollowPath(const int client, float targetposition[3], const int entit
 						value = 32.0;
 				}
 				else
-				{ 
+				{
 					if (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].radius > 0.0)
 						value = m_paths[m_currentIndex[client]].radius;
 					value += (GetEntPropFloat(client, Prop_Data, "m_flMaxspeed") * GetConVarFloat(EBotFPS));
 				}
-				
+
 				if (flNodeDist < Squaredf(value) || GetVectorDistance(flGoPos, flPos, true) < Squaredf(32.0))
 				{
 					if (m_paths[m_currentIndex[client]].flags & WAYPOINT_ROCKETJUMP)
@@ -184,7 +174,7 @@ stock void FollowPath(const int client, float targetposition[3], const int entit
 
 					if (jump && jump.HasAttributes(NAV_MESH_JUMP))
 						m_buttons[client] |= IN_JUMP;
-					
+
 					m_targetNode[client]--;
 				}
 			}
@@ -200,41 +190,32 @@ stock void FollowPath(const int client, float targetposition[3], const int entit
 
 stock void FindPath(const int client, float targetposition2[3], const int entity = -1, int index = -1)
 {
-	if (m_spawnTime[client] + 1.0 > GetGameTime())
-	{
-		SelectObjective(client);
-		return;
-	}
-		
 	if (m_hasWaypoints && !m_hasNavpoints)
 	{
-		if (isPLR || (isPL && m_team[client] == 3) || isCP)
-			SelectObjective(client);
-
-		if (index == -1)
+		if (index < 0)
 			index = FindWaypointFast(targetposition2, client);
-			
+
 		AStarFindPath(m_currentIndex[client], index, client, targetposition2);
 		return;
 	}
-	
+
 	static float flPos[3];
 	GetClientAbsOrigin(client, flPos);
-	
+
 	flPos[2] += 15.0;
 	targetposition2[2] += 15.0;
-	
+
 	static CNavArea startArea;
 	startArea = NavMesh.GetNearestNavArea(flPos, true, 9999999999.0, true, false, m_team[client]);
 	static CNavArea goalArea;
 	goalArea = NavMesh.GetNearestNavArea(targetposition2, true, 9999999999.0, false, false, m_team[client]);
-	
+
 	if (!startArea || !goalArea)
 		return;
-	
+
 	if (startArea == goalArea)
 		return;
-	
+
 	static CNavArea closestArea;
 	closestArea = NULL_AREA;
 
@@ -247,7 +228,7 @@ stock void FindPath(const int client, float targetposition2[3], const int entity
 		static CNavArea parentArea;
 		parentArea = tempArea.GetParent();
 		static NavDirType iNavDirection;
-		
+
 		static float flCenterPortal[3];
 		static float flClosestPoint[3];
 
@@ -258,16 +239,16 @@ stock void FindPath(const int client, float targetposition2[3], const int entity
 			static float flParentAreaCenter[3];
 			GetRandomPoint(tempArea, flTempAreaCenter);
 			GetRandomPoint(parentArea, flParentAreaCenter);
-			
+
 			iNavDirection = ComputeDirection(tempArea, flParentAreaCenter);
 			tempArea.ComputePortal(parentArea, iNavDirection, flCenterPortal);
 			tempArea.ComputeClosestPointInPortal(parentArea, iNavDirection, flCenterPortal, flClosestPoint);
 
 			AddDirectionVector(flClosestPoint, iNavDirection, 15.0);
-			
+
 			flClosestPoint[2] = tempArea.GetZVector(flClosestPoint);
 			m_positions[client].PushArray(flClosestPoint, 3);
-			
+
 			tempArea = parentArea;
 			parentArea = tempArea.GetParent();
 		}
@@ -280,7 +261,7 @@ stock void FindPath(const int client, float targetposition2[3], const int entity
 			m_positions[client].GetArray(i, flFromPos, 3);
 			m_positions[client].GetArray(i - 1, flToPos, 3);
 		}
-		
+
 		m_targetNode[client] = m_positions[client].Length - 2;
 	}
 	else
@@ -306,7 +287,7 @@ stock NavDirType ComputeDirection(CNavArea area, const float flPos[3])
 {
 	static float flExtentLow[3]; static float flExtentHigh[3];
 	area.GetExtent(flExtentLow, flExtentHigh);
-	
+
 	if (flPos[0] >= flExtentLow[0] && flPos[0] <= flExtentHigh[0])
 	{
 		if (flPos[1] < flExtentLow[1])
@@ -321,25 +302,25 @@ stock NavDirType ComputeDirection(CNavArea area, const float flPos[3])
 		else if (flPos[0] > flExtentHigh[0])
 			return EAST;
 	}
-	
+
 	static float flCenter[3];
 	area.GetCenter(flCenter);
-	
+
 	static float flTo[3];
 	SubtractVectors(flPos, flCenter, flTo);
-	
+
 	if (FloatAbs(flTo[0]) > FloatAbs(flTo[1]))
 	{
 		if (flTo[0] > 0.0)
 			return EAST;
-		
+
 		return WEST;
 	}
 	else
 	{
 		if (flTo[1] > 0.0)
 			return SOUTH;
-		
+
 		return NORTH;
 	}
 }
@@ -348,7 +329,7 @@ public float PathCostFastest(CNavArea area, CNavArea fromArea, CNavLadder ladder
 {
 	if (!fromArea)
 		return 0.0;
-	
+
 	static float center[3];
 	area.GetCenter(center);
 
@@ -362,7 +343,7 @@ public float TFPathCost(CNavArea area, CNavArea fromArea, CNavLadder ladder, int
 {
 	if (!fromArea)
 		return 0.0;
-	
+
 	static float center[3];
 	GetRandomPoint(area, center);
 
@@ -371,7 +352,7 @@ public float TFPathCost(CNavArea area, CNavArea fromArea, CNavLadder ladder, int
 
 	static float dist;
 	dist = GetFastDistance(center, fromCenter);
-	
+
 	static int seed;
 	seed = RoundToFloor(GetGameTime() * 0.1) + 1;
 	seed *= area.GetID();

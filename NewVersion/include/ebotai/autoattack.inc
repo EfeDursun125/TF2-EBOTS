@@ -19,7 +19,7 @@ stock void AutoAttack(const int client)
 {
 	if (IsReloading(client))
 		return;
-	
+
 	if (IsSniper(client))
 	{
 		if (IsWeaponSlotActive(client, 0))
@@ -32,14 +32,14 @@ stock void AutoAttack(const int client)
 
 			if (CurrentProcess[client] != PRO_HIDE && !TF2_IsPlayerInCondition(client, TFCond_Zoomed))
 				m_buttons[client] |= IN_ATTACK2;
-			
+
 			return;
 		}
 	}
 	else if (m_primaryID[client] == 56 || m_primaryID[client] == 1005 || m_primaryID[client] == 1092 || m_primaryID[client] == 1098)
 	{
 		if (m_attackTimer[client] < GetGameTime())
-			m_attackTimer[client] = GetGameTime() + crandomfloat(1.25, 2.25);
+			m_attackTimer[client] = GetGameTime() + GetRandomFloat(1.25, 2.25);
 		return;
 	}
 
@@ -48,7 +48,7 @@ stock void AutoAttack(const int client)
 		m_attackTimer[client] = GetGameTime() + 0.4;
 		return;
 	}
-	
+
 	if (m_class[client] == TFClass_Heavy)
 	{
 		if (IsWeaponSlotActive(client, 0))
@@ -71,13 +71,13 @@ stock void AutoAttack(const int client)
 			m_attackTimer[client] = GetGameTime() + 0.4;
 		return;
 	}
-	
+
 	if (m_class[client] == TFClass_Pyro && IsWeaponSlotActive(client, 0))
 	{
 		m_attackTimer[client] = GetGameTime() + 0.4;
 		return;
 	}
-	
+
 	if (m_class[client] == TFClass_DemoMan)
 	{
 		if (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 996)
@@ -89,7 +89,7 @@ stock void AutoAttack(const int client)
 			m_attackTimer[client] = GetGameTime() + 0.4;
 		return;
 	}
-	
+
 	if (m_class[client] == TFClass_Soldier)
 	{
 		if (IsWeaponSlotActive(client, 0) && m_primaryID[client] == 730)
@@ -108,7 +108,7 @@ stock void AutoAttack(const int client)
 			m_attackTimer[client] = GetGameTime() + 0.4;
 		return;
 	}
-	
+
 	if (m_hasEnemiesNear[client] && !TF2_IsPlayerInCondition(m_nearestEnemy[client], TFCond_Ubercharged))
 	{
 		if (!TF2_IsPlayerInCondition(client, TFCond_Zoomed))
@@ -123,12 +123,12 @@ stock void SpyAttack(const int client)
 	// don't break your disguise, wait for backstab
 	if (IsWeaponSlotActive(client, 2) && TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		return;
-	
+
 	if (IsReadyForAttack(client))
 	{
 		if (!IsWeaponSlotActive(client, 0))
 		{
-			
+
 			if (IsValidClient(m_nearestEnemy[client]) && GetVectorDistance(GetEyePosition(client), GetEyePosition(m_nearestEnemy[client]), true) > Squaredf(128.0))
 				EquipWeaponSlot(client, 0);
 			else if (m_enemyDistance[client] > Squaredf(128.0))
@@ -141,7 +141,7 @@ stock void SpyAttack(const int client)
 
 		return;
 	}
-	
+
 	if (m_hasEnemiesNear[client] && ChanceOf(m_eBotSenseChance[client]) && TF2_IsPlayerInCondition(m_nearestEnemy[client], TFCond_Taunting) && m_hasFriendsNear[client])
 	{
 		if (!IsWeaponSlotActive(client, 0))
@@ -156,7 +156,7 @@ stock void SpyAttack(const int client)
 
 		return;
 	}
-	
+
 	if (m_hasEnemiesNear[client] && !ChanceOf(m_eBotSenseChance[client]) && (TF2_IsPlayerInCondition(m_nearestEnemy[client], TFCond_Disguised) || GetClientHealth(m_nearestEnemy[client]) <= 65.0))
 	{
 		if (!IsWeaponSlotActive(client, 0))
@@ -173,30 +173,30 @@ stock void SpyAttack(const int client)
 	}
 }
 
-stock bool IsReadyForAttack(const int client) // 1 core cpu killer... 
+stock bool IsReadyForAttack(const int client) // 1 core cpu killer...
 {
-	if (TF2_IsPlayerInCondition(client, TFCond_Ubercharged) 
-	|| TF2_IsPlayerInCondition(client, TFCond_TmpDamageBonus) 
-	|| TF2_IsPlayerInCondition(client, TFCond_Buffed) 
-	|| TF2_IsPlayerInCondition(client, TFCond_CritOnFirstBlood) 
-	|| TF2_IsPlayerInCondition(client, TFCond_OnFire) 
-	|| TF2_IsPlayerInCondition(client, TFCond_Jarated) 
-	|| TF2_IsPlayerInCondition(client, TFCond_Bleeding) 
-	|| TF2_IsPlayerInCondition(client, TFCond_Milked) 
-	|| TF2_IsPlayerInCondition(client, TFCond_CritCanteen) 
-	|| TF2_IsPlayerInCondition(client, TFCond_CritOnWin) 
-	|| TF2_IsPlayerInCondition(client, TFCond_CritOnFlagCapture) 
-	|| TF2_IsPlayerInCondition(client, TFCond_CritOnKill) 
-	|| TF2_IsPlayerInCondition(client, TFCond_CritOnDamage) 
-	|| TF2_IsPlayerInCondition(client, TFCond_MiniCritOnKill) 
-	|| TF2_IsPlayerInCondition(client, TFCond_CritRuneTemp) 
-	|| TF2_IsPlayerInCondition(client, TFCond_Gas) 
-	|| TF2_IsPlayerInCondition(client, TFCond_ObscuredSmoke) 
-	|| TF2_IsPlayerInCondition(client, TFCond_HalloweenGiant) 
-	|| TF2_IsPlayerInCondition(client, TFCond_UberchargedOnTakeDamage) 
-	|| TF2_IsPlayerInCondition(client, TFCond_UberchargedHidden) 
-	|| TF2_IsPlayerInCondition(client, TFCond_UberchargedCanteen) 
-	|| TF2_IsPlayerInCondition(client, TFCond_HalloweenBombHead) 
+	if (TF2_IsPlayerInCondition(client, TFCond_Ubercharged)
+	|| TF2_IsPlayerInCondition(client, TFCond_TmpDamageBonus)
+	|| TF2_IsPlayerInCondition(client, TFCond_Buffed)
+	|| TF2_IsPlayerInCondition(client, TFCond_CritOnFirstBlood)
+	|| TF2_IsPlayerInCondition(client, TFCond_OnFire)
+	|| TF2_IsPlayerInCondition(client, TFCond_Jarated)
+	|| TF2_IsPlayerInCondition(client, TFCond_Bleeding)
+	|| TF2_IsPlayerInCondition(client, TFCond_Milked)
+	|| TF2_IsPlayerInCondition(client, TFCond_CritCanteen)
+	|| TF2_IsPlayerInCondition(client, TFCond_CritOnWin)
+	|| TF2_IsPlayerInCondition(client, TFCond_CritOnFlagCapture)
+	|| TF2_IsPlayerInCondition(client, TFCond_CritOnKill)
+	|| TF2_IsPlayerInCondition(client, TFCond_CritOnDamage)
+	|| TF2_IsPlayerInCondition(client, TFCond_MiniCritOnKill)
+	|| TF2_IsPlayerInCondition(client, TFCond_CritRuneTemp)
+	|| TF2_IsPlayerInCondition(client, TFCond_Gas)
+	|| TF2_IsPlayerInCondition(client, TFCond_ObscuredSmoke)
+	|| TF2_IsPlayerInCondition(client, TFCond_HalloweenGiant)
+	|| TF2_IsPlayerInCondition(client, TFCond_UberchargedOnTakeDamage)
+	|| TF2_IsPlayerInCondition(client, TFCond_UberchargedHidden)
+	|| TF2_IsPlayerInCondition(client, TFCond_UberchargedCanteen)
+	|| TF2_IsPlayerInCondition(client, TFCond_HalloweenBombHead)
 	|| TF2_HasTheFlag(m_nearestEnemy[client]))
 		return true;
 	return false;
@@ -206,16 +206,18 @@ stock void SelectBestCombatWeapon(const int client)
 {
 	if (!m_isSlowThink[client])
 		return;
-		
-	float distance = GetVectorDistance(GetOrigin(client), m_lookAt[client], true);
-	float meleerange = Squaredf(GetConVarFloat(EBotMelee));
-	
+
+	static float distance;
+	distance = GetVectorDistance(GetOrigin(client), m_lookAt[client], true);
+	static float meleerange;
+	meleerange = Squaredf(GetConVarFloat(EBotMelee));
+
 	if (m_class[client] == TFClass_Pyro)
 		meleerange *= 0.75;
 
 	if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		meleerange = 300.0;
-		
+
 	if (distance < meleerange)
 		EquipWeaponSlot(client, 2);
 	else
@@ -241,7 +243,7 @@ stock void SelectBestCombatWeapon(const int client)
 		else if (m_class[client] == TFClass_Heavy)
 		{
 			if (m_secondaryID[client] == 311 || m_secondaryID[client] == 42 || m_secondaryID[client] == 863 || m_secondaryID[client] == 1002 || m_secondaryID[client] == 159 || m_secondaryID[client] == 433 || m_secondaryID[client] == 1190)
-				EquipWeaponSlot(client, 0);				   
+				EquipWeaponSlot(client, 0);
 			else if (distance < Squaredf(256.0) || (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags == WAYPOINT_JUMP))
 				EquipWeaponSlot(client, 1);
 			else
@@ -259,7 +261,7 @@ stock void SelectBestCombatWeapon(const int client)
 		else if (m_class[client] == TFClass_Soldier)
 		{
 			if (m_secondaryID[client] == 129 || m_secondaryID[client] == 1001 || m_secondaryID[client] == 226 || m_secondaryID[client] == 354 || m_secondaryID[client] == 444)
-				EquipWeaponSlot(client, 0);				   
+				EquipWeaponSlot(client, 0);
 			else if (distance < Squaredf(256.0))
 				EquipWeaponSlot(client, 1);
 			else if (IsValidClient(m_nearestEnemy[client]) && m_class[m_nearestEnemy[client]] == TFClass_Pyro && distance < Squaredf(512.0))
@@ -267,7 +269,7 @@ stock void SelectBestCombatWeapon(const int client)
 			else
 				EquipWeaponSlot(client, 0);
 		}
-		else if (m_class[client] == TFClass_Medic)
+		else if (m_class[client] == TFClass_Medic && !TF2_IsPlayerInCondition(client, TFCond_Ubercharged))
 			EquipWeaponSlot(client, 0);
 		else if (m_class[client] == TFClass_DemoMan)
 			EquipWeaponSlot(client, 0);
@@ -279,35 +281,29 @@ stock void SelectBestCombatWeapon(const int client)
 				EquipWeaponSlot(client, 1);
 			else if (m_secondaryID[client] == 46 || m_secondaryID[client] == 1145 || m_secondaryID[client] == 163)
 				EquipWeaponSlot(client, 0);
-			else if (distance > Squaredf(768.0))
+			else if (distance > Squaredf(1024.0))
 				EquipWeaponSlot(client, 1);
 			else
 				EquipWeaponSlot(client, 0);
 		}
 		else if (m_class[client] == TFClass_Engineer)
 		{
-			if (m_secondaryID[client] == 140 || m_secondaryID[client] == 1086 || m_secondaryID[client] == 30668)
-			{
-				if (IsValidEntity(SentryGun[client]) && distance > Squaredf(768.0) && IsValidClient(m_nearestEnemy[client]) && IsVisible(GetCenter(SentryGun[client]), GetOrigin(m_nearestEnemy[client])))
-					EquipWeaponSlot(client, 1);
-				else
-					EquipWeaponSlot(client, 0);
-			}
+			if (m_secondaryID[client] == 528)
+				EquipWeaponSlot(client, 0);
+			else if (distance > Squaredf(1024.0))
+				EquipWeaponSlot(client, 1);
 			else
-			{
-				if (distance > Squaredf(768.0))
-					EquipWeaponSlot(client, 1);
-				else
-					EquipWeaponSlot(client, 0);
-			}
+				EquipWeaponSlot(client, 0);
 		}
 		else if (m_class[client] == TFClass_Spy)
 			EquipWeaponSlot(client, 0);
 
 		if (IsWeaponSlotActive(client, 2) && distance > meleerange)
 		{
-			int clip0 = GetPrimaryClip(client, 0);
-			int clip1 = GetPrimaryClip(client, 1);
+			static int clip0;
+			clip0 = GetPrimaryClip(client, 0);
+			static int clip1;
+			clip1 = GetPrimaryClip(client, 1);
 
 			if (m_class[client] == TFClass_Medic)
 				EquipWeaponSlot(client, 0);

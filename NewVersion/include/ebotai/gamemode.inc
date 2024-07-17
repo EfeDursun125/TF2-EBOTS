@@ -64,10 +64,10 @@ stock bool IsOnDefense(const int client)
 	{
 		if (isPL)
 			return true;
-		
+
 		if (isMVM)
 			return true;
-		
+
 		if (isAD)
 			return true;
 	}
@@ -75,16 +75,16 @@ stock bool IsOnDefense(const int client)
 	return false;
 }
 
-stock bool IsOnOffanse(const int client)
+stock bool IsOnOffense(const int client)
 {
 	if (m_team[client] == 3)
 	{
 		if (isPL)
 			return true;
-		
+
 		if (isMVM)
 			return true;
-		
+
 		if (isAD)
 			return true;
 	}

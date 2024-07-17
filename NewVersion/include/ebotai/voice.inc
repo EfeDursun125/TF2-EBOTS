@@ -14,7 +14,7 @@ stock void UseVoiceCommand(const int client)
 {
 	if (m_voiceTimer[client] < GetGameTime())
 	{
-		m_voiceTimer[client] = GetGameTime() + crandomfloat(10.0, 20.0);
+		m_voiceTimer[client] = GetGameTime() + GetRandomFloat(10.0, 20.0);
 
 		if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && m_class[m_nearestEnemy[client]] == TFClass_Spy && ChanceOf(m_eBotSenseChance[client]))
 		{

@@ -15,7 +15,7 @@ public void FindFriendsAndEnemiens(const int client)
 
 	if (m_ignoreEnemies[client] > GetGameTime())
 		return;
-	
+
 	static int health;
 	static int maxHealth;
 	static float edict_distance;
@@ -33,48 +33,51 @@ public void FindFriendsAndEnemiens(const int client)
 
 		if (i == client)
 			continue;
-		
+
 		if (TF2_IsPlayerInCondition(i, TFCond_HalloweenGhostMode))
 			continue;
-		
+
 		if (GetEntProp(i, Prop_Data, "m_takedamage") != 2)
 			continue;
-		
+
 		if (!IsVisible(GetEyePosition(client), GetEyePosition(i)))
 			continue;
-		
+
 		if (m_team[i] == m_team[client])
 		{
 			health = GetClientHealth(i);
 			maxHealth = GetMaxHealth(i);
-			
+
 			if (IsMedic(client) || HasCrossbow(client))
 			{
 				// no medigun no pocket
-				if (HasCrossbow(client) && health >= maxHealth)
+				if (!IsMedic(client) && HasCrossbow(client) && health >= maxHealth)
 					continue;
 
 				if (GameRules_GetProp("m_bPlayingMedieval") && health >= maxHealth)
 					continue;
-				
+
 				if (TF2_IsPlayerInCondition(i, TFCond_Cloaked))
 					continue;
-		
+
 				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && health >= maxHealth)
 					continue;
-		
+
 				if (m_class[i] == TFClass_Engineer && health >= maxHealth)
 					continue;
-		
+
 				if (IsMedic(i) && health >= maxHealth)
 					continue;
-		
+
 				if (IsSniper(i) && health >= maxHealth)
 					continue;
-		
+
 				if (m_class[i] == TFClass_Engineer && IsWeaponSlotActive(i, 5) && health >= maxHealth)
 					continue;
-		
+
+				if (m_healTarget[client] != i && IsValidClient(m_healTarget[client]) && (GetClientHealth(m_healTarget[client]) < GetMaxHealth(m_healTarget[client]) || TF2_IsPlayerInCondition(client, TFCond_Ubercharged)) && IsVisible(GetEyePosition(client), GetEyePosition(m_healTarget[client])))
+				    continue;
+
 				m_friendsNearCount[client]++;
 				m_friendsNearPower[client] += (health * 2) + maxHealth;
 				m_friendDistance[client] = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
@@ -109,25 +112,25 @@ public void FindFriendsAndEnemiens(const int client)
 
 				if (GameRules_GetProp("m_bPlayingMedieval") && health >= maxHealth)
 					continue;
-				
+
 				if (TF2_IsPlayerInCondition(i, TFCond_Cloaked))
 					continue;
-		
+
 				if (TF2_IsPlayerInCondition(i, TFCond_Disguised) && health >= maxHealth)
 					continue;
-		
+
 				if (m_class[i] == TFClass_Engineer && IsWeaponSlotActive(i, 2) && health >= maxHealth)
 					continue;
-		
+
 				if (IsMedic(i) && health >= maxHealth)
 					continue;
-		
+
 				if (IsSniper(i) && health >= maxHealth)
 					continue;
-		
+
 				if (m_class[i] == TFClass_Engineer && IsWeaponSlotActive(i, 5) && health >= maxHealth)
 					continue;
-		
+
 				m_friendsNearCount[client]++;
 				m_friendsNearPower[client] += (health * 2) + maxHealth;
 				m_friendDistance[client] = GetVectorDistance(GetEyePosition(client), GetEyePosition(i), true);
@@ -138,7 +141,7 @@ public void FindFriendsAndEnemiens(const int client)
 					MoveTo(client, GetOrigin(m_nearestFriend[client]));
 					EquipWeaponSlot(client, 1);
 					m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
-					
+
 					if (IsWeaponSlotActive(client, 1))
 						m_buttons[client] |= IN_ATTACK2;
 
@@ -170,7 +173,7 @@ public void FindFriendsAndEnemiens(const int client)
 				m_hasEnemiesNear[client] = false;
 				return;
 			}
-			
+
 			// avoid fighting if we active bonk
 			if (TF2_IsPlayerInCondition(client, TFCond_Bonked))
 			{
@@ -192,7 +195,6 @@ public void FindFriendsAndEnemiens(const int client)
 				m_hasEnemiesNear[client] = true;
 				m_lastEnemy[client] = m_nearestEnemy[client];
 				m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
-				
 				return;
 			}
 
@@ -208,15 +210,20 @@ public void FindFriendsAndEnemiens(const int client)
 			{
 				if (!ClientViews(client, i))
 					continue;
-				
+
 				if (m_class[i] == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
 					continue;
 			}
 			else if (edict_distance > Squaredf(80.0))
 			{
-				if (!IsAttacking(i) && !TF2_IsPlayerInCondition(client, TFCond_Disguised) && !ClientViews(client, i))
+				if (!IsAttacking(i))
+				{
+					if (!ClientViews(client, i))
+						continue;
+				}
+				else if (IsWeaponSlotActive(i, 2) && crandomint(1, 7) != 1 && !ClientViews(client, i))
 					continue;
-				
+
 				if (m_class[i] == TFClass_Spy && !IsRevealedSpyByTarget(i, client))
 					continue;
 			}
@@ -233,7 +240,6 @@ public void FindFriendsAndEnemiens(const int client)
 					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
 					m_lastEnemy[client] = m_nearestEnemy[client];
 					m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
-					
 					return;
 				}
 				else if (m_difficulty[client] >= 2 && !IsMoving(i))
@@ -246,7 +252,6 @@ public void FindFriendsAndEnemiens(const int client)
 					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
 					m_lastEnemy[client] = m_nearestEnemy[client];
 					m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
-					
 					return;
 				}
 				else if (m_difficulty[client] >= 3 && !IsClientAimingToMe(client, i))
@@ -259,11 +264,10 @@ public void FindFriendsAndEnemiens(const int client)
 					m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
 					m_lastEnemy[client] = m_nearestEnemy[client];
 					m_lastEnemyOrigin[client] = GetOrigin(m_nearestEnemy[client]);
-					
 					return;
 				}
 			}
-			
+
 			m_enemiesNearPower[client] += (GetClientHealth(i) * 2) + GetMaxHealth(i);
 			m_enemiesNearCount[client]++;
 			if (edict_distance < m_enemyDistance[client])
@@ -273,7 +277,7 @@ public void FindFriendsAndEnemiens(const int client)
 			}
 		}
 	}
-	
+
 	m_hasEnemiesNear[client] = m_enemiesNearCount[client] > 0;
 	m_hasFriendsNear[client] = m_friendsNearCount[client] > 0;
 
@@ -370,7 +374,7 @@ public void FindEnemyEntities(const int client)
 			nearestDistance = distance;
 		}
 	}
-	
+
 	m_hasEntitiesNear[client] = m_hasEntitiesNearCount > 0;
 	if (m_hasEntitiesNear[client])
 		m_lastEntitySeen[client] = GetGameTime();

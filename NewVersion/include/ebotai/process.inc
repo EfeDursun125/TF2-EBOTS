@@ -11,7 +11,7 @@ stock bool SetProcess(const int client, const int process, const float time = 99
 	if (CurrentProcess[client] != process && IsReadyForTheProcess(client, process))
 	{
 		if (!ignoredebug && GetConVarInt(EBotDebug))
-			PrintToServer("%N has got a new process from %s to %s %s", client, GetProcessName(CurrentProcess[client]), GetProcessName(process), debugnote);
+			PrintToServer("%N has got a new process from %s to %s %s", client, GetProcessName(CurrentProcess[client], client), GetProcessName(process, client), debugnote);
 
 		if (remember && CurrentProcess[client] != PRO_HIDE && CurrentProcess[client] != PRO_ENGINEERIDLE && CurrentProcess[client] != PRO_SPYLURK)
 		{
@@ -67,6 +67,8 @@ public void StartProcess(const int client, const int process)
 			HideStart(client);
 		case PRO_HUNTENEMY:
 			HuntStart(client);
+		case PRO_FOLLOWPATH:
+			FollowPathStart(client);
 	}
 }
 
@@ -110,6 +112,8 @@ public void EndProcess(const int client, const int process)
 			HideEnd(client);
 		case PRO_HUNTENEMY:
 			HuntEnd(client);
+		case PRO_FOLLOWPATH:
+			FollowPathEnd(client);
 	}
 }
 
@@ -118,14 +122,14 @@ public void UpdateProcess(const int client)
 	if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcess[client] != PRO_ENGINEERIDLE && CurrentProcessTime[client] < GetGameTime() && CurrentProcess[client] != PRO_SPYLURK && CurrentProcess[client] != PRO_SPYHUNT)
 	{
 		if (GetConVarInt(EBotDebug))
-			PrintToServer("%N is cancelled %s process -> timed out.", client, GetProcessName(CurrentProcess[client]));
+			PrintToServer("%N is cancelled %s process -> timed out.", client, GetProcessName(CurrentProcess[client], client));
 		EndProcess(client, CurrentProcess[client]);
 
 		if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcess[client] != PRO_ENGINEERIDLE && RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime())
 		{
 			StartProcess(client, RememberedProcess[client]);
 			if (GetConVarInt(EBotDebug))
-				PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client]), GetProcessName(CurrentProcess[client]));
+				PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client], client), GetProcessName(CurrentProcess[client], client));
 			CurrentProcess[client] = RememberedProcess[client];
 			CurrentProcessTime[client] = RememberedProcessTime[client];
 			RememberedProcess[client] = PRO_DEFAULT;
@@ -135,7 +139,14 @@ public void UpdateProcess(const int client)
 
 		CurrentProcess[client] = PRO_DEFAULT;
 		StartProcess(client, PRO_DEFAULT);
+		return;
 	}
+
+	/*if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked)) // useful for randomizer
+	{
+		SetProcess(client, PRO_HIDE, 60.0, "", true);
+		return;
+	}*/
 
 	switch (CurrentProcess[client])
 	{
@@ -173,10 +184,9 @@ public void UpdateProcess(const int client)
 			HideUpdate(client);
 		case PRO_HUNTENEMY:
 			HuntUpdate(client);
+		case PRO_FOLLOWPATH:
+			FollowPathUpdate(client);
 	}
-
-	if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
-		SetProcess(client, PRO_HIDE, 60.0, "", true);
 }
 
 stock void FinishCurrentProcess(const int client, const bool nodbg = false, const char[] debugnote = "finished by the system")
@@ -184,7 +194,7 @@ stock void FinishCurrentProcess(const int client, const bool nodbg = false, cons
 	if (CurrentProcess[client] != PRO_DEFAULT)
 	{
 		if (nodbg && CurrentProcess[client] != PRO_ATTACK && GetConVarInt(EBotDebug))
-			PrintToServer("%N is cancelled %s process -> %s", client, GetProcessName(CurrentProcess[client]), debugnote);
+			PrintToServer("%N is cancelled %s process -> %s", client, GetProcessName(CurrentProcess[client], client), debugnote);
 
 		EndProcess(client, CurrentProcess[client]);
 
@@ -192,7 +202,7 @@ stock void FinishCurrentProcess(const int client, const bool nodbg = false, cons
 		{
 			StartProcess(client, RememberedProcess[client]);
 			if (GetConVarInt(EBotDebug))
-				PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client]), GetProcessName(CurrentProcess[client]));
+				PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client], client), GetProcessName(CurrentProcess[client], client));
 			CurrentProcess[client] = RememberedProcess[client];
 			CurrentProcessTime[client] = RememberedProcessTime[client];
 			RememberedProcess[client] = PRO_DEFAULT;
@@ -252,12 +262,14 @@ public bool IsReadyForTheProcess(const int client, const int process)
 			return HideRequirements(client);
 		case PRO_HUNTENEMY:
 			return HuntRequirements(client);
+		case PRO_FOLLOWPATH:
+			return FollowPathRequirements(client);
 	}
 
 	return true;
 }
 
-stock char[] GetProcessName(const int process)
+stock char[] GetProcessName(const int process, const int client)
 {
 	char string[64] = "UNKNOWN";
 	switch (process)
@@ -279,7 +291,12 @@ stock char[] GetProcessName(const int process)
 		case PRO_SPYSAP:
 			string = "SPY_SAP";
 		case PRO_DEFEND:
-			string = "DEFEND";
+		{
+			if (IsSniper(client))
+				string = "SNIPING";
+			else
+				string = "DEFEND";
+		}
 		case PRO_HEAL:
 			string = "HEAL";
 		case PRO_ENGINEERIDLE:
@@ -296,6 +313,8 @@ stock char[] GetProcessName(const int process)
 			string = "HIDE";
 		case PRO_HUNTENEMY:
 			string = "HUNT ENEMY";
+		case PRO_FOLLOWPATH:
+			string = "FOLLOW PATH";
 	}
 
 	return string;

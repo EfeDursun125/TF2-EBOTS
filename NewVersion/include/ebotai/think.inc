@@ -11,7 +11,7 @@ stock void LookUpdate(const int client, const bool lookaround = true)
 		if (IsWeaponSlotActive(client, 0))
 		{
 			m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
-			if (m_friendDistance[client] < Squaredf(192.0))
+			if (m_friendDistance[client] <= Squaredf(192.0))
 				m_attack2Timer[client] = GetGameTime() + 0.2;
 			else
 				MoveTo(client, GetOrigin(m_nearestFriend[client]));
@@ -25,7 +25,7 @@ stock void LookUpdate(const int client, const bool lookaround = true)
 		if (IsWeaponSlotActive(client, 1))
 		{
 			m_lookAt[client] = GetEyePosition(m_nearestFriend[client]);
-			if (m_friendDistance[client] < Squaredf(192.0))
+			if (m_friendDistance[client] <= Squaredf(192.0))
 				m_buttons[client] |= IN_ATTACK2;
 			else
 				MoveTo(client, GetOrigin(m_nearestFriend[client]));
@@ -41,7 +41,7 @@ stock void LookUpdate(const int client, const bool lookaround = true)
 		{
 			if (m_hasEnemiesNear[client] && m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
 			{
-				float center[3];
+				static float center[3];
 				center = GetCenter(m_nearestEntity[client]);
 
 				if (m_enemyDistance[client] < GetVectorDistance(GetOrigin(client), center, true))
@@ -55,14 +55,14 @@ stock void LookUpdate(const int client, const bool lookaround = true)
 					SelectBestCombatWeapon(client);
 				}
 
-				m_pauseTime[client] = GetGameTime() + crandomfloat(1.5, 2.5);
+				m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
 			}
 			else if (m_hasEnemiesNear[client])
 			{
 				LookAtEnemiens(client);
 				AutoAttack(client);
 				SelectBestCombatWeapon(client);
-				m_pauseTime[client] = GetGameTime() + crandomfloat(1.5, 2.5);
+				m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
 			}
 			else if (m_hasEntitiesNear[client] && IsValidEntity(m_nearestEntity[client]))
 			{
@@ -74,7 +74,7 @@ stock void LookUpdate(const int client, const bool lookaround = true)
 					SelectBestCombatWeapon(client);
 				}
 
-				m_pauseTime[client] = GetGameTime() + crandomfloat(1.5, 2.5);
+				m_pauseTime[client] = GetGameTime() + GetRandomFloat(1.5, 2.5);
 			}
 		}
 
