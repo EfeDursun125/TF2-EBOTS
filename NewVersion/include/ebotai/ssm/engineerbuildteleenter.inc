@@ -4,13 +4,13 @@ public bool BuildTeleEnterRequirements(const int client)
 {
 	if (m_teleEnterTriggerBlock[client])
 		return false;
-	
+
 	if (m_enterFail[client])
 		return false;
-	
+
 	if (GetMetal(client) < 50.0)
 		return false;
-	
+
 	return true;
 }
 
@@ -33,7 +33,7 @@ public void BuildTeleEnterUpdate(const int client)
 	CheckHealth(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
-	
+
 	float range = GetVectorDistance(GetOrigin(client), teleenterbuildarea[client], true);
 	if (range < Squaredf(300.0))
 	{
@@ -65,10 +65,10 @@ public void BuildTeleEnterUpdate(const int client)
 
 			if (!IsValidEntity(GetEntPropEnt(GetActiveWeapon(client), Prop_Send, "m_hObjectBeingBuilt")))
 				return;
-			
+
 			if (m_isSlowThink[client] && crandomint(1, 10) == 1)
 				PickTeleEnterSpot(client, teleenterbuildarea[client]);
-			
+
 			return;
 		}
 	}
@@ -79,7 +79,7 @@ public void BuildTeleEnterUpdate(const int client)
 		FollowPath(client, teleenterbuildarea[client]);
 	else
 		MoveToWaypoint(client, teleenterbuildarea[client]);
-	
+
 	if (IsValidEntity(TF2_GetObject(client, TFObject_Teleporter, TFObjectMode_Entrance)))
 	{
 		FinishCurrentProcess(client);
@@ -114,14 +114,14 @@ stock void PickTeleEnterSpot(const int client, float area[3] = NULL_VECTOR)
 		{
 			if (!(m_paths[i].flags & WAYPOINT_TELEPORTERENTER))
 				continue;
-			
+
 			// blocked waypoint
    			if (m_paths[i].activeArea != 0 && !(m_paths[i].activeArea & currentActiveArea))
 				continue;
-			
+
 			if (m_lastFailedWaypoint[client] == i)
 				continue;
-			
+
     		// not for our team
  			if (m_team[client] == 3 && m_paths[i].team == 2)
     			continue;
@@ -139,11 +139,11 @@ stock void PickTeleEnterSpot(const int client, float area[3] = NULL_VECTOR)
 				AllTeleEnterSpots.Push(i);
 		}
 
-		if (BestTeleEnterSpots.Length)
+		if (BestTeleEnterSpots.Length > 0)
 			i = BestTeleEnterSpots.Get(crandomint(0, BestTeleEnterSpots.Length - 1));
-		else if (GoodTeleEnterSpots.Length)
+		else if (GoodTeleEnterSpots.Length > 0)
 			i = GoodTeleEnterSpots.Get(crandomint(0, GoodTeleEnterSpots.Length - 1));
-		else if (AllTeleEnterSpots.Length)
+		else if (AllTeleEnterSpots.Length > 0)
 			i = AllTeleEnterSpots.Get(crandomint(0, AllTeleEnterSpots.Length - 1));
 		else
 			i = -1;

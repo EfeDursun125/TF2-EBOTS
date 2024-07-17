@@ -1,64 +1,106 @@
 stock bool AttackRequirements(const int client)
 {
+    if (isOT)
+        return false;
+
 	if (isVSH)
 		return false;
 
 	if (m_lowHealth[client])
 		return false;
-	
+
 	if (m_lowAmmo[client])
 		return false;
-	
+
 	if (NoDodge[client] > GetGameTime())
 		return false;
-	
-	if (m_class[client] != TFClass_Sniper && m_class[client] != TFClass_Scout && m_class[client] != TFClass_Pyro && m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]))
-		return false;
-	
-	if (!(GetEntityFlags(client) & FL_ONGROUND))
-		return false;
-	
-	if (GetEntProp(client, Prop_Send, "m_bJumping"))
-		return false;
-		
+
+	switch (m_class[client])
+	{
+		case TFClass_Sniper:
+		{
+		}
+		case TFClass_Scout:
+		{
+		}
+		case TFClass_Pyro:
+		{
+		}
+		case TFClass_Spy:
+		{
+			if (TF2_IsPlayerInCondition(client, TFCond_Cloaked) || TF2_IsPlayerInCondition(client, TFCond_Disguising))
+				return false;
+		}
+		case TFClass_Heavy:
+		{
+			if (TF2_IsPlayerInCondition(client, TFCond_Overhealed))
+        		return false;
+		}
+		case TFClass_Medic:
+		{
+			if (TF2_IsPlayerInCondition(client, TFCond_Ubercharged))
+        		return false;
+		}
+		default:
+		{
+			if (m_enemyDistance[client] > Squared(m_eBotDodgeRange[client]))
+				return false;
+		}
+	}
+
 	if (IsWeaponSlotActive(client, 2))
 		return false;
-	
+
 	if (m_currentIndex[client] != -1 && m_paths[m_currentIndex[client]].flags & WAYPOINT_NOSTRAFE)
 		return false;
-	
+
 	if (TF2_HasTheFlag(client))
 		return false;
-	
-	if (m_class[client] == TFClass_Spy && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
-		return false;
-		
+
 	return true;
 }
 
 stock void AttackStart(const int client)
 {
-	m_goalEntity[client] = -1;
+
 }
 
 float m_wasdTimer[TFMaxPlayers];
 stock void AttackUpdate(const int client)
 {
-	if (m_class[client] == TFClass_Spy && m_lowHealth[client])
+    if (!IsMedic(client) && TF2_IsPlayerInCondition(client, TFCond_Ubercharged))
 	{
-		if (ActiveCloak(client))
+		int enemy = FindNearestEnemy(client);
+		if (IsValidClient(enemy) && IsPlayerAlive(enemy) && m_lastFailedEntity[client] != enemy)
+		{
+			m_goalIndex[client] = -1;
+			m_goalEntity[client] = enemy;
+			m_goalPosition[client] = GetOrigin(enemy);
+			if (SetProcess(client, PRO_HUNTENEMY, 15.0, "", true))
+				return;
+		}
+	}
+	else if (m_class[client] == TFClass_Spy)
+	{
+		if (m_lowHealth[client] && ActiveCloak(client))
 		{
 			FinishCurrentProcess(client, true);
 			return;
 		}
-	}	
+
+		if ((TF2_IsPlayerInCondition(client, TFCond_Disguised) || IsStealthed(client)))
+		{
+			FinishCurrentProcess(client, true);
+			return;
+		}
+	}
 
 	if (m_isSlowThink[client] || (IsValidClient(m_nearestEnemy[client]) && !IsPlayerAlive(m_nearestEnemy[client])))
 	{
 		FindFriendsAndEnemiens(client);
 		FindEnemyEntities(client);
 	}
-	
+
 	if (!m_hasEnemiesNear[client])
 	{
 		FinishCurrentProcess(client, true);
@@ -66,21 +108,18 @@ stock void AttackUpdate(const int client)
 			SetProcess(client, PRO_IDLE, crandomfloat(2.0, 4.0), "", true);
 	}
 
-	if (m_class[client] == TFClass_Spy && (TF2_IsPlayerInCondition(client, TFCond_Disguised) || IsStealthed(client)))
-		FinishCurrentProcess(client, true);
-	
 	CheckHideFromDanger(client);
 	CheckHealth(client);
 	CheckAmmo(client);
 	LookUpdate(client);
 
-	m_nextStuckCheck[client] = GetGameTime() + 5.0;
+	m_nextStuckCheck[client] = GetGameTime() + 6.0;
 
-	if (m_class[client] == TFClass_Sniper)
+	if (IsSniper(client))
 	{
 		if (TF2_IsPlayerInCondition(m_nearestEnemy[client], TFCond_Zoomed) && ClientViews(m_nearestEnemy[client], client))
 			RandomMovement(client);
-		else if (m_enemyDistance[client] < Squared(m_eBotDodgeRange[client]) && IsClientAimingToMe(m_nearestEnemy[client], client) && (!TF2_IsPlayerInCondition(client, TFCond_Zoomed) || IsAttacking(m_nearestEnemy[client])))
+		else if (m_enemyDistance[client] < Squared(m_eBotDodgeRange[client]) && IsClientAimingToMe(m_nearestEnemy[client], client) && IsAttacking(m_nearestEnemy[client]))
 			RandomMovement(client);
 		else
 		{
@@ -165,6 +204,6 @@ stock void AttackEnd(const int client)
 {
 	if (ChanceOf(GetConVarInt(m_eBotDodgeRangeChance)))
 		m_eBotDodgeRange[client] = crandomint(GetConVarInt(m_eBotDodgeRangeMin), GetConVarInt(m_eBotDodgeRangeMax));
-	
+
 	DeletePathNodes(client);
 }

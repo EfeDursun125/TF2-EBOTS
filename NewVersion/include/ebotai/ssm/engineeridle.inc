@@ -36,13 +36,11 @@ public void EngineerIdleUpdate(const int client)
 
 	if (TF2_HasTheFlag(client))
 	{
-		ObjectiveMovement(client);
-		if (MustFindObjective(client, m_goalIndex[client], m_currentIndex[client]))
-		{
-			SelectObjective(client);
-			FollowPath(client, m_goalPosition[client], -1, m_goalIndex[client]);
-		}
-
+		if (m_team[client] == 2)
+			m_goalPosition[client] = m_redFlagCapPoint;
+		else
+			m_goalPosition[client] = m_bluFlagCapPoint;
+		FollowPath(client, m_goalPosition[client], -1, -1);
 		return;
 	}
 
@@ -50,12 +48,16 @@ public void EngineerIdleUpdate(const int client)
 	CheckHealth(client);
 
 	if (m_lowAmmo[client])
-		SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack", true, false);
+	{
+		if (SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack", true, false))
+			return;
+	}
 
 	if (IsMetalLow(client))
 	{
 		m_lowAmmo[client] = true;
-		SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack", true, false);
+		if (SetProcess(client, PRO_GETAMMO, 90.0, "| process started -> need ammo pack", true, false))
+			return;
 	}
 	else
 		m_lowAmmo[client] = false;
@@ -84,10 +86,10 @@ public void EngineerIdleUpdate(const int client)
 		}
 		else
 			MoveToWaypoint(client, targetOrigin);
-		
+
 		return;
 	}
-	
+
 	if (!IsValidEntity(SentryGun[client]))
 	{
 		if (WantsBuildTeleporterEnter[client] && crandomint(1, 3) == 1 && SetProcess(client, PRO_BUILDTELEPORTERENTER, 20.0, "| process started -> trying to build teleporter enter", false, false))
@@ -147,14 +149,15 @@ public void EngineerIdleUpdate(const int client)
 
 			if (GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
 			{
-				SetProcess(client, PRO_BUILDSENTRY, 60.0, "| process started -> wants to move sentry gun", false, false);
-				return;
+				if (SetProcess(client, PRO_BUILDSENTRY, 60.0, "| process started -> wants to move sentry gun", false, false))
+				    return;
 			}
 		}
 		else
+		{
 			FollowPath(client, targetOrigin);
-
-		return;
+			return;
+		}
 	}
 
 	if (IsValidEntity(Dispenser[client]) && (!DispenserIsMaxLevel[client] || !DispenserHealthIsFull[client]))
@@ -180,7 +183,7 @@ public void EngineerIdleUpdate(const int client)
 
 		return;
 	}
-	
+
 	if (WantsMoveDispenser[client] && !IsOnDefense(client) && IsValidEntity(Dispenser[client]))
 	{
 		targetOrigin = GetCenter(Dispenser[client]);
@@ -195,16 +198,17 @@ public void EngineerIdleUpdate(const int client)
 
 			if (GetEntProp(client, Prop_Send, "m_bCarryingObject") && IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hCarriedObject")))
 			{
-				SetProcess(client, PRO_BUILDDISPENSER, 60.0, "| process started -> wants to move dispenser", false, false);
+				if (SetProcess(client, PRO_BUILDDISPENSER, 60.0, "| process started -> wants to move dispenser", false, false))
 				return;
 			}
 		}
 		else
+		{
 			FollowPath(client, targetOrigin);
-
-		return;
+			return;
+		}
 	}
-	
+
 	if (IsValidEntity(TeleporterEnter[client]) && (!TeleporterEnterHealthIsFull[client] || !TeleporterEnterIsMaxLevel[client]))
 	{
 		targetOrigin = GetOrigin(TeleporterEnter[client]);

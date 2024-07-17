@@ -2,7 +2,7 @@ public bool BuildDispenserRequirements(const int client)
 {
 	if (!IsValidEntity(SentryGun[client]))
 		return false;
-		
+
 	if (!SentryHealthIsFull[client])
 		return false;
 
@@ -52,7 +52,7 @@ public void BuildDispenserUpdate(const int client)
 			FinishCurrentProcess(client);
 		}
 	}
-	
+
 	if (IsValidEntity(TF2_GetObject(client, TFObject_Dispenser, TFObjectMode_None)))
 	{
 		FinishCurrentProcess(client);

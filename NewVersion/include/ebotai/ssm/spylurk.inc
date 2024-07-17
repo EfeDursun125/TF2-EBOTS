@@ -4,10 +4,10 @@ public bool SpyLurkRequirements(const int client)
 	{
 		if (m_hasEnemiesNear[client] || m_hasEntitiesNear[client])
 			m_attackTimer[client] = GetGameTime() + 0.2;
-		
+
 		return false;
 	}
-	
+
 	return true;
 }
 
@@ -63,17 +63,15 @@ public void SpyLurkUpdate(const int client)
 		{
 			if (HasEntProp(m_knownSentry[client], Prop_Send, "m_bHasSapper") && GetEntProp(m_knownSentry[client], Prop_Send, "m_bHasSapper") == 0)
 			{
-				SetProcess(client, PRO_SPYSAP, crandomfloat(40.0, 80.0), "| process started -> try to sap buildings");
-				return;
+				if (SetProcess(client, PRO_SPYSAP, crandomfloat(40.0, 80.0), "| process started -> try to sap buildings"))
+				    return;
 			}
 			else
 				m_knownSentry[client] = -1;
 		}
-		
+
 		if (IsValidClient(m_goalEntity[client]) && IsPlayerAlive(m_goalEntity[client]))
 			FollowPath(client, GetOrigin(m_goalEntity[client]));
-		else if (IsValidEntity(m_goalEntity[client]))
-			ObjectiveMovement(client);
 		else
 		{
 			int enemy = FindNearestEnemy(client);
@@ -81,11 +79,10 @@ public void SpyLurkUpdate(const int client)
 			{
 				m_goalEntity[client] = enemy;
 				m_goalPosition[client] = GetOrigin(enemy);
+				FollowPath(client, GetOrigin(m_goalEntity[client]));
 			}
-			else
-				SelectObjective(client);
 		}
-	
+
 		if (m_hasEnemiesNear[client] && m_class[m_nearestEnemy[client]] != TFClass_Spy)
 		{
 			if (GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) < Squaredf(256.0))
@@ -94,12 +91,11 @@ public void SpyLurkUpdate(const int client)
 				return;
 			}
 
-			m_goalEntity[client] = m_nearestEnemy[client];
-
-			if (IsValidClient(m_goalEntity[client]) && IsPlayerAlive(m_goalEntity[client]))
+			if (IsValidClient(m_nearestEnemy[client][client]) && IsPlayerAlive(m_nearestEnemy[client][client]))
 			{
-				SetProcess(client, PRO_SPYHUNT, crandomfloat(10.0, 20.0), "| process started -> try to hunt down enemies");
-				return;
+				m_goalEntity[client] = m_nearestEnemy[client];
+				if (SetProcess(client, PRO_SPYHUNT, crandomfloat(10.0, 20.0), "| process started -> try to hunt down enemies"))
+					return;
 			}
 		}
 	}
@@ -111,6 +107,5 @@ public void SpyLurkUpdate(const int client)
 
 public void SpyLurkEnd(const int client)
 {
-	if (!IsValidClient(m_goalEntity[client]) || !IsValidEntity(m_goalEntity[client]))
-		SelectObjective(client);
+
 }

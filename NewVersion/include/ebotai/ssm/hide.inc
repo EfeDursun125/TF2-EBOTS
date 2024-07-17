@@ -2,6 +2,15 @@ float m_hidingSpot[TFMaxPlayers][3];
 
 stock bool HideRequirements(const int client)
 {
+    if (isOT)
+        return false;
+
+    if (TF2_IsPlayerInCondition(client, TFCond_Overhealed))
+        return false;
+
+    if (TF2_IsPlayerInCondition(client, TFCond_Ubercharged))
+        return false;
+
 	if (!m_hasWaypoints)
 	{
 		m_hidingSpot[client] = FindBestHidingSpot(client);
@@ -10,7 +19,7 @@ stock bool HideRequirements(const int client)
 	}
 	else if (m_class[client] == TFClass_Spy)
 		return false;
-	
+
 	if (TF2_HasTheFlag(client))
 		return false;
 

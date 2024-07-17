@@ -2,23 +2,23 @@ public bool SpySapRequirements(const int client)
 {
 	if (TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 		return false;
-	
+
 	if (!TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		return false;
-	
+
 	if (!IsValidEntity(m_knownSentry[client]))
 		return false;
-	
+
 	if (!HasEntProp(m_knownSentry[client], Prop_Send, "m_bHasSapper"))
 		return false;
-	
+
 	if (TF2_HasTheFlag(client))
 		return false;
-	
+
 	// no sapper, WHAT?
 	if (!IsValidEntity(GetPlayerWeaponSlot(client, 1)))
 		return false;
-	
+
 	return true;
 }
 
@@ -59,7 +59,7 @@ public void SpySapUpdate(const int client)
 		LookAround(client);
 		if (IsValidClient(m_goalEntity[client]) || IsValidEntity(m_goalEntity[client]))
 			FollowPath(client, GetOrigin(m_goalEntity[client]));
-		
+
 		// avoid bumping!!!
 		if (m_hasEnemiesNear[client] && IsValidClient(m_nearestEnemy[client]) && GetVectorDistance(GetOrigin(client), GetOrigin(m_nearestEnemy[client]), true) < Squaredf(200.0))
 			BackstabMove(client, m_nearestEnemy[client], false);
@@ -79,7 +79,7 @@ public void SpySapUpdate(const int client)
 
 	if (!m_hasEntitiesNear[client])
 		SpyReactChecker(client);
-	
+
 	if (!HasEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") || GetEntProp(m_goalEntity[client], Prop_Send, "m_bHasSapper") != 0)
 		FinishCurrentProcess(client);
 	else
@@ -131,6 +131,6 @@ public void SpySapEnd(const int client)
 		else
 			EquipWeaponSlot(client, 2);
 	}
-	
+
 	m_knownSentry[client] = -1; // what if sentry is unreachable???
 }

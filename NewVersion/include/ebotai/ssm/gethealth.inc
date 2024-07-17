@@ -1,5 +1,8 @@
 stock bool GetHealthRequirements(const int client)
 {
+    if (isOT)
+        return false;
+
 	if (healthpacks <= 0)
 		return false;
 
@@ -8,25 +11,28 @@ stock bool GetHealthRequirements(const int client)
 
 	if (m_hasWaypoints && !m_hasHealthWaypoints)
 		return false;
-	
+
 	if (CurrentProcess[client] == PRO_HIDE)
 		return false;
-	
+
 	if (m_hasEnemiesNear[client])
 		return false;
-	
+
 	if (isVSH && GetClientTeam(client) == 3)
 		return false;
 
 	if (TF2_HasTheFlag(client))
 		return false;
-	
+
 	if (!m_hasWaypoints)
 	{
 		m_goalEntity[client] = FindNearestHealth(client);
 		if (!IsValidHealthPack(m_goalEntity[client]) || !IsPathPossible(client, GetOrigin(client), GetOrigin(m_goalEntity[client])))
 			return false;
 	}
+
+	if (TF2_IsPlayerInCondition(client, TFCond_Ubercharged))
+		return false;
 
 	return true;
 }
@@ -40,14 +46,14 @@ stock void GetHealthStart(const int client)
 
 stock void GetHealthUpdate(const int client)
 {
-	if (GetClientHealth(client) > (GetMaxHealth(client) / 1.4))
+	if (GetClientHealth(client) > (GetMaxHealth(client) / 1.4) || TF2_IsPlayerInCondition(client, TFCond_Ubercharged))
 	{
 		FinishCurrentProcess(client);
 		DeletePathNodes(client);
 		return;
 	}
 
-	CheckHideFromDanger(client);	
+	CheckHideFromDanger(client);
 	FindFriendsAndEnemiens(client);
 	FindEnemyEntities(client);
 
@@ -87,7 +93,7 @@ stock int FindNearestHealth(const int client)
 	{
 		if (!IsValidHealthPack(x))
 			continue;
-		
+
 		edict_distance = GetFastDistance(origin, GetOrigin(x));
 		if (edict_distance < distance)
 		{
@@ -95,6 +101,6 @@ stock int FindNearestHealth(const int client)
 			nearestEntity = x;
 		}
 	}
-	
+
 	return nearestEntity;
 }

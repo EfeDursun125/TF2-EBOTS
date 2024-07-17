@@ -8,10 +8,10 @@ public bool SpyHuntRequirements(const int client)
 {
 	if (!TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		return false;
-	
+
 	if (TF2_HasTheFlag(client))
 		return false;
-	
+
 	return true;
 }
 
@@ -59,7 +59,7 @@ public void SpyHuntUpdate(const int client)
 
 	int threat = m_goalEntity[client];
 	int closestThreat = m_nearestEnemy[client];
-	
+
 	// opportunistically attack closer threat if they are much closer to us than our existing threat
 	if (!IsValidClient(threat) || !IsPlayerAlive(threat))
 	{
@@ -80,7 +80,7 @@ public void SpyHuntUpdate(const int client)
 			m_isCoverBlown[client] = false;
 		}
 	}
-	
+
 	SpyAimLogic(client);
 
 	if (!IsValidClient(threat) || !IsPlayerAlive(threat))
@@ -168,17 +168,17 @@ public void SpyHuntUpdate(const int client)
 		m_isCoverBlown[client] = true;
 	else if (TF2_IsPlayerInCondition(playerThreat, TFCond_Disguised) || TF2_IsPlayerInCondition(playerThreat, TFCond_Cloaked))
 		m_isCoverBlown[client] = true;
-	
-	if (m_isCoverBlown[client] || 
+
+	if (m_isCoverBlown[client] ||
 	TF2_IsPlayerInCondition(client, TFCond_OnFire) ||
-	TF2_IsPlayerInCondition(client, TFCond_Jarated) || 
-	TF2_IsPlayerInCondition(client, TFCond_CloakFlicker) || 
-	TF2_IsPlayerInCondition(client, TFCond_Bleeding) || 
-	TF2_IsPlayerInCondition(client, TFCond_Milked) || 
-	TF2_IsPlayerInCondition(playerThreat, TFCond_Charging) || 
+	TF2_IsPlayerInCondition(client, TFCond_Jarated) ||
+	TF2_IsPlayerInCondition(client, TFCond_CloakFlicker) ||
+	TF2_IsPlayerInCondition(client, TFCond_Bleeding) ||
+	TF2_IsPlayerInCondition(client, TFCond_Milked) ||
+	TF2_IsPlayerInCondition(playerThreat, TFCond_Charging) ||
 	TF2_IsPlayerInCondition(playerThreat, TFCond_Ubercharged))
 		isKnifeFight = false;
-	
+
 	EquipWeaponSlot(client, isKnifeFight ? 2 : 0);
 	bool isMovingTowardVictim = true;
 
@@ -199,7 +199,7 @@ public void SpyHuntUpdate(const int client)
 				GetClientEyeAngles(client, flBotAng);
 				GetClientEyeAngles(playerThreat, flTargetAng);
 				float iAngleDiff = AngleDiff(flBotAng[1], flTargetAng[1]);
-	
+
 				if (iAngleDiff > 89.0)
 					m_moveVel[client][1] = -300.0;
 				else if (iAngleDiff < -89.0)
@@ -207,7 +207,7 @@ public void SpyHuntUpdate(const int client)
 			}
 
 			// don't continue to close in if we're already very close so we don't bump them and give ourselves away
-			if (threatRange < Squaredf(72.0)) 
+			if (threatRange < Squaredf(72.0))
 				m_moveVel[client][0] = -300.0;
 			else if (threatRange > Squaredf(84.0))
 				m_moveVel[client][0] = 300.0;
@@ -275,11 +275,12 @@ public void SpyHuntUpdate(const int client)
 
 public void SpyHuntEnd(const int client)
 {
+    m_isCoverBlown[client] = false;
 	if (IsValidClient(m_goalEntity[client]) && ChanceOf(m_eBotSenseChance[client]))
 		FakeClientCommandThrottled(client, "lastdisguise");
 }
 
-public void SpyReactChecker(const int client) 
+public void SpyReactChecker(const int client)
 {
 	if (IsWeaponSlotActive(client, 5) && !m_hasEnemiesNear[client] && !m_hasEntitiesNear[client])
 		EquipWeaponSlot(client, 2);
@@ -305,7 +306,7 @@ public void SpyAimLogic(const int client)
 		}
 		else
 			LookAtEnemiens(client);
-	}	
+	}
 	else
 		LookAround(client);
 }

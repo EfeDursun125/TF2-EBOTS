@@ -2,32 +2,32 @@ stock bool GetAmmoRequirements(const int client)
 {
 	if (ammopacks <= 0)
 		return false;
-	
+
 	if (m_lowHealth[client])
 		return false;
-	
+
 	if (m_hasWaypoints && !m_hasAmmoWaypoints)
 		return false;
-	
+
 	if (CurrentProcess[client] == PRO_HIDE)
 		return false;
-	
+
 	if (isVSH && m_team[client] == 3)
 		return false;
-		
+
 	if (TF2_HasTheFlag(client))
 		return false;
-	
+
 	if (!m_hasWaypoints)
 	{
 		m_goalEntity[client] = FindNearestAmmo(client);
 		if (!IsValidAmmoPack(m_goalEntity[client]) || !IsPathPossible(client, GetOrigin(client), GetOrigin(m_goalEntity[client])))
 			return false;
 	}
-	
+
 	if (m_class[client] == TFClass_Engineer && !IsMetalLow(client))
 		return false;
-	
+
 	return true;
 }
 
@@ -103,6 +103,6 @@ stock int FindNearestAmmo(const int client)
 			nearestEntity = x;
 		}
 	}
-	
+
 	return nearestEntity;
 }
