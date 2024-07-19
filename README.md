@@ -3,7 +3,7 @@
 
 Works with waypoints, if no waypoint file found uses (and requires) navmesh/cbasenpc [Click HERE](https://github.com/TF2-DMB/CBaseNPC/releases)
 
-Requires tf2items [Click HERE](https://builds.limetech.io/?project=tf2items)
+Requires tf2items [Click HERE](https://github.com/nosoop/SMExt-TF2Items/releases)
 
 GiveBotsLoadouts are optional, to use it download this gamedata from [HERE](https://github.com/luki1412/GiveBotsStuff/blob/main/gamedata/give.bots.stuff.txt)
 
