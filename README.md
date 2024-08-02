@@ -5,8 +5,6 @@ Works with waypoints, if no waypoint file found uses (and requires) navmesh/cbas
 
 Requires tf2items [Click HERE](https://github.com/nosoop/SMExt-TF2Items/releases)
 
-GiveBotsLoadouts are optional, to use it download this gamedata from [HERE](https://github.com/luki1412/GiveBotsStuff/blob/main/gamedata/give.bots.stuff.txt)
-
 put ebot folder that contains name & waypoints to tf\addons\sourcemod
 
 <a href="https://www.buymeacoffee.com/efedursun125"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=efedursun125&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" /></a>
