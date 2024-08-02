@@ -15,7 +15,6 @@ ConVar g_hCVTimer;
 ConVar g_hCVEnabled;
 ConVar g_hCVTeam;
 ConVar g_hCVMVMSupport;
-Handle g_hWeaponEquip;
 Handle g_hWWeaponEquip;
 
 int scoutLoadout[MAXPLAYERS + 1];
@@ -68,19 +67,12 @@ public void OnPluginStart()
 	if (g_bLateLoad)
 		OnMapStart();
 	
-	GameData hGameConfig = LoadGameConfigFile("give.bots.stuff");
+	GameData hGameConfig = LoadGameConfigFile("sm-tf2.games");
 	if (!hGameConfig)
-		SetFailState("Failed to find give.bots.stuff.txt gamedata! Can't continue.");
-	
+		SetFailState("Failed to find sm-tf2.games.txt gamedata! Can't continue.");
+
 	StartPrepSDKCall(SDKCall_Player);
-	PrepSDKCall_SetFromConf(hGameConfig, SDKConf_Virtual, "WeaponEquip");
-	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
-	g_hWeaponEquip = EndPrepSDKCall();
-	if (!g_hWeaponEquip)
-		SetFailState("Failed to prepare the SDKCall for giving weapons. Try updating gamedata or restarting your server.");
-	
-	StartPrepSDKCall(SDKCall_Player);
-	PrepSDKCall_SetFromConf(hGameConfig, SDKConf_Virtual, "EquipWearable");
+	PrepSDKCall_SetVirtual(hGameConfig.GetOffset("RemoveWearable") - 1);    // EquipWearable offset is always behind RemoveWearable, subtract its value by 1
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
 	g_hWWeaponEquip = EndPrepSDKCall();
 	if (!g_hWWeaponEquip)
@@ -1815,7 +1807,7 @@ stock bool CreateWeapon(const int client, const char[] classname, const int slot
 		TF2_RemoveWeaponSlot(client, slot);
 
 	if (!wearable) 
-		SDKCall(g_hWeaponEquip, client, weapon);
+		EquipPlayerWeapon(client, weapon);
 	else 
 		SDKCall(g_hWWeaponEquip, client, weapon);
 
