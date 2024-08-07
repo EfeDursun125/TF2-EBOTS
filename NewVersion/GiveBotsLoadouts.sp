@@ -119,9 +119,6 @@ public void OnPluginStart()
 		if (!IsPlayerHere(i))
 			continue;
 
-		if (!IsFakeClient(i))
-			continue;
-
 		SetupLoadouts(i);
 	}
 }
@@ -172,20 +169,125 @@ stock int crandomint(const int min, const int max)
 
 public void OnClientPutInServer(int client)
 {
-	SetupLoadouts(client);
+	if (IsPlayerHere(client))
+		SetupLoadouts(client);
 }
 
 stock void SetupLoadouts(const int client)
 {
-	scoutLoadout[client] = crandomint(1, 33);
-	soldierLoadout[client] = crandomint(1, 43);
-	pyroLoadout[client] = crandomint(1, 62);
+	bool put;
+	int i, j;
+	ArrayList random = new ArrayList();
+
+	for (i = 1; i < 33; i++)
+	{
+		put = true;
+		for (j = 0; j < MaxClients; j++)
+		{
+			if (!IsPlayerHere(j))
+				continue;
+
+			if (scoutLoadout[j] == i)
+			{
+				put = false;
+				break;
+			}
+		}
+
+		if (put)
+			random.Push(i);
+	}
+
+	if (random.Length > 0)
+		scoutLoadout[client] = crandomint(0, random.Length - 1);
+	else
+		scoutLoadout[client] = crandomint(0, 33);
+	random.Clear();
+
+	for (i = 1; i < 43; i++)
+	{
+		put = true;
+		for (j = 0; j < MaxClients; j++)
+		{
+			if (!IsPlayerHere(j))
+				continue;
+
+			if (soldierLoadout[j] == i)
+			{
+				put = false;
+				break;
+			}
+		}
+
+		if (put)
+			random.Push(i);
+	}
+
+	if (random.Length > 0)
+		soldierLoadout[client] = crandomint(0, random.Length - 1);
+	else
+		soldierLoadout[client] = crandomint(0, 43);
+	random.Clear();
+
+	for (i = 1; i < 62; i++)
+	{
+		put = true;
+		for (j = 0; j < MaxClients; j++)
+		{
+			if (!IsPlayerHere(j))
+				continue;
+
+			if (pyroLoadout[j] == i)
+			{
+				put = false;
+				break;
+			}
+		}
+
+		if (put)
+			random.Push(i);
+	}
+
+	if (random.Length > 0)
+		pyroLoadout[client] = crandomint(0, random.Length - 1);
+	else
+		pyroLoadout[client] = crandomint(0, 62);
+	random.Clear();
+
 	engineerLoadout[client] = crandomint(1, 24);
 	heavyLoadout[client] = crandomint(1, 18);
 	demomanLoadout[client] = crandomint(1, 17);
 	medicLoadout[client] = crandomint(1, 23);
-	sniperLoadout[client] = crandomint(1, 34);
+
+	for (i = 1; i < 34; i++)
+	{
+		put = true;
+		for (j = 0; j < MaxClients; j++)
+		{
+			if (!IsPlayerHere(j))
+				continue;
+
+			if (sniperLoadout[j] == i)
+			{
+				put = false;
+				break;
+			}
+		}
+
+		if (put)
+			random.Push(i);
+	}
+
+	if (random.Length > 0)
+		sniperLoadout[client] = crandomint(0, random.Length - 1);
+	else
+		sniperLoadout[client] = crandomint(0, 34);
+	random.Clear();
+
 	spyLoadout[client] = crandomint(1, 19);
+
+	delete random;
+
 	SetupWeapons(client);
 }
 
@@ -1951,7 +2053,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 1004:
 							CreateWeapon(client, "tf_weapon_sentry_revenge", 0, engineerPrimary[client]);
 						default:
-							CreateWeapon(client, "tf_weapon_shotgun", 0, engineerPrimary[client]);
+							CreateWeapon(client, "tf_weapon_shotgun_primary", 0, engineerPrimary[client]);
 					}
 
 					switch (engineerSecondary[client])
@@ -1965,7 +2067,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 30668:
 							CreateWeapon(client, "tf_weapon_laser_pointer", 1, engineerSecondary[client]);
 						default:
-							CreateWeapon(client, "tf_weapon_shotgun", 1, engineerSecondary[client]);
+							CreateWeapon(client, "tf_weapon_pistol", 1, engineerSecondary[client]);
 					}
 
 					switch (engineerMelee[client])
@@ -2530,7 +2632,7 @@ stock int GetPlayerMaxHp(const int client)
 
 stock bool IsPlayerHere(const int client)
 {
-	return (client && IsClientInGame(client) && IsFakeClient(client) && !IsClientReplay(client) && !IsClientSourceTV(client));
+	return (client > 0 && client <= MaxClients && IsClientInGame(client) && IsFakeClient(client) && !IsClientReplay(client) && !IsClientSourceTV(client));
 }
 
 stock void SetupWeapons(const int client)
