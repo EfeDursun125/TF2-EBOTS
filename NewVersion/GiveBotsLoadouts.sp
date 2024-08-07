@@ -3,10 +3,13 @@
 
 #pragma semicolon 1
 #pragma newdecls required
-#define PLUGIN_VERSION "1.20"
+#define PLUGIN_VERSION "1.21"
+
+#define TFMaxPlayers 34 // set this value more than your server's max player number, more = higher ram usage
+int randomf2phat;
 
 int g_iResourceEntity;
-bool g_bTouched[MAXPLAYERS + 1];
+bool g_bTouched[TFMaxPlayers];
 bool g_bSuddenDeathMode;
 bool g_bMVM;
 bool g_bMedi;
@@ -17,44 +20,44 @@ ConVar g_hCVTeam;
 ConVar g_hCVMVMSupport;
 Handle g_hWWeaponEquip;
 
-int scoutPrimary[MAXPLAYERS + 1];
-int scoutSecondary[MAXPLAYERS + 1];
-int scoutMelee[MAXPLAYERS + 1];
-int soldierPrimary[MAXPLAYERS + 1];
-int soldierSecondary[MAXPLAYERS + 1];
-int soldierMelee[MAXPLAYERS + 1];
-int pyroPrimary[MAXPLAYERS + 1];
-int pyroSecondary[MAXPLAYERS + 1];
-int pyroMelee[MAXPLAYERS + 1];
-int engineerPrimary[MAXPLAYERS + 1];
-int engineerSecondary[MAXPLAYERS + 1];
-int engineerMelee[MAXPLAYERS + 1];
-int heavyPrimary[MAXPLAYERS + 1];
-int heavySecondary[MAXPLAYERS + 1];
-int heavyMelee[MAXPLAYERS + 1];
-int demomanPrimary[MAXPLAYERS + 1];
-int demomanSecondary[MAXPLAYERS + 1];
-int demomanMelee[MAXPLAYERS + 1];
-int medicPrimary[MAXPLAYERS + 1];
-int medicSecondary[MAXPLAYERS + 1];
-int medicMelee[MAXPLAYERS + 1];
-int sniperPrimary[MAXPLAYERS + 1];
-int sniperSecondary[MAXPLAYERS + 1];
-int sniperMelee[MAXPLAYERS + 1];
-int spyPrimary[MAXPLAYERS + 1];
-int spyMelee[MAXPLAYERS + 1];
-//int spySapper[MAXPLAYERS + 1]; // ERROR!
-int spyWatch[MAXPLAYERS + 1];
+int scoutPrimary[TFMaxPlayers];
+int scoutSecondary[TFMaxPlayers];
+int scoutMelee[TFMaxPlayers];
+int soldierPrimary[TFMaxPlayers];
+int soldierSecondary[TFMaxPlayers];
+int soldierMelee[TFMaxPlayers];
+int pyroPrimary[TFMaxPlayers];
+int pyroSecondary[TFMaxPlayers];
+int pyroMelee[TFMaxPlayers];
+int engineerPrimary[TFMaxPlayers];
+int engineerSecondary[TFMaxPlayers];
+int engineerMelee[TFMaxPlayers];
+int heavyPrimary[TFMaxPlayers];
+int heavySecondary[TFMaxPlayers];
+int heavyMelee[TFMaxPlayers];
+int demomanPrimary[TFMaxPlayers];
+int demomanSecondary[TFMaxPlayers];
+int demomanMelee[TFMaxPlayers];
+int medicPrimary[TFMaxPlayers];
+int medicSecondary[TFMaxPlayers];
+int medicMelee[TFMaxPlayers];
+int sniperPrimary[TFMaxPlayers];
+int sniperSecondary[TFMaxPlayers];
+int sniperMelee[TFMaxPlayers];
+int spyPrimary[TFMaxPlayers];
+int spyMelee[TFMaxPlayers];
+//int spySapper[TFMaxPlayers]; // ERROR!
+int spyWatch[TFMaxPlayers];
 
-int scoutLoadout[MAXPLAYERS + 1];
-int soldierLoadout[MAXPLAYERS + 1];
-int pyroLoadout[MAXPLAYERS + 1];
-int engineerLoadout[MAXPLAYERS + 1];
-int heavyLoadout[MAXPLAYERS + 1];
-int demomanLoadout[MAXPLAYERS + 1];
-int medicLoadout[MAXPLAYERS + 1];
-int sniperLoadout[MAXPLAYERS + 1];
-int spyLoadout[MAXPLAYERS + 1];
+int scoutLoadout[TFMaxPlayers];
+int soldierLoadout[TFMaxPlayers];
+int pyroLoadout[TFMaxPlayers];
+int engineerLoadout[TFMaxPlayers];
+int heavyLoadout[TFMaxPlayers];
+int demomanLoadout[TFMaxPlayers];
+int medicLoadout[TFMaxPlayers];
+int sniperLoadout[TFMaxPlayers];
+int spyLoadout[TFMaxPlayers];
 
 public Plugin myinfo = 
 {
@@ -101,7 +104,7 @@ public void OnPluginStart()
 		SetFailState("Failed to find sm-tf2.games.txt gamedata! Can't continue.");
 
 	StartPrepSDKCall(SDKCall_Player);
-	PrepSDKCall_SetVirtual(hGameConfig.GetOffset("RemoveWearable") - 1);    // EquipWearable offset is always behind RemoveWearable, subtract its value by 1
+	PrepSDKCall_SetVirtual(hGameConfig.GetOffset("RemoveWearable") - 1); // EquipWearable offset is always behind RemoveWearable, subtract its value by 1
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
 	g_hWWeaponEquip = EndPrepSDKCall();
 	if (!g_hWWeaponEquip)
@@ -154,7 +157,8 @@ public void OnMapStart()
 		g_bMedi = false;
 
 	g_iResourceEntity = GetPlayerResourceEntity();
-	g_seed += GetURandomInt();
+	g_seed += GetTime();
+	randomf2phat = crandomint(1, 7);
 }
 
 stock int frand()
@@ -175,15 +179,15 @@ public void OnClientPutInServer(int client)
 
 stock void SetupLoadouts(const int client)
 {
-	scoutLoadout[client] = crandomint(1, 18);
-	soldierLoadout[client] = crandomint(1, 16);
-	pyroLoadout[client] = crandomint(1, 19);
-	engineerLoadout[client] = crandomint(1, 23);
-	heavyLoadout[client] = crandomint(1, 17);
-	demomanLoadout[client] = crandomint(1, 16);
-	medicLoadout[client] = crandomint(1, 22);
-	sniperLoadout[client] = crandomint(1, 20);
-	spyLoadout[client] = crandomint(1, 18);
+	scoutLoadout[client] = crandomint(1, 33);
+	soldierLoadout[client] = crandomint(1, 43);
+	pyroLoadout[client] = crandomint(1, 35);
+	engineerLoadout[client] = crandomint(1, 24);
+	heavyLoadout[client] = crandomint(1, 18);
+	demomanLoadout[client] = crandomint(1, 17);
+	medicLoadout[client] = crandomint(1, 23);
+	sniperLoadout[client] = crandomint(1, 34);
+	spyLoadout[client] = crandomint(1, 19);
 	SetupWeapons(client);
 }
 
@@ -305,92 +309,198 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 					{
 						case 1:
 						{
-							CreateHat(client, 261);
-							CreateHat(client, 343);
-							CreateHat(client, 165);
+							CreateHat(client, 30428); // Pomade Prince
+							CreateHat(client, 30376); // Ticket Boy
+							CreateHat(client, 30427); // Argyle Ace
 						}
 						case 2:
 						{
-							CreateHat(client, 30540);
-							CreateHat(client, 30428);
-							CreateHat(client, 30552);
+							CreateHat(client, 30540); // Brooklyn Booties
+							CreateHat(client, 30428); // Pomade Prince
+							CreateHat(client, 30552); // Thermal Tracker
 						}
 						case 3:
 						{
-							CreateHat(client, 30576);
+							CreateHat(client, 451); // Bonk Boy
+							CreateHat(client, 106); // Bonk Helm
+							CreateHat(client, 30083); // Caffeine Cooler
 						}
 						case 4:
 						{
-							//CreateWeapon(client, "tf_weapon_jar_milk", 1, 222);
+							CreateHat(client, 150); // Troublemaker's Tossle Cap
+							CreateHat(client, 30552); // Thermal Tracker
+							CreateHat(client, 1016); // Buck Turner All-Stars
 						}
 						case 5:
 						{
-							CreateHat(client, 780);
-							CreateHat(client, 781);
+							CreateHat(client, 780); // Fed-Fightin' Fedora
+							CreateHat(client, 781); // Dillinger's Duffel
+							CreateHat(client, 343); // Professor Speks
 						}
 						case 6:
 						{
-							CreateHat(client, 617);
-							CreateHat(client, 30076);
-							CreateHat(client, 1016);
+							CreateHat(client, 617); // Backwards Ballcap
+							CreateHat(client, 30076); // Bigg Mann on Campus
+							CreateHat(client, 1016); // Buck Turner All-Stars
 						}
 						case 7:
 						{
-							CreateHat(client, 219);
+							CreateHat(client, 30636); // Fortunate Son
+							CreateHat(client, 30637); // Flak Jack
+							CreateHat(client, 30561); // Bootenkhamuns
 						}
 						case 8:
 						{
-							CreateHat(client, 165);
+							CreateHat(client, 30479); // Thirst Blood
+							CreateHat(client, 814); // Triad Trinket
+							CreateHat(client, 815); // Champ Stamp
 						}
 						case 9:
 						{
-							CreateHat(client, 984);
-							CreateHat(client, 30134);
-							CreateHat(client, 987);
+							CreateHat(client, 984); // Tough Stuff Muffs
+							CreateHat(client, 30134); // Delinquent's Down Vest
+							CreateHat(client, 987); // Merc's Muffler
 						}
 						case 10:
 						{
-							CreateHat(client, 166);
+							CreateHat(client, 780); // Fed-Fightin' Fedora
+							CreateHat(client, 486); // Summer Shades
+							CreateHat(client, 490); // Flip-Flops
 						}
 						case 11:
 						{
-							CreateHat(client, 30479);
-							CreateHat(client, 30060);
+							CreateHat(client, 30479); // Thirst Blood
+							CreateHat(client, 30060); // Cheet Sheet
+							CreateHat(client, 30306); // Dictator
 						}
 						case 12:
 						{
-							CreateHat(client, 126);
-							CreateHat(client, 30397);
-							CreateHat(client, 30426);
+							CreateHat(client, 126); // Bill's Hat
+							CreateHat(client, 30397); // Bruiser's Bandana
+							CreateHat(client, 30426); // Paisley Pro
 						}
 						case 13:
 						{
-							CreateHat(client, 940);
-							CreateHat(client, 583);
-							CreateHat(client, 744);
+							CreateHat(client, 30573); // Mountebank's Masque
+							CreateHat(client, 30574); // Courtier's Collar
+							CreateHat(client, 30575); // Harlequin's Hooves
 						}
 						case 14:
 						{
-							CreateHat(client, 940);
-							CreateHat(client, 583);
-							CreateHat(client, 744);
+							CreateHat(client, 652); // Big Elfin Deal
+							CreateHat(client, 653); // Bootie Time
+							CreateHat(client, 1075); // Sack Fulla Smissmas
 						}
 						case 15:
 						{
-							//
+							CreateHat(client, 150); // Troublemaker's Tossle Cap
+							CreateHat(client, 722); // Fast Learner
+							CreateHat(client, 143); // Earbuds
 						}
 						case 16:
 						{
-							CreateHat(client, 106);
+							CreateHat(client, 30428); // Pomade Prince
+							CreateHat(client, 30552); // Thermal Tracker
+							CreateHat(client, 30540); // Brooklyn Booties
 						}
 						case 17:
 						{
-							CreateHat(client, 30357);
+							CreateHat(client, 30428); // Pomade Prince
+							CreateHat(client, 30189); // Frenchman's Formals
+							CreateHat(client, 30427); // Argyle Ace
 						}
 						case 18:
 						{
-							CreateHat(client, 261);
+							CreateHat(client, 451); // Bonk boy
+							CreateHat(client, 30185); // Flapjack
+							CreateHat(client, 30540); // Brooklyn Booties
 						}
+						case 19:
+						{
+							CreateHat(client, 30119); // Federal Casemaker
+							CreateHat(client, 30077); // Cool Cat Cardigan
+							CreateHat(client, 30427); // Argyle Ace
+						}
+						case 20:
+						{
+							CreateHat(client, 150); // Troublemaker's Tossle Cap
+							CreateHat(client, 30178); // Weight Room Warmer
+							CreateHat(client, 30540); // Brooklyn Booties
+						}
+						case 21:
+						{
+							CreateHat(client, 30471); // Alien Cranium
+							CreateHat(client, 30470); // Biomech Backpack
+							CreateHat(client, 30472); // Xeno Suit
+						}
+						case 22:
+						{
+							CreateHat(client, 107); // Ye Olde Baker Boy
+							CreateHat(client, 343); // Professor Speks
+							CreateHat(client, 30309); // Dead of Night
+						}
+						case 23:
+						{
+							CreateHat(client, 453); // Hero's Tail
+							CreateHat(client, 30661); // Cadet Visor
+							CreateHat(client, 30552); // Thermal Tracker
+						}
+						case 24:
+						{
+							CreateHat(client, 30394); // Frickin' Sweet Ninja Hood
+							CreateHat(client, 30395); // Southie Shinobi
+							CreateHat(client, 30396); // Red Socks
+						}
+						case 25:
+						{
+							CreateHat(client, 143); // Earbuds
+							CreateHat(client, 30479); // Thirst Blood
+							CreateHat(client, 30552); // Thermal Tracker
+						}
+						case 26:
+						{
+							CreateHat(client, 30325); // Little Drummer Mann
+							CreateHat(client, 30326); // Scout Shako
+							CreateHat(client, 5617); // Voodoo-Cursed Scout Soul
+						}
+						case 27:
+						{
+							CreateHat(client, 30496); // Crazy Legs
+							CreateHat(client, 30495); // Claws and Infect
+							CreateHat(client, 30494); // Head Hunter
+						}
+						case 28:
+						{
+							CreateHat(client, 30077); // Cool Cat Cardigan
+							CreateHat(client, 781); // Dillinger's Duffel
+							CreateHat(client, 780); // Fed-Fightin' Fedora
+						}
+						case 29:
+						{
+							CreateHat(client, 617); // Backwards Ballcap
+							CreateHat(client, 30027); // Bolt Boy
+							CreateHat(client, 722); // Fast Learner
+						}
+						case 30:
+						{
+							CreateHat(client, 30357); // Dark Falkirk Helm
+							CreateHat(client, 30358); // Sole Saviors
+							CreateHat(client, 30189); // Frenchman's Formals
+						}
+						case 31:
+						{
+							CreateHat(client, 30185); // Flapjack
+							CreateHat(client, 30177); // Hong Kong Cone
+							CreateHat(client, 983); // Digit Divulger
+						}
+						case 32:
+						{
+							CreateHat(client, 539); // El Jefe
+							CreateHat(client, 30309); // Dead of Night
+							CreateHat(client, 30551); // Flashdance Footies
+						}
+						default:
+							RandomF2Phat(client);
 					}
 				}
 				case TFClass_Sniper:
@@ -437,100 +547,204 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 					{
 						case 1:
 						{
-							CreateHat(client, 261);
+							CreateHat(client, 921); // Executioner
+							CreateHat(client, 393); // Villain's Veil
+							CreateHat(client, 343); // Professor Speks
 						}
 						case 2:
 						{
-							CreateHat(client, 302);
-							CreateHat(client, 743);
-							CreateHat(client, 583);
+							CreateHat(client, 981); // Cold Killer
+							CreateHat(client, 30328); // Extra Layer
+							CreateHat(client, 30551); // Flashdance Footies
 						}
 						case 3:
 						{
-							CreateHat(client, 261);
-							CreateHat(client, 343);
-							CreateHat(client, 165);
+							CreateHat(client, 30135); // Wet Works
+							CreateHat(client, 30317); // Five-Month Shadow
+							CreateHat(client, 30649); // Final Fontiersman
 						}
 						case 4:
 						{
-							CreateHat(client, 600);
-							CreateHat(client, 30550);
-							CreateHat(client, 646);
+							CreateHat(client, 600); // Your Worst Nightmare
+							CreateHat(client, 30550); // Snow Sleeves
+							CreateHat(client, 646); // Itsy Bitsy Spyer
 						}
 						case 5:
 						{
-							CreateHat(client, 766);
-							CreateHat(client, 30546);
+							CreateHat(client, 766); // The Doublecross-Comm
+							CreateHat(client, 30546); // Boxcar Bomber
+							CreateHat(client, 30310); // Snow Scoper
 						}
 						case 6:
 						{
+							CreateHat(client, 762); // Flamingo Kid
+							CreateHat(client, 766); // Doublecross-Comm
+							CreateHat(client, 30650); // Starduster
 						}
 						case 7:
 						{
-							CreateHat(client, 779);
+							CreateHat(client, 626); // Swagman's Swatter
+							CreateHat(client, 30650); // Starduster
+							CreateHat(client, 30284); // Sir Shootsalot
 						}
 						case 8:
 						{
-							CreateHat(client, 30373);
-							CreateHat(client, 314);
-							CreateHat(client, 1094);
+							CreateHat(client, 30373); // Toowoomba Tunic
+							CreateHat(client, 314); // Larrikin Robin
+							CreateHat(client, 1094); // Criminal Cloak
 						}
 						case 9:
 						{
-							CreateHat(client, 229);
+							CreateHat(client, 492); // Summer Hat
+							CreateHat(client, 486); // Summer Shades
+							CreateHat(client, 814); // Triad Trinket
 						}
 						case 10:
 						{
-							CreateHat(client, 165);
+							CreateHat(client, 626); // Swagman's Swatter
+							CreateHat(client, 30317); // Five-Month Shadow
+							CreateHat(client, 30424); // Triggerman's Tacticals
 						}
 						case 11:
 						{
-							CreateHat(client, 671);
-							CreateHat(client, 30306);
-							CreateHat(client, 500);
+							CreateHat(client, 671); // Brown Bomber
+							CreateHat(client, 30306); // Dictator
+							CreateHat(client, 500); // ETF2L Highlander 2nd
 						}
 						case 12:
 						{
-							CreateHat(client, 166);
+							CreateHat(client, 30085); // Macho Mann
+							CreateHat(client, 30324); // Golden Garment
+							CreateHat(client, 819); // Lone Star
 						}
 						case 13:
 						{
-							CreateHat(client, 762);
+							CreateHat(client, 762); // Salty Dog
+							CreateHat(client, 30317); // Five-Month Shadow
+							CreateHat(client, 645); // Outback Intellectual
 						}
 						case 14:
 						{
-							CreateHat(client, 261);
-							CreateHat(client, 583);
-							CreateHat(client, 744);
+							CreateHat(client, 30413); // Merc's Mohawk
+							CreateHat(client, 30597); // Bushman's Bristles
+							CreateHat(client, 30309); // Dead of Night
 						}
 						case 15:
 						{
-							CreateHat(client, 30373);
-							CreateHat(client, 30650);
-							CreateHat(client, 626);
+							CreateHat(client, 30373); // Toowoomba Tunic
+							CreateHat(client, 30650); // Starduster
+							CreateHat(client, 626); // Swagman's Swatter
 						}
 						case 16:
 						{
-							CreateHat(client, 518);
-							CreateHat(client, 30599);
-							CreateHat(client, 30599);
+							CreateHat(client, 518); // Anger
+							CreateHat(client, 30599); // Marksman's Mohair
+							CreateHat(client, 30309); // Dead of Night
 						}
 						case 17:
 						{
+							CreateHat(client, 263); // Ellis' Hat
+							CreateHat(client, 5625); // Voodoo-Cursed Sniper Soul
+							CreateHat(client, 30414); // Eye-Catcher
 						}
 						case 18:
 						{
-							CreateHat(client, 600);
+							CreateHat(client, 600); // Your Worst Nightmare
+							CreateHat(client, 30100); // Birdman of Australiacatraz
+							CreateHat(client, 30068); // Breakneck Baggies
 						}
 						case 19:
 						{
-							CreateHat(client, 30397);
-							CreateHat(client, 263);
-							CreateHat(client, 30170);
+							CreateHat(client, 30397); // Bruiser's Bandana
+							CreateHat(client, 263); // Ellis' Hat
+							CreateHat(client, 30170); // Chronomancer
 						}
 						case 20:
 						{
+							CreateHat(client, 626); // Swagman's Swatter
+							CreateHat(client, 30284); // Sir Shootsalot
+							CreateHat(client, 30170); // Chronomancer
 						}
+						case 21:
+						{
+							CreateHat(client, 30324); // Golden Garment
+							CreateHat(client, 30316); // Toy Soldier
+							CreateHat(client, 30306); // Dictator
+						}
+						case 22:
+						{
+							CreateHat(client, 30005); // Shooter's Tin Topi
+							CreateHat(client, 30478); // Poacher's Safari Jacket
+							CreateHat(client, 30424); // Triggerman's Tacticals
+						}
+						case 23:
+						{
+							CreateHat(client, 30598); // Professional's Ushanka
+							CreateHat(client, 766); // Doublecross-Comm
+							CreateHat(client, 30649); // Final Fontiersman
+						}
+						case 24:
+						{
+							CreateHat(client, 1076); // Smissmas Caribou
+							CreateHat(client, 783); // HazMat Headcase
+							CreateHat(client, 30649); // Final Fontiersman
+						}
+						case 25:
+						{
+							CreateHat(client, 30623); // Rotation Sensation
+							CreateHat(client, 30309); // Dead of Night
+							CreateHat(client, 647); // All-Father
+						}
+						case 26:
+						{
+							CreateHat(client, 30135); // Wet Works
+							CreateHat(client, 814); // Triad Trinket
+							CreateHat(client, 646); // Itsy Bitsy Spyer
+						}
+						case 27:
+						{
+							CreateHat(client, 877); // Stovepipe Sniper Shako
+							CreateHat(client, 30324); // Golden Garment
+							CreateHat(client, 855); // Vigilant Pin
+						}
+						case 28:
+						{
+							CreateHat(client, 631); // Hat With No Name
+							CreateHat(client, 30100); // Birdman of Australiacatraz
+							CreateHat(client, 30629); // Support Spurs
+						}
+						case 29:
+						{
+							CreateHat(client, 819); // Lone Star
+							CreateHat(client, 30100); // Birdman of Australiacatraz
+							CreateHat(client, 734); // Teufort Tooth Kicker
+						}
+						case 30:
+						{
+							CreateHat(client, 564); // Holy Hunter
+							CreateHat(client, 5625); // Voodoo-Cursed Sniper Soul
+							CreateHat(client, 30317); // Five-Month Shadow
+						}
+						case 31:
+						{
+							CreateHat(client, 117); // Ritzy Rick's Hair Fixative
+							CreateHat(client, 30309); // Dead of Night
+							CreateHat(client, 30306); // Dictator
+						}
+						case 32:
+						{
+							CreateHat(client, 762); // Flamingo Kid
+							CreateHat(client, 30170); // Chronomancer
+							CreateHat(client, 618); // Crocodile Smile
+						}
+						case 33:
+						{
+							CreateHat(client, 30549); // Winter Woodsman
+							CreateHat(client, 30550); // Snow Sleeves
+							CreateHat(client, 1011); // Tux
+						}
+						default:
+							RandomF2Phat(client);
 					}
 				}
 				case TFClass_Soldier:
@@ -581,73 +795,252 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 					{
 						case 1:
 						{
-							CreateHat(client, 261);
+							CreateHat(client, 125); // Cheater's Lament
+							CreateHat(client, 936); // Exorcizor
+							CreateHat(client, 30397); // Bruiser's Bandana
 						}
 						case 2:
 						{
-							CreateHat(client, 940);
-							CreateHat(client, 743);
-							CreateHat(client, 583);
+							CreateHat(client, 30316); // Toy Soldier
+							CreateHat(client, 30306); // Dictator
+							CreateHat(client, 30129); // Hornblower
 						}
 						case 3:
 						{
-							CreateHat(client, 261);
-							CreateHat(client, 343);
-							CreateHat(client, 165);
+							CreateHat(client, 30069); // Powdered Practitioner
+							CreateHat(client, 30142); // Founding Father
+							CreateHat(client, 30117); // Colonial Clogs
 						}
 						case 4:
 						{
-							CreateHat(client, 852);
-							CreateHat(client, 54);
-							CreateHat(client, 701);
+							CreateHat(client, 852); // Soldier's Stogie
+							CreateHat(client, 54); // Soldier's Stash
+							CreateHat(client, 701); // Lucky Shot
 						}
 						case 5:
 						{
-							CreateHat(client, 340);
-							CreateHat(client, 30126);
+							CreateHat(client, 340); // Defiant Spartan
+							CreateHat(client, 30126); // Shotgun's Shoulder Guard
+							CreateHat(client, 1025); // Fortune Hunter
 						}
 						case 6:
 						{
+							CreateHat(client, 1899); // World Traveler
+							CreateHat(client, 30129); // Hornblower
+							CreateHat(client, 30397); // Bruiser's Bandana
 						}
 						case 7:
 						{
-							CreateHat(client, 445);
-							CreateHat(client, 446);
+							CreateHat(client, 445); // Armored Authority
+							CreateHat(client, 446); // Fancy Dress Uniform
+							CreateHat(client, 30388); // Classified Coif
 						}
 						case 8:
 						{
-							CreateHat(client, 378);
-							CreateHat(client, 30388);
-							CreateHat(client, 30115);
+							CreateHat(client, 378); // Team Captain
+							CreateHat(client, 30388); // Classified Coif
+							CreateHat(client, 30115); // Compatriot
 						}
 						case 9:
 						{
-							CreateHat(client, 227);
+							CreateHat(client, 30251); // Cadaver's Capper
+							CreateHat(client, 30281); // Shaolin Sash
+							CreateHat(client, 5618); // Voodoo-Cursed Soldier Soul
 						}
 						case 10:
 						{
-							CreateHat(client, 165);
+							CreateHat(client, 152); // Killer's Kabuto
+							CreateHat(client, 875); // Menpo
+							CreateHat(client, 30126); // Shotgun's Shoulder Guard
 						}
 						case 12:
 						{
-							CreateHat(client, 54);
+							CreateHat(client, 183); // Sergeant's Drill Hat
+							CreateHat(client, 446); // Fancy Dress Uniform
+							CreateHat(client, 30335); // Marshall's Mutton Chops
 						}
 						case 13:
 						{
-							CreateHat(client, 152);
-							CreateHat(client, 30126);
+							CreateHat(client, 152); // Killer's Kabuto
+							CreateHat(client, 30126); // Shotgun's Shoulder Guard
+							CreateHat(client, 1025); // Fortune Hunter
 						}
 						case 14:
 						{
-							CreateHat(client, 126);
+							CreateHat(client, 516); // Stahlhelm
+							CreateHat(client, 446); // Fancy Dress Uniform
+							CreateHat(client, 30339); // Killer's Kit
 						}
 						case 15:
 						{
+							CreateHat(client, 30306); // Dictator
+							CreateHat(client, 439); // Lord Cockswain's Pith Helmet
+							CreateHat(client, 30388); // Classified Coif
 						}
 						case 16:
 						{
-							CreateHat(client, 391);
+							CreateHat(client, 631); // Hat With No Name
+							CreateHat(client, 30388); // Classified Coif
+							CreateHat(client, 30554); // Mistaken Movember
 						}
+						case 17:
+						{
+							CreateHat(client, 701); // Lucky Shot
+							CreateHat(client, 852); // Soldier's Stogie
+							CreateHat(client, 30477); // Lone Survivor
+						}
+						case 18:
+						{
+							CreateHat(client, 30601); // Cold Snap Coat
+							CreateHat(client, 984); // Tough Stuff Muffs
+							CreateHat(client, 30558); // Coldfront Curbstompers
+						}
+						case 19:
+						{
+							CreateHat(client, 944); // That '70s Chapeau
+							CreateHat(client, 30309); // Dead of Night
+							CreateHat(client, 852); // Soldier's Stogie
+						}
+						case 20:
+						{
+							CreateHat(client, 30338); // Ground Control
+							CreateHat(client, 30388); // Classified Coif
+							CreateHat(client, 30339); // Killer's Kit
+						}
+						case 21:
+						{
+							CreateHat(client, 378); // Team Captain
+							CreateHat(client, 143); // Earbuds
+							CreateHat(client, 30388); // Classified Coif
+						}
+						case 22:
+						{
+							CreateHat(client, 391); // Spook Specs
+							CreateHat(client, 143); // Earbuds
+							CreateHat(client, 30388); // Classified Coif
+						}
+						case 23:
+						{
+							CreateHat(client, 289); // Voodoo Juju
+							CreateHat(client, 647); // All-Father
+							CreateHat(client, 30129); // Hornblower
+						}
+						case 24:
+						{
+							CreateHat(client, 30085); // Macho Mann
+							CreateHat(client, 183); // Sergeant's Drill Hat
+							CreateHat(client, 446); // Fancy Dress Uniform
+						}
+						case 25:
+						{
+							CreateHat(client, 631); // Hat With No Name
+							CreateHat(client, 30558); // Coldfront Curbstompers
+							CreateHat(client, 30554); // Mistaken Movember
+						}
+						case 26:
+						{
+							CreateHat(client, 30120); // Rebel Rouser
+							CreateHat(client, 30129); // Hornblower
+							CreateHat(client, 30569); // Tomb Readers
+						}
+						case 27:
+						{
+							CreateHat(client, 30554); // Mistaken Movember
+							CreateHat(client, 829); // War Pig
+							CreateHat(client, 30601); // Cold Snap Coat
+						}
+						case 28:
+						{
+							CreateHat(client, 378); // Team Captain
+							CreateHat(client, 650); // Kringle Collection
+							CreateHat(client, 446); // Fancy Dress Uniform
+						}
+						case 29:
+						{
+							CreateHat(client, 666); // B.M.O.C.
+							CreateHat(client, 647); // All-Father
+							CreateHat(client, 650); // Kringle Collection
+						}
+						case 30:
+						{
+							CreateHat(client, 162); // Max's Severed Head
+							CreateHat(client, 30115); // Compatriot
+							CreateHat(client, 30130); // Lieutenant Bites
+						}
+						case 31:
+						{
+							CreateHat(client, 250); // Chieftain's Challenge
+							CreateHat(client, 30140); // Virtual Viewfinder
+							CreateHat(client, 647); // All-Father
+						}
+						case 32:
+						{
+							CreateHat(client, 634); // Point and Shoot
+							CreateHat(client, 30126); // Shotgun's Shoulder Guard
+							CreateHat(client, 339); // Exquisite Rack
+						}
+						case 33:
+						{
+							CreateHat(client, 30390); // Spook Specs
+							CreateHat(client, 647); // All-Father
+							CreateHat(client, 30129); // Hornblower
+						}
+						case 34:
+						{
+							CreateHat(client, 30623); // Rotation Sensation
+							CreateHat(client, 486); // Summer Shades
+							CreateHat(client, 30554); // Mistaken Movember
+						}
+						case 35:
+						{
+							CreateHat(client, 30335); // Marshall's Mutton Chops
+							CreateHat(client, 1093); // Gilded Guard
+							CreateHat(client, 30129); // Hornblower
+						}
+						case 36:
+						{
+							CreateHat(client, 986); // Mutton Mann
+							CreateHat(client, 611); // Salty Dog
+							CreateHat(client, 30414); // Eye-Catcher
+						}
+						case 37:
+						{
+							CreateHat(client, 30120); // Rebel Rouser
+							CreateHat(client, 30129); // Hornblower
+							CreateHat(client, 30554); // Mistaken Movember
+						}
+						case 38:
+						{
+							CreateHat(client, 240); // Lumbricus Lid
+							CreateHat(client, 54); // Soldier's Stash
+							CreateHat(client, 701); // Lucky Shot
+						}
+						case 39:
+						{
+							CreateHat(client, 440); // Lord Cockswain's Novelty Mutton Chops and Pipe
+							CreateHat(client, 378); // Team Captain
+							CreateHat(client, 30339); // Killer's Kit
+						}
+						case 40:
+						{
+							CreateHat(client, 30116); // Caribbean Conqueror
+							CreateHat(client, 30554); // Mistaken Movember
+							CreateHat(client, 30131); // Brawling Buccaneer
+						}
+						case 41:
+						{
+							CreateHat(client, 391); // Honcho's Headgear
+							CreateHat(client, 30388); // Classified Coif
+							CreateHat(client, 30339); // Killer's Kit
+						}
+						case 42:
+						{
+							CreateHat(client, 1021); // Doe-Boy
+							CreateHat(client, 440); // Lord Cockswain's Novelty Mutton Chops and Pipe
+							CreateHat(client, 446); // Fancy Dress Uniform
+						}
+						default:
+							RandomF2Phat(client);
 					}
 				}
 				case TFClass_DemoMan:
@@ -783,6 +1176,8 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						{
 							CreateHat(client, 30357);
 						}
+						default:
+							RandomF2Phat(client);
 					}
 				}
 				case TFClass_Medic:
@@ -914,6 +1309,8 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						{
 							CreateHat(client, 30357);
 						}
+						default:
+							RandomF2Phat(client);
 					}
 				}
 				case TFClass_Heavy:
@@ -1025,6 +1422,8 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						{
 							CreateHat(client, 30357);
 						}
+						default:
+							RandomF2Phat(client);
 					}
 				}
 				case TFClass_Pyro:
@@ -1071,97 +1470,210 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 					{
 						case 1:
 						{
-							CreateHat(client, 261);
+							CreateHat(client, 30162); // Bone Dome
+							CreateHat(client, 30163); // Air Raider
+							CreateHat(client, 30664); // Space Diver
 						}
 						case 2:
 						{
-							CreateHat(client, 940);
-							CreateHat(client, 743);
-							CreateHat(client, 583);
+							CreateHat(client, 335); // Foster's Facade
+							CreateHat(client, 471); // Proof of Purchase
+							CreateHat(client, 30168); // Special Eyes
 						}
 						case 3:
 						{
-							CreateHat(client, 261);
-							CreateHat(client, 343);
-							CreateHat(client, 165);
+							CreateHat(client, 702); // Warsworn Helmet
+							CreateHat(client, 316); // Pyromancer's Mask
+							CreateHat(client, 787); // Tribal Bones
 						}
 						case 4:
 						{
-							CreateHat(client, 105);
-							CreateHat(client, 387);
-							CreateHat(client, 632);
+							CreateHat(client, 105); // Brigade Helm
+							CreateHat(client, 387); // Sight for Sore Eyes
+							CreateHat(client, 632); // Cremator's Conscience
 						}
 						case 5:
 						{
-							CreateHat(client, 394);
+							CreateHat(client, 394); // Connoisseur's Cap
+							CreateHat(client, 30367); // Cute Suit
+							CreateHat(client, 30068); // Breakneck Baggies
 						}
 						case 6:
 						{
+							CreateHat(client, 644); // Head Warmer
+							CreateHat(client, 30305); // Sub Zero Suit
+							CreateHat(client, 651); // Jingle Belt
 						}
 						case 7:
 						{
-							CreateHat(client, 597);
-							CreateHat(client, 596);
+							CreateHat(client, 597); // Bubble Pipe
+							CreateHat(client, 596); // Moonman Backpack
+							CreateHat(client, 30032); // Rusty Reaper
 						}
 						case 8:
 						{
-							CreateHat(client, 435);
-							CreateHat(client, 632);
-							CreateHat(client, 30169);
+							CreateHat(client, 435); // Dead Cone
+							CreateHat(client, 632); // Cremator's Conscience
+							CreateHat(client, 30169); // Trickster's Turnout Gear
 						}
 						case 9:
 						{
-							CreateHat(client, 213);
+							CreateHat(client, 105); // Brigade Helm
+							CreateHat(client, 632); // Cremator's Conscience
+							CreateHat(client, 30169); // Trickster's Turnout Gear
 						}
 						case 10:
 						{
-							CreateHat(client, 165);
+							CreateHat(client, 30580); // Pyromancer's Hood
+							CreateHat(client, 30581); // Pyromancer's Raiments
+							CreateHat(client, 316); // Pyromancer's Mask
 						}
 						case 11:
 						{
-							CreateHat(client, 213);
-							CreateHat(client, 30400);
-							CreateHat(client, 570);
+							CreateHat(client, 213); // Attendant
+							CreateHat(client, 30400); // Lunatic's Leathers
+							CreateHat(client, 570); // Last Breath
 						}
 						case 12:
 						{
-							CreateHat(client, 166);
+							CreateHat(client, 570); // Last Breath
+							CreateHat(client, 30400); // Lunatic's Leathers
+							CreateHat(client, 30413); // Merc's Mohawk
 						}
 						case 13:
 						{
-							CreateHat(client, 570);
-							CreateHat(client, 937);
-							CreateHat(client, 30309);
+							CreateHat(client, 570); // Last Breath
+							CreateHat(client, 937); // Wraith Wrap
+							CreateHat(client, 30309); // Dead of Night
 						}
 						case 14:
 						{
-							CreateHat(client, 570);
-							CreateHat(client, 30305);
-							CreateHat(client, 30168);
+							CreateHat(client, 570); // Last Breath
+							CreateHat(client, 30305); // Sub Zero Suit
+							CreateHat(client, 30168); // Special Eyes
 						}
 						case 15:
 						{
-							CreateHat(client, 30089);
-							CreateHat(client, 570);
-							CreateHat(client, 627);
+							CreateHat(client, 30089); // El Muchacho
+							CreateHat(client, 570); // Last Breath
+							CreateHat(client, 627); // Flamboyant Flamenco
 						}
 						case 16:
 						{
-							CreateHat(client, 105);
-							CreateHat(client, 30169);
-							CreateHat(client, 387);
+							CreateHat(client, 105); // Brigade Helm
+							CreateHat(client, 30169); // Trickster's Turnout Gear
+							CreateHat(client, 387); // Sight for Sore Eyes
 						}
 						case 17:
 						{
+							CreateHat(client, 316); // Pyromancer's Mask
+							CreateHat(client, 247); // Old Guadalajara
+							CreateHat(client, 30089); // El Muchacho
 						}
 						case 18:
 						{
-							CreateHat(client, 213);
+							CreateHat(client, 420); // Aperture Labs Hard Hat
+							CreateHat(client, 30367); // Cute Suit
+							CreateHat(client, 522); // Deus Specs
 						}
 						case 19:
 						{
-							CreateHat(client, 30357);
+							CreateHat(client, 316); // Pyromancer's Mask
+							CreateHat(client, 976); // Winter Wonderland Wrap
+							CreateHat(client, 30176); // Pop-eyes
 						}
+						case 20:
+						{
+							CreateHat(client, 30075); // Mair Mask
+							CreateHat(client, 30309); // Dead of Night
+							CreateHat(client, 30168); // Special Eyes
+						}
+						case 21:
+						{
+							CreateHat(client, 854); // Area 451
+							CreateHat(client, 30168); // Special Eyes
+							CreateHat(client, 316); // Pyromancer's Mask
+						}
+						case 22:
+						{
+							CreateHat(client, 126); // Bill's Hat
+							CreateHat(client, 30168); // Special Eyes
+							CreateHat(client, 30092); // Soot Suit
+						}
+						case 23:
+						{
+							CreateHat(client, 335); // Foster's Facade
+							CreateHat(client, 471); // Proof of Purchase
+							CreateHat(client, 641); // Ornament Armament
+						}
+						case 24:
+						{
+							CreateHat(client, 30192); // Hard-Headed Hardware
+							CreateHat(client, 287); // Spine-Chilling Skull
+							CreateHat(client, 1126); // Duck Badge
+						}
+						case 25:
+						{
+							CreateHat(client, 30036); // Filamental
+							CreateHat(client, 30309); // Dead of Night
+							CreateHat(client, 316); // Pyromancer's Mask
+						}
+						case 26:
+						{
+							CreateHat(client, 30544); // North Polar Fleece
+							CreateHat(client, 571); // Apparition's Aspect
+							CreateHat(client, 182); // Vintage Merryweather
+						}
+						case 27:
+						{
+							CreateHat(client, 30362); // Law
+							CreateHat(client, 30305); // Sub Zero Suit
+							CreateHat(client, 976); // Winter Wonderland Wrap
+						}
+						case 28:
+						{
+							CreateHat(client, 394); // Connoisseur's Cap
+							CreateHat(client, 30417); // Frymaster
+							CreateHat(client, 30309); // Dead of Night
+						}
+						case 29:
+						{
+							CreateHat(client, 102); // Respectless Rubber Glove
+							CreateHat(client, 316); // Pyromancer's Mask
+							CreateHat(client, 30305); // Sub Zero Suit
+						}
+						case 30:
+						{
+							CreateHat(client, 976); // Winter Wonderland Wrap
+							CreateHat(client, 182); // Vintage Merryweather
+							CreateHat(client, 30664); // Space Diver
+						}
+						case 31:
+						{
+							CreateHat(client, 30305); // Sub Zero Suit
+							CreateHat(client, 1020); // Person in the Iron Mask
+							CreateHat(client, 30176); // Pop-eyes
+						}
+						case 32:
+						{
+							CreateHat(client, 30063); // Centurion
+							CreateHat(client, 30075); // Mair Mask
+							CreateHat(client, 30169); // Trickster's Turnout Gear
+						}
+						case 33:
+						{
+							CreateHat(client, 1014); // Brutal Bouffant
+							CreateHat(client, 30367); // Cute Suit
+							CreateHat(client, 387); // Sight for Sore Eyes
+						}
+						case 34:
+						{
+							CreateHat(client, 162); // Max's Severed Head
+							CreateHat(client, 30036); // Filamental
+							CreateHat(client, 597); // Bubble Pipe
+						}
+						default:
+							RandomF2Phat(client);
 					}
 				}
 				case TFClass_Spy:
@@ -1256,6 +1768,8 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 18:
 						{
 						}
+						default:
+							RandomF2Phat(client);
 					}
 				}
 				case TFClass_Engineer:
@@ -1409,6 +1923,8 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 23:
 						{
 						}
+						default:
+							RandomF2Phat(client);
 					}
 				}
 			}
@@ -3017,5 +3533,26 @@ stock void SetupWeapons(const int client)
 			spyWatch[client] = 297;
 		case 4:
 			spyWatch[client] = 947;
+	}
+}
+
+stock void RandomF2Phat(const int client)
+{
+	switch (randomf2phat)
+	{
+		case 1: // alien swarm parasite
+			CreateHat(client, 189);
+		case 2: // bill's hat
+			CreateHat(client, 126);
+		case 3: // ellis' hat
+			CreateHat(client, 263);
+		case 4: // ghastlier gibus
+			CreateHat(client, 279);
+		case 5: // ghastlierest gibus
+			CreateHat(client, 584);
+		case 6: // the galvanized gibus
+			CreateHat(client, 30003);
+		default: // most popular gibus
+			CreateHat(client, 116);
 	}
 }
