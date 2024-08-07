@@ -6,7 +6,6 @@
 #define PLUGIN_VERSION "1.21"
 
 #define TFMaxPlayers 34 // set this value more than your server's max player number, more = higher ram usage
-int randomf2phat;
 
 int g_iResourceEntity;
 bool g_bTouched[TFMaxPlayers];
@@ -59,7 +58,7 @@ int medicLoadout[TFMaxPlayers];
 int sniperLoadout[TFMaxPlayers];
 int spyLoadout[TFMaxPlayers];
 
-public Plugin myinfo = 
+public Plugin myinfo =
 {
 	name = "Give Bots Loadouts",
 	author = "luki1412, EfeDursun125",
@@ -68,9 +67,9 @@ public Plugin myinfo =
 	url = "https://forums.alliedmods.net/member.php?u=43109"
 }
 
-public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) 
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
-	if (GetEngineVersion() != Engine_TF2) 
+	if (GetEngineVersion() != Engine_TF2)
 	{
 		Format(error, err_max, "This plugin only works for Team Fortress 2.");
 		return APLRes_Failure;
@@ -80,25 +79,25 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	return APLRes_Success;
 }
 
-public void OnPluginStart() 
+public void OnPluginStart()
 {
-	ConVar hCVversioncvar = CreateConVar("sm_gbl_version", PLUGIN_VERSION, "Give Bots Weapons version cvar", FCVAR_NOTIFY|FCVAR_DONTRECORD); 
+	ConVar hCVversioncvar = CreateConVar("sm_gbl_version", PLUGIN_VERSION, "Give Bots Weapons version cvar", FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	g_hCVEnabled = CreateConVar("sm_gbl_enabled", "1", "Enables/disables this plugin", FCVAR_NONE, true, 0.0, true, 1.0);
 	g_hCVTimer = CreateConVar("sm_gbl_delay", "0.111", "Delay for giving weapons to bots", FCVAR_NONE, true, 0.1, true, 30.0);
 	g_hCVTeam = CreateConVar("sm_gbl_team", "1", "Team to give weapons to: 1-both, 2-red, 3-blu", FCVAR_NONE, true, 1.0, true, 3.0);
 	g_hCVMVMSupport = CreateConVar("sm_gbw_mvm", "1", "Enables/disables giving bots weapons when MVM mode is enabled", FCVAR_NONE, true, 0.0, true, 1.0);
-	
+
 	HookEvent("post_inventory_application", player_inv);
 	HookEvent("teamplay_round_stalemate", EventSuddenDeath, EventHookMode_PostNoCopy);
 	HookEvent("teamplay_round_start", EventRoundReset, EventHookMode_PostNoCopy);
 	HookConVarChange(g_hCVEnabled, OnEnabledChanged);
-	
+
 	SetConVarString(hCVversioncvar, PLUGIN_VERSION);
 	AutoExecConfig(true, "Give_Bots_Weapons");
 
 	if (g_bLateLoad)
 		OnMapStart();
-	
+
 	GameData hGameConfig = LoadGameConfigFile("sm-tf2.games");
 	if (!hGameConfig)
 		SetFailState("Failed to find sm-tf2.games.txt gamedata! Can't continue.");
@@ -158,7 +157,6 @@ public void OnMapStart()
 
 	g_iResourceEntity = GetPlayerResourceEntity();
 	g_seed += GetTime();
-	randomf2phat = crandomint(1, 7);
 }
 
 stock int frand()
@@ -181,7 +179,7 @@ stock void SetupLoadouts(const int client)
 {
 	scoutLoadout[client] = crandomint(1, 33);
 	soldierLoadout[client] = crandomint(1, 43);
-	pyroLoadout[client] = crandomint(1, 35);
+	pyroLoadout[client] = crandomint(1, 62);
 	engineerLoadout[client] = crandomint(1, 24);
 	heavyLoadout[client] = crandomint(1, 18);
 	demomanLoadout[client] = crandomint(1, 17);
@@ -196,17 +194,17 @@ public void OnClientDisconnect(int client)
 	g_bTouched[client] = false;
 }
 
-public void player_inv(Handle event, const char[] name, bool dontBroadcast) 
+public void player_inv(Handle event, const char[] name, bool dontBroadcast)
 {
 	if (!GetConVarBool(g_hCVEnabled))
 		return;
-	
+
 	if (!g_bSuddenDeathMode && (!g_bMVM || GetConVarBool(g_hCVMVMSupport)))
 	{
 		int client = GetClientOfUserId(GetEventInt(event, "userid"));
 		if (!IsPlayerHere(client) || g_bTouched[client])
 			return;
-		
+
 		g_bTouched[client] = true;
 		switch (GetConVarInt(g_hCVTeam))
 		{
@@ -500,7 +498,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 30551); // Flashdance Footies
 						}
 						default:
-							RandomF2Phat(client);
+							CreateHat(client, 116);
 					}
 				}
 				case TFClass_Sniper:
@@ -744,7 +742,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 1011); // Tux
 						}
 						default:
-							RandomF2Phat(client);
+							CreateHat(client, 116);
 					}
 				}
 				case TFClass_Soldier:
@@ -1040,7 +1038,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 446); // Fancy Dress Uniform
 						}
 						default:
-							RandomF2Phat(client);
+							CreateHat(client, 116);
 					}
 				}
 				case TFClass_DemoMan:
@@ -1177,7 +1175,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 30357);
 						}
 						default:
-							RandomF2Phat(client);
+							CreateHat(client, 116);
 					}
 				}
 				case TFClass_Medic:
@@ -1310,7 +1308,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 30357);
 						}
 						default:
-							RandomF2Phat(client);
+							CreateHat(client, 116);
 					}
 				}
 				case TFClass_Heavy:
@@ -1423,7 +1421,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 30357);
 						}
 						default:
-							RandomF2Phat(client);
+							CreateHat(client, 116);
 					}
 				}
 				case TFClass_Pyro:
@@ -1672,8 +1670,176 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 30036); // Filamental
 							CreateHat(client, 597); // Bubble Pipe
 						}
+						case 35:
+						{
+							CreateHat(client, 30525); // Creature's Grin
+							CreateHat(client, 550); // Fallen Angel
+							CreateHat(client, 30303); // Abhorrent Appendages
+						}
+						case 36:
+						{
+							CreateHat(client, 30357); // Dark Falkirk Helm
+							CreateHat(client, 30583); // Torcher's Tabard
+							CreateHat(client, 30584); // Charred Chainmail
+						}
+						case 37:
+						{
+							CreateHat(client, 420); // Aperture Labs Hard Hat
+							CreateHat(client, 632); // Cremator's Conscience
+							CreateHat(client, 343); // Professor Speks
+						}
+						case 38:
+						{
+							CreateHat(client, 783); // HazMat Headcase
+							CreateHat(client, 30551); // Flashdance Footies
+							CreateHat(client, 143); // Earbuds
+						}
+						case 39:
+						{
+							CreateHat(client, 335); // Foster's Facade
+							CreateHat(client, 30400); // Lunatic's Leathers
+							CreateHat(client, 30168); // Special Eyes
+						}
+						case 40:
+						{
+							CreateHat(client, 30398); // Gas Guzzler
+							CreateHat(client, 30399); // Smoking Skid Lid
+							CreateHat(client, 30400); // Lunatic's Leathers
+						}
+						case 41:
+						{
+							CreateHat(client, 321); // Madame Dixie
+							CreateHat(client, 30304); // Blizzard Breather
+							CreateHat(client, 30544); // North Polar Fleece
+						}
+						case 42:
+						{
+							CreateHat(client, 783); // HazMat Headcase
+							CreateHat(client, 816); // Marxman
+							CreateHat(client, 538); // Killer Exclusive
+						}
+						case 43:
+						{
+							CreateHat(client, 634); // Point and Shoot
+							CreateHat(client, 30367); // Cute Suit
+							CreateHat(client, 856); // Pyrotechnic Tote
+						}
+						case 44:
+						{
+							CreateHat(client, 644); // Head Warmer
+							CreateHat(client, 30367); // Cute Suit
+							CreateHat(client, 30551); // Flashdance Footies
+						}
+						case 45:
+						{
+							CreateHat(client, 30646); // Captain Space Mann
+							CreateHat(client, 30664); // Space Diver
+							CreateHat(client, 30551); // Flashdance Footies
+						}
+						case 46:
+						{
+							CreateHat(client, 394); // Connoisseur's Cap
+							CreateHat(client, 30581); // Pyromancer's Raiments
+							CreateHat(client, 30168); // Special Eyes
+						}
+						case 47:
+						{
+							CreateHat(client, 30623); // Rotation Sensation
+							CreateHat(client, 387); // Sight For Sore Eyes
+							CreateHat(client, 336); // Stockbroker's Scarf
+						}
+						case 48:
+						{
+							CreateHat(client, 30091); // Burning Bandana
+							CreateHat(client, 30168); // Special Eyes
+							CreateHat(client, 30062); // Steel Sixpack
+						}
+						case 49:
+						{
+							CreateHat(client, 30090); // Backpack Broiler
+							CreateHat(client, 30091); // Burning Bandana
+							CreateHat(client, 30092); // Soot Suit
+						}
+						case 50:
+						{
+							CreateHat(client, 30391); // Sengoku Scorcher
+							CreateHat(client, 976); // Winter Wonderland Wrap
+							CreateHat(client, 377); // Hottie's Hoodie
+						}
+						case 51:
+						{
+							CreateHat(client, 30416); // Employee of the Mmmph
+							CreateHat(client, 30417); // Frymaster
+							CreateHat(client, 30092); // Soot Suit
+						}
+						case 52:
+						{
+							CreateHat(client, 30646); // Captain Space Mann
+							CreateHat(client, 30652); // Phobos Filter
+							CreateHat(client, 30664); // Space Diver
+						}
+						case 53:
+						{
+							CreateHat(client, 182); // Vintage Merryweather
+							CreateHat(client, 570); // Last Breath
+							CreateHat(client, 30168); // Special Eyes
+						}
+						case 54:
+						{
+							CreateHat(client, 30304); // Blizzard Breather
+							CreateHat(client, 30305); // Sub Zero Suit
+							CreateHat(client, 30321); // Tiny Timber
+						}
+						case 55:
+						{
+							CreateHat(client, 30538); // Wartime Warmth
+							CreateHat(client, 30544); // North Polar Fleece
+							CreateHat(client, 30551); // Flashdance Footies
+						}
+						case 56:
+						{
+							CreateHat(client, 30091); // Burning Bandana
+							CreateHat(client, 936); // Exorcizor
+							CreateHat(client, 30068); // Breakneck Baggies
+						}
+						case 57:
+						{
+							CreateHat(client, 30162); // Bone Dome
+							CreateHat(client, 30163); // Air Raider
+							CreateHat(client, 30169); // Trickster's Turnout Gear
+						}
+						case 58:
+						{
+							CreateHat(client, 126); // Bill's Hat
+							CreateHat(client, 570); // Last Breath
+							CreateHat(client, 30305); // Sub Zero Suit
+						}
+						case 59:
+						{
+							CreateHat(client, 162); // Max's Severed Head
+							CreateHat(client, 955); // Tuxxy
+							CreateHat(client, 143); // Earbuds
+						}
+						case 60:
+						{
+							CreateHat(client, 151); // Triboniophorus Tyrannus
+							CreateHat(client, 143); // Earbuds
+							CreateHat(client, 30168); // Special Eyes
+						}
+						case 61:
+						{
+							CreateHat(client, 753); // Waxy Wayfinder
+							CreateHat(client, 754); // Scrap Pack
+							CreateHat(client, 768); // Professor's Pineapple
+						}
+						case 62:
+						{
+							CreateHat(client, 189); // Alien Swarm Parasite
+							CreateHat(client, 30286); // Glob
+							CreateHat(client, 30277); // Grisly Gumbo
+						}
 						default:
-							RandomF2Phat(client);
+							CreateHat(client, 116);
 					}
 				}
 				case TFClass_Spy:
@@ -1769,7 +1935,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						{
 						}
 						default:
-							RandomF2Phat(client);
+							CreateHat(client, 116);
 					}
 				}
 				case TFClass_Engineer:
@@ -1924,7 +2090,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						{
 						}
 						default:
-							RandomF2Phat(client);
+							CreateHat(client, 116);
 					}
 				}
 			}
@@ -2053,7 +2219,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						case 3:
 							CreateWeapon(client, "tf_wearable_demoshield", 1, 1099, true);
 					}
-				
+
 					rnd = crandomint(1, 13);
 					switch (rnd)
 					{
@@ -2240,7 +2406,7 @@ stock bool CreateWeapon(const int client, const char[] classname, const int slot
 		LogError("Failed to create a valid entity with class name [%s]! Skipping.", classname);
 		return false;
 	}
-	
+
 	char entclass[64];
 	GetEntityNetClass(weapon, entclass, sizeof(entclass));
 	SetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex", itemindex);
@@ -2248,7 +2414,7 @@ stock bool CreateWeapon(const int client, const char[] classname, const int slot
 	SetEntData(weapon, FindSendPropInfo(entclass, "m_hOwnerEntity"), client);
 	SetEntProp(weapon, Prop_Send, "m_iEntityLevel", crandomint(1, 99));
 	SetEntProp(weapon, Prop_Send, "m_bInitialized", 1);
-	if (!DispatchSpawn(weapon)) 
+	if (!DispatchSpawn(weapon))
 	{
 		LogError("The created weapon entity [Class name: %s, Item index: %i, Index: %i], failed to spawn! Skipping.", classname, itemindex, weapon);
 		AcceptEntityInput(weapon, "Kill");
@@ -2277,9 +2443,9 @@ stock bool CreateWeapon(const int client, const char[] classname, const int slot
 	if (slot > -1)
 		TF2_RemoveWeaponSlot(client, slot);
 
-	if (!wearable) 
+	if (!wearable)
 		EquipPlayerWeapon(client, weapon);
-	else 
+	else
 		SDKCall(g_hWWeaponEquip, client, weapon);
 
 	if (slot > -1 && !wearable && GetPlayerWeaponSlot(client, slot) != weapon)
@@ -2300,7 +2466,7 @@ stock bool CreateHat(const int client, const int itemindex, const int quality = 
 		LogError("Failed to create a valid entity with class name [tf_wearable]! Skipping.");
 		return false;
 	}
-	
+
 	char entclass[64];
 	GetEntityNetClass(hat, entclass, sizeof(entclass));
 	SetEntProp(hat, Prop_Send, "m_iItemDefinitionIndex", itemindex);
@@ -2308,7 +2474,7 @@ stock bool CreateHat(const int client, const int itemindex, const int quality = 
 	SetEntData(hat, FindSendPropInfo(entclass, "m_iEntityQuality"), quality);
 	SetEntProp(hat, Prop_Send, "m_iEntityLevel", crandomint(1, 100));
 	SetEntProp(hat, Prop_Send, "m_bInitialized", 1);
-	if (!DispatchSpawn(hat)) 
+	if (!DispatchSpawn(hat))
 	{
 		LogError("The created cosmetic entity [Class name: tf_wearable, Item index: %i, Index: %i], failed to spawn! Skipping.", itemindex, hat);
 		AcceptEntityInput(hat, "Kill");
@@ -2324,7 +2490,7 @@ public Action TimerHealth(Handle timer, any client)
 	int hp = GetPlayerMaxHp(client);
 	if (hp > 0)
 		SetEntityHealth(client, hp);
-	
+
 	return Plugin_Continue;
 }
 
@@ -2348,7 +2514,7 @@ stock bool FakeClientCommandThrottled(const int client, const char[] command)
 {
 	if (g_flNextCommand[client] > GetGameTime())
 		return false;
-	
+
 	FakeClientCommand(client, command);
 	g_flNextCommand[client] = GetGameTime() + 0.4;
 	return true;
@@ -3533,26 +3699,5 @@ stock void SetupWeapons(const int client)
 			spyWatch[client] = 297;
 		case 4:
 			spyWatch[client] = 947;
-	}
-}
-
-stock void RandomF2Phat(const int client)
-{
-	switch (randomf2phat)
-	{
-		case 1: // alien swarm parasite
-			CreateHat(client, 189);
-		case 2: // bill's hat
-			CreateHat(client, 126);
-		case 3: // ellis' hat
-			CreateHat(client, 263);
-		case 4: // ghastlier gibus
-			CreateHat(client, 279);
-		case 5: // ghastlierest gibus
-			CreateHat(client, 584);
-		case 6: // the galvanized gibus
-			CreateHat(client, 30003);
-		default: // most popular gibus
-			CreateHat(client, 116);
 	}
 }
