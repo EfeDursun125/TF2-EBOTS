@@ -79,6 +79,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	return APLRes_Success;
 }
 
+int g_seed = 0;
 public void OnPluginStart()
 {
 	ConVar hCVversioncvar = CreateConVar("sm_gbl_version", PLUGIN_VERSION, "Give Bots Weapons version cvar", FCVAR_NOTIFY|FCVAR_DONTRECORD);
@@ -111,6 +112,8 @@ public void OnPluginStart()
 
 	if (hGameConfig)
 		delete hGameConfig;
+	
+	g_seed += GetTime();
 
 	// for the plugin reload
 	int i;
@@ -119,6 +122,7 @@ public void OnPluginStart()
 		if (!IsPlayerHere(i))
 			continue;
 
+		g_seed += i * i;
 		SetupLoadouts(i);
 	}
 }
@@ -139,7 +143,6 @@ public void OnEnabledChanged(ConVar convar, const char[] oldValue, const char[] 
 	}
 }
 
-int g_seed;
 public void OnMapStart()
 {
 	if (GameRules_GetProp("m_bPlayingMannVsMachine"))
@@ -169,8 +172,15 @@ stock int crandomint(const int min, const int max)
 
 public void OnClientPutInServer(int client)
 {
+	g_seed += client * client;
 	if (IsPlayerHere(client))
 		SetupLoadouts(client);
+}
+
+public void OnClientDisconnect(int client)
+{
+	g_bTouched[client] = false;
+	g_seed += client * client;
 }
 
 stock void SetupLoadouts(const int client)
@@ -199,12 +209,10 @@ stock void SetupLoadouts(const int client)
 	}
 
 	if (random.Length > 0)
-		scoutLoadout[client] = crandomint(0, random.Length - 1);
-	else
-		scoutLoadout[client] = crandomint(0, 33);
+		scoutLoadout[client] = crandomint(1, random.Length);
 	random.Clear();
 
-	for (i = 1; i < 43; i++)
+	for (i = 1; i < 42; i++)
 	{
 		put = true;
 		for (j = 0; j < MaxClients; j++)
@@ -224,9 +232,7 @@ stock void SetupLoadouts(const int client)
 	}
 
 	if (random.Length > 0)
-		soldierLoadout[client] = crandomint(0, random.Length - 1);
-	else
-		soldierLoadout[client] = crandomint(0, 43);
+		soldierLoadout[client] = crandomint(1, random.Length);
 	random.Clear();
 
 	for (i = 1; i < 62; i++)
@@ -249,12 +255,32 @@ stock void SetupLoadouts(const int client)
 	}
 
 	if (random.Length > 0)
-		pyroLoadout[client] = crandomint(0, random.Length - 1);
-	else
-		pyroLoadout[client] = crandomint(0, 62);
+		pyroLoadout[client] = crandomint(1, random.Length);
 	random.Clear();
 
-	engineerLoadout[client] = crandomint(1, 24);
+	for (i = 1; i < 72; i++)
+	{
+		put = true;
+		for (j = 0; j < MaxClients; j++)
+		{
+			if (!IsPlayerHere(j))
+				continue;
+
+			if (engineerLoadout[j] == i)
+			{
+				put = false;
+				break;
+			}
+		}
+
+		if (put)
+			random.Push(i);
+	}
+
+	if (random.Length > 0)
+		engineerLoadout[client] = crandomint(1, random.Length);
+	random.Clear();
+
 	heavyLoadout[client] = crandomint(1, 18);
 	demomanLoadout[client] = crandomint(1, 17);
 	medicLoadout[client] = crandomint(1, 23);
@@ -279,9 +305,7 @@ stock void SetupLoadouts(const int client)
 	}
 
 	if (random.Length > 0)
-		sniperLoadout[client] = crandomint(0, random.Length - 1);
-	else
-		sniperLoadout[client] = crandomint(0, 34);
+		sniperLoadout[client] = crandomint(1, random.Length);
 	random.Clear();
 
 	spyLoadout[client] = crandomint(1, 19);
@@ -289,11 +313,6 @@ stock void SetupLoadouts(const int client)
 	delete random;
 
 	SetupWeapons(client);
-}
-
-public void OnClientDisconnect(int client)
-{
-	g_bTouched[client] = false;
 }
 
 public void player_inv(Handle event, const char[] name, bool dontBroadcast)
@@ -600,7 +619,11 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 30551); // Flashdance Footies
 						}
 						default:
-							CreateHat(client, 116);
+						{
+							CreateHat(client, 189);
+							scoutLoadout[client] = crandomint(1, 33);
+						}
+							
 					}
 				}
 				case TFClass_Sniper:
@@ -844,7 +867,10 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 1011); // Tux
 						}
 						default:
-							CreateHat(client, 116);
+						{
+							sniperLoadout[client] = crandomint(1, 33);
+							CreateHat(client, 189);
+						}
 					}
 				}
 				case TFClass_Soldier:
@@ -1123,7 +1149,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						}
 						case 40:
 						{
-							CreateHat(client, 30116); // Caribbean Conqueror
+							CreateHat(client, 30189); // Caribbean Conqueror
 							CreateHat(client, 30554); // Mistaken Movember
 							CreateHat(client, 30131); // Brawling Buccaneer
 						}
@@ -1140,7 +1166,10 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 446); // Fancy Dress Uniform
 						}
 						default:
-							CreateHat(client, 116);
+						{
+							soldierLoadout[client] = crandomint(1, 42);
+							CreateHat(client, 189);
+						}
 					}
 				}
 				case TFClass_DemoMan:
@@ -1205,7 +1234,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						}
 						case 2:
 						{
-							CreateHat(client, 116);
+							CreateHat(client, 189);
 							CreateHat(client, 743);
 							CreateHat(client, 583);
 						}
@@ -1277,7 +1306,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 30357);
 						}
 						default:
-							CreateHat(client, 116);
+							CreateHat(client, 189);
 					}
 				}
 				case TFClass_Medic:
@@ -1410,7 +1439,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 30357);
 						}
 						default:
-							CreateHat(client, 116);
+							CreateHat(client, 189);
 					}
 				}
 				case TFClass_Heavy:
@@ -1523,7 +1552,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 30357);
 						}
 						default:
-							CreateHat(client, 116);
+							CreateHat(client, 189);
 					}
 				}
 				case TFClass_Pyro:
@@ -1941,7 +1970,10 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 							CreateHat(client, 30277); // Grisly Gumbo
 						}
 						default:
-							CreateHat(client, 116);
+						{
+							pyroLoadout[client] = crandomint(0, 62);
+							CreateHat(client, 189);
+						}
 					}
 				}
 				case TFClass_Spy:
@@ -2037,7 +2069,7 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 						{
 						}
 						default:
-							CreateHat(client, 116);
+							CreateHat(client, 189);
 					}
 				}
 				case TFClass_Engineer:
@@ -2046,6 +2078,8 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 					{
 						case 141:
 							CreateWeapon(client, "tf_weapon_sentry_revenge", 0, engineerPrimary[client]);
+						case 527:
+							CreateWeapon(client, "tf_weapon_shotgun_primary", 0, engineerPrimary[client]);
 						case 588:
 							CreateWeapon(client, "tf_weapon_drg_pomson", 0, engineerPrimary[client]);
 						case 997:
@@ -2082,117 +2116,441 @@ public Action Timer_GiveWeapons(Handle timer, any data)
 					{
 						case 1:
 						{
-							CreateHat(client, 261);
+							CreateHat(client, 920); // Crone's Dome
+							CreateHat(client, 30172); // Gold Digger
+							CreateHat(client, 30605); // Thermal Insulation Layer
 						}
 						case 2:
 						{
-							CreateHat(client, 941);
-							CreateHat(client, 743);
-							CreateHat(client, 583);
+							CreateHat(client, 920); // Crone's Dome
+							CreateHat(client, 590); // Brainiac Hairpiece
+							CreateHat(client, 30605); // Thermal Insulation Layer
 						}
 						case 3:
 						{
-							CreateHat(client, 261);
-							CreateHat(client, 343);
-							CreateHat(client, 165);
+							CreateHat(client, 94); // Texas Ten Gallon
+							CreateHat(client, 30172); // Gold Digger
+							CreateHat(client, 30605); // Thermal Insulation Layer
 						}
 						case 4:
 						{
-							CreateHat(client, 420);
-							CreateHat(client, 496);
-							CreateHat(client, 30306);
+							CreateHat(client, 420); // Aperture Labs Hard Hat
+							CreateHat(client, 30172); // Gold Digger
+							CreateHat(client, 30087); // Dry Gulch Gulp
 						}
 						case 5:
 						{
-							CreateHat(client, 48);
+							CreateHat(client, 30413); // Merc's Mohawk
+							CreateHat(client, 30347); // Scotch Saver
+							CreateHat(client, 486); // Summer Shades
 						}
 						case 6:
 						{
+							CreateHat(client, 94); // Texas Ten Gallon
+							CreateHat(client, 30322); // Face Full of Festive
+							CreateHat(client, 30539); // Insulated Inventor
 						}
 						case 7:
 						{
-							CreateHat(client, 30402);
-							CreateHat(client, 30403);
+							CreateHat(client, 30402); // Tools of the Trade
+							CreateHat(client, 30403); // Joe-on-the-Go
+							CreateHat(client, 30336); // Trencher's Topper
 						}
 						case 8:
 						{
-							CreateHat(client, 162);
-							CreateHat(client, 143);
-							CreateHat(client, 30414);
+							CreateHat(client, 162); // Max's Severed Head
+							CreateHat(client, 143); // Earbuds
+							CreateHat(client, 30414); // Eye-Catcher
 						}
 						case 9:
 						{
-							CreateHat(client, 590);
-							CreateHat(client, 591);
+							CreateHat(client, 590); // Brainiac Hairpiece
+							CreateHat(client, 591); // Brainiac Goggles
+							CreateHat(client, 30413); // Merc's Mohawk
 						}
 						case 10:
 						{
-							CreateHat(client, 165);
+							CreateHat(client, 30402); // Tools of the Trade
+							CreateHat(client, 30337); // Trencher's Tunic
+							CreateHat(client, 30336); // Trencher's Topper
 						}
 						case 11:
 						{
-							CreateHat(client, 30510);
+							CreateHat(client, 94); // Texas Ten Gallon
+							CreateHat(client, 30397); // Bruiser's Bandana
+							CreateHat(client, 815); // Champ Stamp
 						}
 						case 12:
 						{
-							CreateHat(client, 116);
+							CreateHat(client, 993); // Antlers
+							CreateHat(client, 382); // Big Country
+							CreateHat(client, 30367); // Cute Suit
 						}
 						case 13:
 						{
-							CreateHat(client, 166);
+							CreateHat(client, 162); // Max's Severed Head
+							CreateHat(client, 178); // Safe'n'Sound
+							CreateHat(client, 30397); // Bruiser's Bandana
 						}
 						case 14:
 						{
-							CreateHat(client, 165);
-							CreateHat(client, 30119);
-							CreateHat(client, 987);
+							CreateHat(client, 165); // Soldier of Fortune
+							CreateHat(client, 30119); // Federal Casemaker
+							CreateHat(client, 987); // Merc's Muffler
 						}
 						case 15:
 						{
-							CreateHat(client, 30066);
-							CreateHat(client, 143);
-							CreateHat(client, 733);
+							CreateHat(client, 30066); // Brotherhood of Arms
+							CreateHat(client, 143); // Earbuds
+							CreateHat(client, 733); // Pet Robro
 						}
 						case 16:
 						{
-							CreateHat(client, 94);
-							CreateHat(client, 5621);
-							CreateHat(client, 755);
+							CreateHat(client, 94); // Texas Ten Gallon
+							CreateHat(client, 5621); // Voodoo-Cursed Engineer Soul
+							CreateHat(client, 755); // Texas Half-Pants
 						}
 						case 17:
 						{
-							CreateHat(client, 261);
-							CreateHat(client, 583);
-							CreateHat(client, 744);
+							CreateHat(client, 30067); // Well-Rounded Rifleman
+							CreateHat(client, 30168); // Special Eyes
+							CreateHat(client, 30172); // Gold Digger
 						}
 						case 18:
 						{
-							CreateHat(client, 755);
-							CreateHat(client, 94);
-							CreateHat(client, 30412);
+							CreateHat(client, 755); // Texas Half-Pants
+							CreateHat(client, 94); // Texas Ten Gallon
+							CreateHat(client, 30412); // Endothermic Exowear
 						}
 						case 19:
 						{
-							CreateHat(client, 30408);
-							CreateHat(client, 30341);
-							CreateHat(client, 30407);
+							CreateHat(client, 30408); // Egghead's Overalls
+							CreateHat(client, 30341); // Ein
+							CreateHat(client, 30407); // Level Three Chin
 						}
 						case 20:
 						{
+							CreateHat(client, 30407); // Level Three Chin
+							CreateHat(client, 178); // Safe'n'Sound
+							CreateHat(client, 519); // Pip-Boy
 						}
 						case 21:
 						{
-							CreateHat(client, 162);
+							CreateHat(client, 30085); // Macho Mann
+							CreateHat(client, 94); // Texas Ten Gallon
+							CreateHat(client, 986); // Mutton Mann
 						}
 						case 22:
 						{
-							CreateHat(client, 30357);
+							CreateHat(client, 118); // Texas Slim's Dome Shine
+							CreateHat(client, 30414); // Eye-Catcher
+							CreateHat(client, 30172); // Gold Digger
 						}
 						case 23:
 						{
+							CreateHat(client, 486); // Summer Shades
+							CreateHat(client, 30634); // Sheriff's Stetson
+							CreateHat(client, 30397); // Bruiser's Bandana
+						}
+						case 24:
+						{
+							CreateHat(client, 30119); // Federal Casemaker
+							CreateHat(client, 1009); // Grizzled Growth
+							CreateHat(client, 5621); // Voodoo-Cursed Engineer Soul
+						}
+						case 25:
+						{
+							CreateHat(client, 30341); // Ein
+							CreateHat(client, 30330); // Dogfighter
+							CreateHat(client, 30347); // Scotch Saver
+						}
+						case 26:
+						{
+							CreateHat(client, 590); // Brainiac Hairpiece
+							CreateHat(client, 628); // Virtual Reality Headset
+							CreateHat(client, 389); // Googly Gazer
+						}
+						case 27:
+						{
+							CreateHat(client, 30539); // Insulated Inventor
+							CreateHat(client, 30322); // Face Full of Festive
+							CreateHat(client, 338); // Industrial Festivizer
+						}
+						case 28:
+						{
+							CreateHat(client, 647); // All-Father
+							CreateHat(client, 30330); // Dogfighter
+							CreateHat(client, 178); // Safe'n'Sound
+						}
+						case 29:
+						{
+							CreateHat(client, 486); // Summer Shades
+							CreateHat(client, 1012); // Wilson Weave
+							CreateHat(client, 955); // Tuxxy
+						}
+						case 30:
+						{
+							CreateHat(client, 408); // Humanitarian's Hachimaki
+							CreateHat(client, 486); // Summer Shades
+							CreateHat(client, 647); // All-Father
+						}
+						case 31:
+						{
+							CreateHat(client, 399); // Ol' Geezer
+							CreateHat(client, 30367); // Cute Suit
+							CreateHat(client, 30168); // Special Eyes
+						}
+						case 32:
+						{
+							CreateHat(client, 988); // Barnstormer
+							CreateHat(client, 30168); // Special Eyes
+							CreateHat(client, 986); // Mutton Mann
+						}
+						case 33:
+						{
+							CreateHat(client, 345); // Athletic Supporter
+							CreateHat(client, 30085); // Macho Mann
+							CreateHat(client, 30397); // Bruiser's Bandana
+						}
+						case 34:
+						{
+							CreateHat(client, 986); // Mutton Mann
+							CreateHat(client, 944); // That '70s Chapeau
+							CreateHat(client, 30113); // Flared Frontiersman
+						}
+						case 35:
+						{
+							CreateHat(client, 666); // B.M.O.C.
+							CreateHat(client, 30523); // Garden Bristles
+							CreateHat(client, 30402); // Tools of The Trade
+						}
+						case 36:
+						{
+							CreateHat(client, 848); // Tin-1000
+							CreateHat(client, 386); // Teddy Roosebelt
+							CreateHat(client, 30086); // Trash Toter
+						}
+						case 37:
+						{
+							CreateHat(client, 492); // Summer Hat
+							CreateHat(client, 486); // Summer Shades
+							CreateHat(client, 30172); // Gold Digger
+						}
+						case 38:
+						{
+							CreateHat(client, 30407); // Level Three Chin
+							CreateHat(client, 30362); // Law
+							CreateHat(client, 296); // License to Maim
+						}
+						case 39:
+						{
+							CreateHat(client, 30420); // Danger
+							CreateHat(client, 30347); // Scotch Saver
+							CreateHat(client, 30377); // Antarctic Researcher
+						}
+						case 40:
+						{
+							CreateHat(client, 379); // Western Wear
+							CreateHat(client, 30397); // Bruiser's Bandana
+							CreateHat(client, 30635); // Wild West Waistcoat
+						}
+						case 41:
+						{
+							CreateHat(client, 94); // Texas Ten Gallon
+							CreateHat(client, 30347); // Scotch Saver
+							CreateHat(client, 30412); // Endothermic Exowear
+						}
+						case 42:
+						{
+							CreateHat(client, 30168); // Special Eyes
+							CreateHat(client, 30367); // Cute Suit
+							CreateHat(client, 30066); // Brotherhood of Arms
+						}
+						case 43:
+						{
+							CreateHat(client, 30420); // Danger
+							CreateHat(client, 30172); // Gold Digger
+							CreateHat(client, 30539); // Insulated Inventor
+						}
+						case 44:
+						{
+							CreateHat(client, 30347); // Scotch Saver
+							CreateHat(client, 523); // Company Man
+							CreateHat(client, 30377); // Antarctic Researcher
+						}
+						case 45:
+						{
+							CreateHat(client, 30407); // Level Three Chin
+							CreateHat(client, 30297); // Magical Mercenary
+							CreateHat(client, 30408); // Egghead's Overalls
+						}
+						case 46:
+						{
+							CreateHat(client, 30336); // Trencher's Topper
+							CreateHat(client, 30402); // Tools of the Trade
+							CreateHat(client, 30070); // Pocket Pyro
+						}
+						case 47:
+						{
+							CreateHat(client, 30330); // Dogfighter
+							CreateHat(client, 30347); // Scotch Saver
+							CreateHat(client, 30341); // Ein
+						}
+						case 48:
+						{
+							CreateHat(client, 48); // Mining Light
+							CreateHat(client, 30172); // Gold Digger
+							CreateHat(client, 1025); // Fortune Hunter
+						}
+						case 49:
+						{
+							CreateHat(client, 988); // Barnstormer
+							CreateHat(client, 784); // Idea Tube
+							CreateHat(client, 30330); // Dogfighter
+						}
+						case 50:
+						{
+							CreateHat(client, 178); // Safe'n'Sound
+							CreateHat(client, 30167); // Beep Boy
+							CreateHat(client, 30087); // Dry Gulch Gulp
+						}
+						case 51:
+						{
+							CreateHat(client, 30066); // Brotherhood of Arms
+							CreateHat(client, 30377); // Antarctic Researcher
+							CreateHat(client, 386); // Teddy Roosebelt
+						}
+						case 52:
+						{
+							CreateHat(client, 30099); // Pardner's Pompadour
+							CreateHat(client, 814); // Triad Trinket
+							CreateHat(client, 30113); // Flared Frontiersman
+						}
+						case 53:
+						{
+							CreateHat(client, 605); // Pencil Pusher
+							CreateHat(client, 784); // Idea Tube
+							CreateHat(client, 606); // Builder's Blueprints
+						}
+						case 54:
+						{
+							CreateHat(client, 1014); // Brutal Bouffant
+							CreateHat(client, 30347); // Scotch Saver
+							CreateHat(client, 30377); // Antarctic Researcher
+						}
+						case 55:
+						{
+							CreateHat(client, 1014); // Big Country
+							CreateHat(client, 30347); // Scotch Saver
+							CreateHat(client, 30377); // Antarctic Researcher
+						}
+						case 56:
+						{
+							CreateHat(client, 95); // Engineer's Cap
+							CreateHat(client, 30337); // Trencher's Tunic
+							CreateHat(client, 30113); // Flared Frontiersman
+						}
+						case 57:
+						{
+							CreateHat(client, 628); // Virtual Reality Headset
+							CreateHat(client, 519); // Pip-Boy
+							CreateHat(client, 30023); // Teddy Robobelt
+						}
+						case 58:
+						{
+							CreateHat(client, 784); // Idea Tube
+							CreateHat(client, 606); // Builder's Blueprints
+							CreateHat(client, 30086); // Trash Toter
+						}
+						case 59:
+						{
+							CreateHat(client, 30066); // Brotherhood Of Arms
+							CreateHat(client, 30167); // Beep Boy
+							CreateHat(client, 30087); // Dry Gulch Gulp
+						}
+						case 60:
+						{
+							CreateHat(client, 379); // Western Wear
+							CreateHat(client, 30164); // Viking Braider
+							CreateHat(client, 30337); // Trencher's Tunic
+						}
+						case 61:
+						{
+							CreateHat(client, 853); // Crafty Hair
+							CreateHat(client, 30085); // Macho Mann
+							CreateHat(client, 30330); // Dogfighter
+						}
+						case 62:
+						{
+							CreateHat(client, 848); // Tin-1000
+							CreateHat(client, 30056); // Dual-Core Devil
+							CreateHat(client, 519); // Pip-Boy
+						}
+						case 63:
+						{
+							CreateHat(client, 30168); // Special Eyes
+							CreateHat(client, 30330); // Dogfighter
+							CreateHat(client, 30347); // Scotch Saver
+						}
+						case 64:
+						{
+							CreateHat(client, 94); // Ten Gallon
+							CreateHat(client, 30085); // Macho Man
+							CreateHat(client, 986); // Mutton Mann
+						}
+						case 65:
+						{
+							CreateHat(client, 30035); // Timeless Topper
+							CreateHat(client, 30086); // Trash Toter
+							CreateHat(client, 606); // Builder's Blueprints
+						}
+						case 66:
+						{
+							CreateHat(client, 118); // Texas Slim's Dome Shine
+							CreateHat(client, 30407); // Level Three Chin
+							CreateHat(client, 30408); // Egghead's Overalls
+						}
+						case 67:
+						{
+							CreateHat(client, 30413); // Merc's Mohawk
+							CreateHat(client, 815); // Champ Stamp
+							CreateHat(client, 486); // Summer Shades
+						}
+						case 68:
+						{
+							CreateHat(client, 1017); // Vox Diabolus
+							CreateHat(client, 30168); // Special Eyes
+							CreateHat(client, 30086); // Trash Toter
+						}
+						case 69:
+						{
+							CreateHat(client, 30406); // Peacenik's Ponytail
+							CreateHat(client, 30407); // Level Three Chin
+							CreateHat(client, 30408); // Egghead's Overalls
+						}
+						case 70:
+						{
+							CreateHat(client, 30420); // Danger
+							CreateHat(client, 30412); // Endothermic Exowear
+							CreateHat(client, 30347); // Scotch Saver
+						}
+						case 71:
+						{
+							CreateHat(client, 30177); // Hong Kong Cone
+							CreateHat(client, 30403); // Joe-on-the-Go
+							CreateHat(client, 30409); // Lonesome Loafers
+						}
+						case 72:
+						{
+							CreateHat(client, 30634); // Sheriff's Stetson
+							CreateHat(client, 30635); // Wild West Waistcoat
+							CreateHat(client, 30113); // Flared Frontiersman
 						}
 						default:
-							CreateHat(client, 116);
+						{
+							engineerLoadout[client] = crandomint(0, 72);
+							CreateHat(client, 189);
+						}
 					}
 				}
 			}
@@ -2505,7 +2863,7 @@ stock bool CreateWeapon(const int client, const char[] classname, const int slot
 	int weapon = CreateEntityByName(classname);
 	if (!IsValidEntity(weapon))
 	{
-		LogError("Failed to create a valid entity with class name [%s]! Skipping.", classname);
+		LogError("The weapon entity [Class name: %s, Item index: %i, Slot: %i], failed to create! Skipping.", classname, itemindex, slot);
 		return false;
 	}
 
@@ -2518,7 +2876,7 @@ stock bool CreateWeapon(const int client, const char[] classname, const int slot
 	SetEntProp(weapon, Prop_Send, "m_bInitialized", 1);
 	if (!DispatchSpawn(weapon))
 	{
-		LogError("The created weapon entity [Class name: %s, Item index: %i, Index: %i], failed to spawn! Skipping.", classname, itemindex, weapon);
+		LogError("The created weapon entity [Class name: %s, Item index: %i, Slot: %i], failed to spawn! Skipping.", classname, itemindex, slot);
 		AcceptEntityInput(weapon, "Kill");
 		return false;
 	}
@@ -3088,7 +3446,7 @@ stock void SetupWeapons(const int client)
 				case 5:
 					demomanPrimary[client] = 15092;
 				case 6:
-					demomanPrimary[client] = 15116;
+					demomanPrimary[client] = 15189;
 				case 7:
 					demomanPrimary[client] = 15117;
 				case 8:
