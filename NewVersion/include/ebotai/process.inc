@@ -119,35 +119,6 @@ public void EndProcess(const int client, const int process)
 
 public void UpdateProcess(const int client)
 {
-	if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcess[client] != PRO_ENGINEERIDLE && CurrentProcessTime[client] < GetGameTime() && CurrentProcess[client] != PRO_SPYLURK && CurrentProcess[client] != PRO_SPYHUNT)
-	{
-		if (GetConVarInt(EBotDebug))
-			PrintToServer("%N is cancelled %s process -> timed out.", client, GetProcessName(CurrentProcess[client], client));
-		EndProcess(client, CurrentProcess[client]);
-
-		if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcess[client] != PRO_ENGINEERIDLE && RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime())
-		{
-			StartProcess(client, RememberedProcess[client]);
-			if (GetConVarInt(EBotDebug))
-				PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client], client), GetProcessName(CurrentProcess[client], client));
-			CurrentProcess[client] = RememberedProcess[client];
-			CurrentProcessTime[client] = RememberedProcessTime[client];
-			RememberedProcess[client] = PRO_DEFAULT;
-			RememberedProcessTime[client] = 0.0;
-			return;
-		}
-
-		CurrentProcess[client] = PRO_DEFAULT;
-		StartProcess(client, PRO_DEFAULT);
-		return;
-	}
-
-	/*if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked)) // useful for randomizer
-	{
-		SetProcess(client, PRO_HIDE, 60.0, "", true);
-		return;
-	}*/
-
 	switch (CurrentProcess[client])
 	{
 		case PRO_DEFAULT:
@@ -187,6 +158,34 @@ public void UpdateProcess(const int client)
 		case PRO_FOLLOWPATH:
 			FollowPathUpdate(client);
 	}
+
+	/*if (m_hasEnemiesNear[client] && TF2_IsPlayerInCondition(client, TFCond_Cloaked)) // useful for randomizer
+	{
+		SetProcess(client, PRO_HIDE, 60.0, "", true);
+		return;
+	}*/
+
+	if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcess[client] != PRO_ENGINEERIDLE && CurrentProcessTime[client] < GetGameTime() && CurrentProcess[client] != PRO_SPYLURK && CurrentProcess[client] != PRO_SPYHUNT)
+	{
+		if (GetConVarInt(EBotDebug))
+			PrintToServer("%N is cancelled %s process -> timed out.", client, GetProcessName(CurrentProcess[client], client));
+		EndProcess(client, CurrentProcess[client]);
+
+		if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcess[client] != PRO_ENGINEERIDLE && RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime() && IsReadyForTheProcess(client, RememberedProcess[client]))
+		{
+			StartProcess(client, RememberedProcess[client]);
+			if (GetConVarInt(EBotDebug))
+				PrintToServer("%N is remembered %s process -> from %s", client, GetProcessName(RememberedProcess[client], client), GetProcessName(CurrentProcess[client], client));
+			CurrentProcess[client] = RememberedProcess[client];
+			CurrentProcessTime[client] = RememberedProcessTime[client];
+			RememberedProcess[client] = PRO_DEFAULT;
+			RememberedProcessTime[client] = 0.0;
+			return;
+		}
+
+		CurrentProcess[client] = PRO_DEFAULT;
+		StartProcess(client, PRO_DEFAULT);
+	}
 }
 
 stock void FinishCurrentProcess(const int client, const bool nodbg = false, const char[] debugnote = "finished by the system")
@@ -198,7 +197,7 @@ stock void FinishCurrentProcess(const int client, const bool nodbg = false, cons
 
 		EndProcess(client, CurrentProcess[client]);
 
-		if (RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime())
+		if (CurrentProcess[client] != PRO_DEFAULT && CurrentProcess[client] != PRO_ENGINEERIDLE && RememberedProcess[client] != CurrentProcess[client] && RememberedProcessTime[client] > GetGameTime() && IsReadyForTheProcess(client, RememberedProcess[client]))
 		{
 			StartProcess(client, RememberedProcess[client]);
 			if (GetConVarInt(EBotDebug))
