@@ -179,7 +179,6 @@ public void OnMapStart()
 
 	SetConVarInt(FindConVar("nav_generate_fencetops"), 0);
 	SetConVarInt(FindConVar("mp_waitingforplayers_cancel"), 1);
-	InitGamedata();
 	ServerCommand("sv_tags ebot");
 	AddServerTag("ebot");
 	m_laserIndex = PrecacheModel("materials/sprites/laserbeam.vmt");
@@ -373,7 +372,7 @@ public void EBotDeathChat(const int client)
         while (!fp.EndOfFile())
 		{
 			fp.ReadLine(line, sizeof(line));
-			if (!line)
+			if (!line[0])
 				continue;
 
 			if (StrContains(line, "//") != -1)
@@ -844,7 +843,7 @@ public void AddEBotConsole()
         while (!fp.EndOfFile())
 		{
 			fp.ReadLine(line, sizeof(line));
-			if (!line)
+			if (!line[0])
 				continue;
 
 			if (StrContains(line, "//") != -1)
@@ -1608,7 +1607,7 @@ public Action BotDeath(Handle event, char[] name, bool dontBroadcast)
 			{
 				FindFriendsAndEnemiens(client);
 				if (!m_hasEnemiesNear[client] && (!m_hasFriendsNear[client] || m_class[client] == TFClass_Sniper))
-					PlayTaunt(client, 463);
+				    FakeClientCommandThrottled(client, "taunt");
 			}
 		}
 	}
@@ -2075,7 +2074,7 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 				while (!fp.EndOfFile())
 				{
 					fp.ReadLine(line, sizeof(line));
-					if (!line)
+					if (!line[0])
 						continue;
 
 					TrimString(line);
@@ -2110,7 +2109,7 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 				while (!fp.EndOfFile())
 				{
 					fp.ReadLine(line, sizeof(line));
-					if (!line)
+					if (!line[0])
 						continue;
 
 					TrimString(line);
